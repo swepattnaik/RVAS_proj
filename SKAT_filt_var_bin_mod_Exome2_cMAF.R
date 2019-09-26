@@ -160,8 +160,10 @@ genes <- unique(fil_tab$gene_symbol)
                                   "vep_consequence", "auto_call", "comb_score", "coh_MAF_case",
                                   "coh_MAF_cont", Ex_samp_id)
      ##Intracohort filter  : equivalent to ~ 3/1110*2 for case ; ~ 3/1562*2
-       samp_vec_mat <- samp_vec_mat[as.numeric(as.character(samp_vec_mat$coh_MAF_case)) <= 0.0015 | 
-                                      as.numeric(as.character(samp_vec_mat$coh_MAF_cont)) <= 0.001,]
+  #     samp_vec_mat <- samp_vec_mat[as.numeric(as.character(samp_vec_mat$coh_MAF_case)) <= 0.0015 | 
+  #                                    as.numeric(as.character(samp_vec_mat$coh_MAF_cont)) <= 0.001,]
+       samp_vec_mat <- samp_vec_mat[!(as.numeric(as.character(samp_vec_mat$coh_MAF_case)) >= 0.0015 | 
+                                      as.numeric(as.character(samp_vec_mat$coh_MAF_cont)) >= 0.001),]
     #  samp_vec_mat <- samp_vec_mat[as.numeric(as.character(samp_vec_mat$coh_MAF_cont)) <= 0.001,]
       
       if(is.null(dim(samp_vec_mat)) | dim(samp_vec_mat)[1] == 0) {
