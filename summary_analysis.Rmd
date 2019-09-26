@@ -94,7 +94,7 @@ C3/C4 Variants in the last 5 percent of the C-terminal region of the protein = a
 
 ```{r, out.width='\\textwidth', fig.height = 7, fig.align='center', echo=FALSE}
 
-Exome_skat <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/Exome_skat_wsing_load123_noCH_C5eqC4_nonmds_gt_isksrisc_sept05_rect_ASP.rds")
+Exome_skat <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/Exome_skat_wsing_load123_noCH_C5eqC4_nonmds_gt_isksrisc_sept05_rect_ASP_cmaf.rds")
 
 df_skat <- lapply(Exome_skat, function(x)do.call("rbind.data.frame", x))
 Exome_pc123_srt_SKAT <- lapply(df_skat, function(x) x[order(x$pval_SKATbin, decreasing = F),])
@@ -109,13 +109,14 @@ multiplot(plotlist = SKAT_plots_eigen, cols = 2)
 
 ```
 
+
 ```{r, out.width='\\textwidth', fig.height = 7, fig.align='center', echo=FALSE}
-Exome_skat <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/Exome_skat_wsing_load123_noCH_C5eqC4_nonmds_gt_isksrisc_sept05_rect_ASP.rds")
+Exome_skat <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/Exome_skat_wsing_load123_noCH_C5eqC4_nonmds_gt_isksrisc_sept05_rect_ASP_cmaf.rds")
 
 df_skat <- lapply(Exome_skat, function(x)do.call("rbind.data.frame", x))
 Exome_pc123_srt_SKAT <- lapply(df_skat, function(x) x[order(x$pval_SKATbin, decreasing = F),])
 Exome_pc123_srt_SKAT <- lapply(Exome_pc123_srt_SKAT, function(x){colnames(x)[1] <- c("symbol"); return(x)})
-Exome_pc123_srt_SKAT_case_enr_nCH <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/Exome_pc123_srt_SKAT_case_enr_nCH_iskrisc_05Sept_rect_ASP.rds")
+Exome_pc123_srt_SKAT_case_enr_nCH <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/Exome_pc123_srt_SKAT_case_enr_nCH_iskrisc_05Sept_rect_ASP_cmaf.rds")
 ##Add p-value
 Exome_pc123_srt_SKAT_case_enr_nCH_pval <- Map(cbind.data.frame, Exome_pc123_srt_SKAT_case_enr_nCH, Exome_pc123_srt_SKAT)
 
@@ -139,7 +140,7 @@ pc123_gender_tab_top1000_VAR$gene_Pval <- pc123_gender_tab_top1000[match(pc123_g
 #head(pc123_gender_tab_top1000_VAR[,c(1:6,8:9,11,15,17:18,20,23:25,30,53,57,59:68,72,119:121)])
 pc123_gender_tab_top1000_VAR <- pc123_gender_tab_top1000_VAR[,c(1:6,8:9,11,15,17:18,20,23:25,30,53,57,59:68,72,125:132)]
 pc123_gender_tab_top1000_VAR <- unique(pc123_gender_tab_top1000_VAR)
-write.table(pc123_gender_tab_top1000_VAR, "/home/shu/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/Exome_Enriched_pc_gender_controlled_top_geneVARIANTS_sep05_ASP.tsv",
+write.table(pc123_gender_tab_top1000_VAR, "/home/shu/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/Exome_Enriched_pc_gender_controlled_top_geneVARIANTS_sep05_ASP_cmaf.tsv",
             sep = "\t", row.names = F, quote = F)
 
 
