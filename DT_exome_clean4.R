@@ -6,26 +6,10 @@
 ##Rcommendation for SKAT; use a hard filter of comb_score > 5 compared to comb_score >= 5
 ##Aug12 changed scoring function, increased penalty for last exon variants (-25)
 
-##test shard chromosome 1 for testing new feature
-#tshard <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test_shard.tsv", header = T, sep = "\t",
- #                    stringsAsFactors = F)
-
-
 ##same as DT_call_analysis.R (refer it for source file details)
 ##Add filter using VAF > 0.3
 ##Use scores for C5[30], C4[30], C3 [10-20] DT_gene_tab_ISKS_MGRB_nCH_fil1$DavidThomas_call
 ##weights assigned: C5 -> 30; C4 -> 30; C3 -> 15; stop_gained -> 30; clin_var(pathogenic) <- 35; indels <- 10
-#Ex_tab <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/comb_isks_risc_exome_latest2.tsv", sep = "\t",
-#           header = T, stringsAsFactors = F)
-
-#Ex_tab <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/comb_isks_latest1Aug.tsv", sep = "\t",
-#                                header = T, stringsAsFactors = F)
-
-#Ex_tab <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/comb_isks_latest4Aug.tsv", sep = "\t",
-#                     header = T, stringsAsFactors = F)
-
-#Ex_tab <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/comb_isks_risc_latest12Aug.tsv", sep = "\t",
-#                     header = T, stringsAsFactors = F)
 
 Ex_tab <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/comb_isks_risc_latest05Sept_rect1.tsv", sep = "\t",
                                           header = T, stringsAsFactors = F)
@@ -68,15 +52,14 @@ Ex_tab1$gnomad_AF_NFE <- ifelse(is.na(Ex_tab1$gnomad_AF_NFE), 0, Ex_tab1$gnomad_
 #Ex_tab_filt1 <- Ex_tab1[Ex_tab1$gnomad_AF_NFE <= 0.0001, ] ##check this; loses some variants from Aug12 on Sept05 run(don't use)
 
 ##remove SAMPLE CR57
-#Ex_tab_filt1 <- Ex_tab_filt1[!(Ex_tab_filt1$SAMPLE %in% "CR57"),]
+
 Ex_tab_filt1 <- Ex_tab1[!(Ex_tab1$SAMPLE %in% "CR57"),]
 
 toMatch <- c("3_prime_UTR_variant", "5_prime_UTR_variant", "intron_variant", 
              "synonymous_variant", "upstream_gene_variant", "non_coding_transcript_exon_variant",
              "non_coding_transcript_variant", "downstream_gene_variant", "NMD_transcript_variant",
              "intergenic_variant", "mature_miRNA_variant")
-#"NMD_transcript_variant"
-#Ex_tab_filt2 <- Ex_tab_filt1[!(Ex_tab_filt1$vep_consequence %in% toMatch),]
+
 Ex_tab_filt2 <- Ex_tab_filt1[!(grepl(paste(toMatch,collapse="|"), 
                                     Ex_tab_filt1$vep_consequence)),]
 
@@ -84,36 +67,12 @@ Ex_tab_filt2 <- Ex_tab_filt1[!(grepl(paste(toMatch,collapse="|"),
 Ex_tab_filt2$is_MGRB <- ifelse(Ex_tab_filt2$SAMPLE %in% MGRB_all, 1, 0)
 
 Ex_tab_filt2$is_ASPC <- ifelse(Ex_tab_filt2$SAMPLE %in% ASPREE_can$samp, 1, 0)
-#length(unique(Ex_tab_filt2[Ex_tab_filt2$is_CH == 1 & Ex_tab_filt2$is_MGRB == 1,]$SAMPLE))
-
-
-#saveRDS(Ex_tab_filt2, file = "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/comb_isks_risc_exome_latest_filt2.rds", 
- #       compress = T)
-#saveRDS(Ex_tab_filt2, file = "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/comb_isks_latest1Aug_filt2.rds", 
-#        compress = T)
-
 
 ##filter out MGRB samples that have CH
-#Ex_tab_filt2 <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/comb_isks_latest30Jul_filt2.rds")
-#Ex_tab_filt2 <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/comb_isks_latest1Aug_filt2.rds")
+
 Ex_tab_noCH_filt3 <- Ex_tab_filt2[!(Ex_tab_filt2$is_CH == 0 & Ex_tab_filt2$is_MGRB == 1),]
 Ex_tab_noCH_filt3 <- Ex_tab_noCH_filt3[Ex_tab_noCH_filt3$is_ASPC == 0,]
 #dim(Ex_tab_noCH_filt3[Ex_tab_noCH_filt3$gene_symbol %in% "TP53",])
-
-##filter somatic snps
-#DT_gene_tab_ISKS_MGRB_nCH_fil3 <- DT_gene_tab_ISKS_MGRB_nCH_fil3[is.na(DT_gene_tab_ISKS_MGRB_nCH_fil3$`Somatic?`),]
-
-##last 2 exon check; this input contains vep_exon filed while specifies the exon number relative to the last exon number.
-#last2 <- unlist(lapply(strsplit(TP53_ex$vep_exon, split = "/"), function(x)ifelse(as.numeric(x[2]) - as.numeric(x[1]) <= 1, 1, 0)))
-#last2[is.na(last2)] <- 0
-
-#Ex_tab_noCH_filt3$last_exon <- unlist(lapply(strsplit(Ex_tab_noCH_filt3$vep_exon, split = "/"), function(x)ifelse(as.numeric(x[2]) - as.numeric(x[1]) <= 1, 1, 0)))
-##capture only last exon: based on DT meeting Aug-12-2019
-
-# Ex_tab_noCH_filt3$last_exon <- unlist(lapply(strsplit(Ex_tab_noCH_filt3$vep_exon, split = "/"), function(x)
-#   ifelse(as.numeric(x[2]) <= 5, 0,
-#          ifelse(as.numeric(x[2]) - as.numeric(x[1]) < 1, 1, 0)))) ##only last exon
-# Ex_tab_noCH_filt3$last_exon[is.na(Ex_tab_noCH_filt3$last_exon)] <- 0
 
 
 ##Capture variant present in the last 5% of the length of the protein sequence
@@ -209,84 +168,20 @@ Ex_tab_noCH_filt3$comb_score <- as.numeric(ifelse(Ex_tab_noCH_filt3$auto_call %i
                                                     Ex_tab_noCH_filt3$last_five_perc == 1, (Ex_tab_noCH_filt3$comb_score)/2,
                                                   Ex_tab_noCH_filt3$comb_score))
 
-#saveRDS(Ex_tab_noCH_filt3, file = "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/Exome_filt3_nCH_C5eqC4_noNAs_auto.rds", compress = T)
-#saveRDS(Ex_tab_noCH_filt3, file = "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/Exome_filt3_nCH_C5eqC4_noNAs_auto_4Aug.rds", compress = T)
-#saveRDS(Ex_tab_noCH_filt3, file = "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/Exome_filt3_nCH_C5eqC4_noNAs_auto_6Aug.rds", compress = T)
-#saveRDS(Ex_tab_noCH_filt3, file = "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/Exome_filt3_nCH_C5eqC4_nonmds_auto_7Aug.rds", compress = T)
-#saveRDS(Ex_tab_noCH_filt3, file = "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/Exome_filt3_nCH_C5eqC4_nonmds_iskrisc_12Aug.rds", compress = T)
-#saveRDS(Ex_tab_noCH_filt3, file = "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/Exome_filt3_nCH_C5eqC4_nonmds_iskrisc_05Sept_rect.rds", compress = T)
-#saveRDS(Ex_tab_noCH_filt3, file = "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/Exome_filt3_nCH_C5eqC4_nonmds_iskrisc_05Sept_splice.rds", compress = T)
 saveRDS(Ex_tab_noCH_filt3, file = "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/Exome_filt3_nCH_C5eqC4_nonmds_iskrisc_05Sept_splice_ASP.rds", compress = T)
 
 
-######################SKAT analysis###################
-
-# ##Additive model
-# Ex_samp_id <- unique(Ex_tab_noCH_filt3$SAMPLE)
-# samp_vec <- list()
-# for(k in 1:dim(Ex_tab_noCH_filt3)[1]){
-#   sam_gene_gt <- Ex_tab_noCH_filt3[grepl(Ex_tab_noCH_filt3$VARIANT[k],
-#                                          Ex_tab_noCH_filt3$VARIANT),][,c(1,3,9)]
-#   #sam_gene_gt$add_mod <- ifelse(sam_gene_gt$GT %in% "0/1", 1, ifelse(sam_gene_gt$GT %in% "0/0", 0, 2))
-#   sam_gene_gt$add_mod <- as.numeric(sam_gene_gt$GT)
-#   sam10 <- ifelse(Ex_samp_id %in% sam_gene_gt$SAMPLE, 1, 0)
-#   sam10[which(sam10 != 0)] <- sam_gene_gt$add_mod ##additive model
-#   samp_vec[[k]] <- sam10
-#   # samp_vec[[k]] <- ifelse(DT_samp_id %in% sam_gene$SAMPLE, 1, 0)
-#   # gene_vec[[k]] <- ifelse(genes %in% sam_gene$gene_symbol, 1, 0)
-# }
-# 
-# samp_vec_mat <- do.call("rbind", samp_vec)
-# colnames(samp_vec_mat) <- Ex_samp_id
-# ##Account for last_exon column
-# #samp_vec_mat_df <- cbind.data.frame(DT_gene_tab_ISKS_MGRB_nCH_fil3[,c(1:2,6,14:15,178)], samp_vec_mat)
-# #for auto call
-# samp_vec_mat_df <- cbind.data.frame(Ex_tab_noCH_filt3[,c(2:3,9,11,121)], samp_vec_mat)
-# samp_vec_mat_df <- samp_vec_mat_df[!is.na(samp_vec_mat_df$SAMPLE),]
-# dim(samp_vec_mat_df[is.na(samp_vec_mat_df$comb_score),]) ##QC step
-# 
-# samp_vec_mat_df[is.na(samp_vec_mat_df$comb_score),] <- 0
-# 
-# saveRDS(samp_vec_mat_df, file = "~/RVAS/shard_sub_tier3/DT_sheet/SKAT_inp_filt_var_noCH_C5eqC4_noNA_Exome_gt.rds", compress = T)
-# 
-# ##Split Ex_tab_noCH_filt3 into smaller chunks to parallelise generation of samp_vec_mat_df
-# ##split into 50000 rows per data frame
-# Ex_tab_noCH_filt3 <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/Exome_filt3_nCH_C5eqC4_noNAs_auto.rds")
-# print_table <- function(df, df_name){
-#   saveRDS(df, file = paste("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/Genomat/", 
-#                            df_name,".rds", sep = ""), compress = T)
-# }
-# 
-# ##tried to parallelise (abandoned for now); preliminary files generated successfully
-# df_sp <- split(Ex_tab_noCH_filt3, (seq(nrow(Ex_tab_noCH_filt3))-1) %/% 50000)
-# saveRDS(df_sp, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/list_Ex_tab_noCH_filt3.rds", compress = T)
-# #lapply(split(Ex_tab_noCH_filt3, (seq(nrow(Ex_tab_noCH_filt3))-1) %/% 50000), function(x)print_table(x))
-# mapply(print_table, df_sp, paste0(names(df_sp), "sp")) ##works
-# 
-
 #########QC
-Ex_tab_noCH_filt3 <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/Exome_filt3_nCH_C5eqC4_nonmds_iskrisc_05Sept_splice_ASP.rds")
-var_check <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/var_control_set_Aug12.tsv", sep = "\t",
-           header = T)
-
-table(var_check$VARIANT %in% Ex_tab_noCH_filt3$VARIANT)
-
-##centrosome genes
-aug12_var_cent <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/aug_12_vars.tsv", sep = "\t",
-                             header = T)
-table(aug12_var_cent$VARIANT %in% Ex_tab_noCH_filt3$VARIANT)
-
+# Ex_tab_noCH_filt3 <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/Exome_filt3_nCH_C5eqC4_nonmds_iskrisc_05Sept_splice_ASP.rds")
+# var_check <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/var_control_set_Aug12.tsv", sep = "\t",
+#            header = T)
+# 
+# table(var_check$VARIANT %in% Ex_tab_noCH_filt3$VARIANT)
+# 
+# ##centrosome genes
+# aug12_var_cent <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/aug_12_vars.tsv", sep = "\t",
+#                              header = T)
+# table(aug12_var_cent$VARIANT %in% Ex_tab_noCH_filt3$VARIANT)
 #c("RANGAP1", "CENPC", "CENPF", "NDEL1", "MIS18A")
 
-# DT_gene_tab_ISKS_MGRB_nCH <- DT_gene_tab_ISKS_MGRB_nCH[DT_gene_tab_ISKS_MGRB_nCH$gnomad_AF_NFE <= 0.0001,]
-# DT_gene_tab_ISKS_MGRB_nCH <- DT_gene_tab_ISKS_MGRB_nCH[DT_gene_tab_ISKS_MGRB_nCH$VAF >= 0.25 & DT_gene_tab_ISKS_MGRB_nCH$VAF < 1,]
-# 
-# table(unique(DT_gene_tab_ISKS_MGRB_nCH$gene_symbol) %in% unique(Ex_tab_noCH_filt3$gene_symbol))
-# table(unique(DT_gene_tab_ISKS_MGRB_nCH$VARIANT) %in% unique(Ex_tab_noCH_filt3$VARIANT))
-# 
-# 
-# TP53_ex <- Ex_tab_noCH_filt3[Ex_tab_noCH_filt3$gene_symbol %in% "TP53",]
-# TP53_ex$last_exon <- unlist(lapply(strsplit(TP53_ex$vep_exon, split = "/"), function(x)ifelse(as.numeric(x[2]) - as.numeric(x[1]) <= 1, 1, 0)))
-# TP53_DT <- DT_gene_tab_ISKS_MGRB_nCH[DT_gene_tab_ISKS_MGRB_nCH$gene_symbol %in% "TP53",]
-# table(unique(TP53_DT$VARIANT) %in% unique(TP53_ex$VARIANT))
 
