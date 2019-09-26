@@ -54,22 +54,3 @@ Exome_pc123_srt_SKAT_case_enr_nCH <- lapply(Exome_pc123_srt_SKAT,
 #saveRDS(Exome_pc123_srt_SKAT_case_enr_nCH, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/Exome_pc123_srt_SKAT_case_enr_nCH_iskrisc_05Sept_splice.rds", compress = T)
 #saveRDS(Exome_pc123_srt_SKAT_case_enr_nCH, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/Exome_pc123_srt_SKAT_case_enr_nCH_iskrisc_05Sept_rect_ASP.rds", compress = T)
 saveRDS(Exome_pc123_srt_SKAT_case_enr_nCH, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/Exome_pc123_srt_SKAT_case_enr_nCH_iskrisc_05Sept_rect_ASP_cmaf.rds", compress = T)
-
-
-#Exome_pc123_srt_SKAT_case_enr_nCH_4 <- get_coh_dist(Exome_pc123_srt_SKAT[[4]][,1], fil_db = fil_tab_noCH)
-##Add p-value
-#Exome_pc123_srt_SKAT_case_enr_nCH_pval <- Map(cbind.data.frame, Exome_pc123_srt_SKAT_case_enr_nCH, Exome_pc123_srt_SKAT)
-
-##Enriched list: sort by weight difference
-#Exome_pc123_srt_SKAT_case_enr_nCH_wt_srt <- lapply(Exome_pc123_srt_SKAT_case_enr_nCH_pval, 
-#                                                  function(x) x[order(x[,6], decreasing = T),])
-
-##Better option for Enriched list: sort by -log(p_val) * weight difference ; appropriately factors influence of variant on ISKS phenotype
-
-#Exome_pc123_srt_SKAT_case_enr_nCH_ranked <- lapply(Exome_pc123_srt_SKAT_case_enr_nCH_pval, 
-#                                                  function(x) cbind.data.frame(x, "rank_score" = -log10(x[,11]) * x[,6]))
-                                                    
-#Exome_pc123_srt_SKAT_case_enr_nCH_ranked <- lapply(Exome_pc123_srt_SKAT_case_enr_nCH_ranked, function(x)
-#  x[order(x[,13], decreasing = T),])
-
-#saveRDS(Exome_pc123_srt_SKAT_case_enr_nCH_ranked, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/Exome_pc123_srt_SKAT_case_enr_nCH_ranked.rds", compress = T)
