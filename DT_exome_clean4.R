@@ -1,4 +1,4 @@
-##DT genes
+##Scoring function includes Framshift, start lost, stop gained, splice acceptor and splice donor as C4.
 .libPaths(c( "/home/shu/R/x86_64-redhat-linux-gnu-library/3.4", .libPaths() ) )
 
 ##Aug6 remove VAF NaN's(multiallelic split issue; error in code for HAIL computation)
