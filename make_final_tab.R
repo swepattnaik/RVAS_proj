@@ -8,6 +8,25 @@ get_coh_dist <- function(gene_sym, fil_db){
   for(i in 1:length(gene_sym)){
     fil_db_genes <- fil_db[grep(paste("^", as.character(gene_sym[i]), "$", sep = ""), fil_db$gene_symbol),]
     fil_db_genes <- fil_db_genes[fil_db_genes$comb_score >= 5,]
+    ##intra cohort filter
+    ftemp_tab_var_id <- unique(fil_db_genes$VARIANT)
+    var_vec <- list()
+    for(m in 1:length(ftemp_tab_var_id)){
+      sam_gene_gt <- fil_db_genes[fil_db_genes$VARIANT %in% ftemp_tab_var_id[m],][,c(1:3,9,11,130:131)]
+      sam_gene_gt <- unique(sam_gene_gt)
+      maf_vec_cont <- sum(ifelse(is.na(as.numeric(sam_gene_gt$SAMPLE)), 1, 0))/(2*1572)
+      maf_vec_case <- sum(ifelse(!is.na(as.numeric(sam_gene_gt$SAMPLE)) | 
+                                   grepl("^CR", as.character(sam_gene_gt$SAMPLE)), 1, 0))/(2*1110)
+      if(!(as.numeric(as.character(maf_vec_cont)) >= 0.0015 | 
+           as.numeric(as.character(maf_vec_case)) >= 0.001)){
+           var_vec[[m]] <- ftemp_tab_var_id[m]
+                                                            }
+      else{ 
+          next 
+          }
+                                             }
+  ##report generation  
+    fil_db_genes <- fil_db_genes[fil_db_genes$VARIANT %in% unlist(var_vec),]
     tot_var <- dim(fil_db_genes)[1]
     isks <- sum(ifelse(fil_db_genes$is_MGRB == 0, 1, 0))
     control <- tot_var - isks
