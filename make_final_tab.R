@@ -6,6 +6,8 @@ fil_tab_noCH <- fil_tab_noCH[!is.na(fil_tab_noCH$SAMPLE),]
 get_coh_dist <- function(gene_sym, fil_db){
   res <- list()
   for(i in 1:length(gene_sym)){
+    print(i)
+    print(gene_sym[i])
     fil_db_genes <- fil_db[grep(paste("^", as.character(gene_sym[i]), "$", sep = ""), fil_db$gene_symbol),]
     fil_db_genes <- fil_db_genes[fil_db_genes$comb_score >= 5,]
     ##intra cohort filter
@@ -17,8 +19,8 @@ get_coh_dist <- function(gene_sym, fil_db){
       maf_vec_cont <- sum(ifelse(is.na(as.numeric(sam_gene_gt$SAMPLE)), 1, 0))/(2*1572)
       maf_vec_case <- sum(ifelse(!is.na(as.numeric(sam_gene_gt$SAMPLE)) | 
                                    grepl("^CR", as.character(sam_gene_gt$SAMPLE)), 1, 0))/(2*1110)
-      if(!(as.numeric(as.character(maf_vec_cont)) >= 0.0015 | 
-           as.numeric(as.character(maf_vec_case)) >= 0.001)){
+      if(!(as.numeric(as.character(maf_vec_cont)) >= 0.001 | 
+           as.numeric(as.character(maf_vec_case)) >= 0.0015)){
            var_vec[[m]] <- ftemp_tab_var_id[m]
                                                             }
       else{ 
@@ -37,7 +39,11 @@ case_call_auto <- paste(apply(as.data.frame(table(as.character(fil_db_genes[fil_
     control_call_auto <- paste(apply(as.data.frame(table(as.character(fil_db_genes[fil_db_genes$is_MGRB == 1,]$auto_call))) , 1 , paste , collapse = ":" ), collapse = ",")
     case_vep_var <- paste(apply(as.data.frame(table(as.character(fil_db_genes[fil_db_genes$is_MGRB == 0,]$vep_consequence))) , 1 , paste , collapse = ":" ), collapse = ",")
     control_vep_var <- paste(apply(as.data.frame(table(as.character(fil_db_genes[fil_db_genes$is_MGRB == 1,]$vep_consequence))) , 1 , paste , collapse = ":" ), collapse = ",")
-    res[[i]] <- cbind.data.frame("ISKS" = isks, "Control" = control, "gene" = gene_sym[i], "case_wt" = case_wt, "control_wt" = control_wt, "wt_diff" = wt_diff, "case_call_auto" = case_call_auto, "control_call_auto" = control_call_auto, "case_vep_var" = case_vep_var, "control_vep_var" = control_vep_var)
+    res[[i]] <- cbind.data.frame("ISKS" = isks, "Control" = control, "gene" = gene_sym[i], 
+                                 "case_wt" = case_wt, "control_wt" = control_wt, "wt_diff" = wt_diff, 
+                                 "case_call_auto" = case_call_auto, "control_call_auto" = control_call_auto, 
+                                 "case_vep_var" = case_vep_var, "control_vep_var" = control_vep_var,
+                                 "maf_filt_var" = paste(unlist(var_vec), collapse = ","))
   }
   return(do.call("rbind.data.frame",res))
 }
