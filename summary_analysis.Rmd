@@ -124,22 +124,23 @@ Exome_pc123_srt_SKAT_case_enr_nCH_pval <- Map(cbind.data.frame, Exome_pc123_srt_
 Exome_pc123_srt_SKAT_case_enr_nCH_pval <- lapply(Exome_pc123_srt_SKAT_case_enr_nCH_pval, function(x)
   x[x$pval_SKATbin < 0.1 & x$wt_diff > 0,])
 
-#Exome_pc123_srt_SKAT_case_enr_nCH_pval <- lapply(Exome_pc123_srt_SKAT_case_enr_nCH_pval, function(x)
-#  x[x$pval_SKATbin < 0.2 & x$wt_diff > 0,])
+Exome_pc123_srt_SKAT_case_enr_nCH_pval <- lapply(Exome_pc123_srt_SKAT_case_enr_nCH_pval, function(x)
+  x[x$pval_SKATbin < 0.2 & x$wt_diff > 0,])
 
 ##Better option for Enriched list: sort by -log(p_val) * weight difference ; appropriately factors influence of variant on ISKS phenotype
 
 Exome_pc123_srt_SKAT_case_enr_nCH_ranked <- lapply(Exome_pc123_srt_SKAT_case_enr_nCH_pval, 
-                                                  function(x) cbind.data.frame(x, "rank_score" = -log10(x[,13]) * x[,6]))
+                                                  function(x) cbind.data.frame(x, "rank_score" = -log10(x[,14]) * x[,6])) ##added intra cohort MAF filtered variant positions
                                                     
 Exome_pc123_srt_SKAT_case_enr_nCH_ranked <- lapply(Exome_pc123_srt_SKAT_case_enr_nCH_ranked, function(x)
-  x[order(x[,16], decreasing = T),])
+  x[order(x[,17], decreasing = T),]) ##added intra cohort MAF filtered variant positions
 
 ##get variant tab
 pc123_gender_tab_top1000 <- Exome_pc123_srt_SKAT_case_enr_nCH_ranked[[4]]
 fil_tab_noCH <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/Exome_filt3_nCH_C5eqC4_nonmds_iskrisc_05Sept_rect_ASP.rds")
 pc123_gender_tab_top1000_VAR <- fil_tab_noCH[fil_tab_noCH$gene_symbol %in% pc123_gender_tab_top1000$gene & fil_tab_noCH$comb_score >= 5,]
-pc123_gender_tab_top1000_VAR$gene_Pval <- pc123_gender_tab_top1000[match(pc123_gender_tab_top1000_VAR$gene_symbol, pc123_gender_tab_top1000$gene),13]
+pc123_gender_tab_top1000_VAR <- pc123_gender_tab_top1000_VAR[pc123_gender_tab_top1000_VAR$VARIANT %in% unlist(strsplit(as.character(pc123_gender_tab_top1000$maf_filt_var), split = ",")),]
+pc123_gender_tab_top1000_VAR$gene_Pval <- pc123_gender_tab_top1000[match(pc123_gender_tab_top1000_VAR$gene_symbol, pc123_gender_tab_top1000$gene),14]
 #head(pc123_gender_tab_top1000_VAR[,c(1:6,8:9,11,15,17:18,20,23:25,30,53,57,59:68,72,119:121)])
 pc123_gender_tab_top1000_VAR <- pc123_gender_tab_top1000_VAR[,c(1:6,8:9,11,15,17:18,20,23:25,30,53,57,59:68,72,125:132)]
 pc123_gender_tab_top1000_VAR <- unique(pc123_gender_tab_top1000_VAR)
@@ -344,8 +345,18 @@ ppi_res_fil_final <- ppi_res_fil_final[!is.na(ppi_res_fil_final$gene),]
 fil_graph_final_comb_GO <- ppi_res_fil_final
 
 #fil_graph_final_comb_GO <- cbind.data.frame(fil_graph_final, goNet_enrich_res)
-fil_graph_final_comb_GO[,c(25:30)] <- goNet_enrich_res[match(fil_graph_final_comb_GO$gene, goNet_enrich_res$gene_hub),c(2:7)]
-write.table(fil_graph_final_comb_GO[,c(1:10,13:14,16:19,21,24:30)], 
+fil_graph_final_comb_GO[,c(26:31)] <- goNet_enrich_res[match(fil_graph_final_comb_GO$gene, goNet_enrich_res$gene_hub),c(2:7)]
+
+##combine p-values: Fisher's method (basic)
+comb_fisher <- function(p_val_vec){
+  c_pval <- pchisq(sum(log(p_val_vec)*-2), df = 2*length(p_val_vec), lower.tail = F)
+  return(c_pval)
+}
+
+fil_graph_final_comb_GO <- fil_graph_final_comb_GO[,c(1:10,13:14,17:20,22,25:31)]
+inp_pval <- fil_graph_final_comb_GO[,c(12,17)]
+fil_graph_final_comb_GO$comb_pval <- apply(inp_pval, 1, comb_fisher)
+write.table(fil_graph_final_comb_GO, 
 file = "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/Sep05_rect_ASP_graph_final_PPI_comb_GO_cmaf.tsv", sep = "\t", row.names = F, quote = F)
 
 ```
