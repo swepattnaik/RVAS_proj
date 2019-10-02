@@ -1,7 +1,7 @@
 ---
-title: "Summary_exome_analysis"
+title: "Summary_exome_analysis_splice"
 author: "Swetansu Pattnaik"
-date: "26/09/2019"
+date: "02/10/2019"
 output: html_document
 ---
 
@@ -137,7 +137,7 @@ Exome_pc123_srt_SKAT_case_enr_nCH_ranked <- lapply(Exome_pc123_srt_SKAT_case_enr
 
 ##get variant tab
 pc123_gender_tab_top1000 <- Exome_pc123_srt_SKAT_case_enr_nCH_ranked[[4]]
-fil_tab_noCH <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/Exome_filt3_nCH_C5eqC4_nonmds_iskrisc_05Sept_rect_ASP.rds")
+fil_tab_noCH <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/Exome_filt3_nCH_C5eqC4_nonmds_iskrisc_05Sept_splice_ASP.rds")
 pc123_gender_tab_top1000_VAR <- fil_tab_noCH[fil_tab_noCH$gene_symbol %in% pc123_gender_tab_top1000$gene & fil_tab_noCH$comb_score >= 5,]
 pc123_gender_tab_top1000_VAR <- pc123_gender_tab_top1000_VAR[pc123_gender_tab_top1000_VAR$VARIANT %in% unlist(strsplit(as.character(pc123_gender_tab_top1000$maf_filt_var), split = ",")),]
 pc123_gender_tab_top1000_VAR$gene_Pval <- pc123_gender_tab_top1000[match(pc123_gender_tab_top1000_VAR$gene_symbol, pc123_gender_tab_top1000$gene),14]
@@ -357,7 +357,7 @@ fil_graph_final_comb_GO <- fil_graph_final_comb_GO[,c(1:10,13:14,17:20,22,25:31)
 inp_pval <- fil_graph_final_comb_GO[,c(12,17)]
 fil_graph_final_comb_GO$comb_pval <- apply(inp_pval, 1, comb_fisher)
 write.table(fil_graph_final_comb_GO, 
-file = "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/Sep05_rect_splice_ASP_graph_final_PPI_comb_GO_cmaf.tsv", sep = "\t", row.names = F, quote = F)
+file = "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/Sep05_rect_Splice_ASP_graph_final_PPI_comb_GO_cmaf.tsv", sep = "\t", row.names = F, quote = F)
 
 ```
 
