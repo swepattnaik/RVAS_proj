@@ -19,7 +19,7 @@ library(SKAT)
 ###get input files and process
 ##Experiments
 
-fil_tab <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/Exome_filt3_nCH_C5eqC4_nonmds_iskrisc_05Sept_rect_ASP.rds")
+fil_tab <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/Exome_filt3_nCH_C5eqC4_nonmds_iskrisc_05Sept_rect_ASP_new_score.rds")
 fil_tab <- fil_tab[!is.na(fil_tab$SAMPLE),]
 dim(fil_tab)
 
@@ -212,5 +212,5 @@ genes <- unique(fil_tab$gene_symbol)
     #ERA -> Adaptive resampling for conservative p-values
    # saveRDS(DT_skat_snv_str_pc123, file = "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/Exome_skat_wsing_load123_noCH_C5eqC4_nonmds_gt_isksrisc_12Aug_rerun.rds", compress = T)
    # saveRDS(DT_skat_snv_str_pc123, file = "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/Exome_skat_wsing_load123_noCH_C5eqC4_nonmds_gt_isksrisc_sept05_rect.rds", compress = T) 
-    saveRDS(DT_skat_snv_str_pc123, file = "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/Exome_skat_wsing_load123_noCH_C5eqC4_nonmds_gt_isksrisc_sept05_rect_ASP_cmaf.rds", compress = T)
+    saveRDS(DT_skat_snv_str_pc123, file = "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/Exome_skat_wsing_load123_noCH_C5eqC4_nonmds_gt_isksrisc_sept05_rect_ASP_cmaf_new_score.rds", compress = T)
     
