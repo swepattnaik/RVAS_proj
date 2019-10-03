@@ -162,12 +162,27 @@ sco_fun5 <- function(filt3_inp){
 ##scoring function5
 #DT_gene_tab_ISKS_MGRB_nCH_fil3 <- filt3_inp
 Ex_tab_noCH_filt3 <- cbind.data.frame(Ex_tab_noCH_filt3, sco_fun5(Ex_tab_noCH_filt3))
-Cterm_C3_C4 <- c("C3", "C4")
+
 ##Changed on Aug12 after DT meeting
 ##for sept05_rect dataset
+##DT nee suggestions: Oct-2-2019
+##If C4 == ClinVar Benign; assign eigenphred score
+toMatch_ben <- c("Benign", "Benign/Likely_benign")
+Ex_tab_noCH_filt3$comb_score <- as.numeric(ifelse(grepl(paste(toMatch_ben,collapse="|"), 
+                                                 Ex_tab_noCH_filt3$clinvar_Clinical_Significance) & 
+                                             Ex_tab_noCH_filt3$auto_call %in% "C4", Ex_tab_noCH_filt3$EigenPhred,
+                                           Ex_tab_noCH_filt3$comb_score))
+#frameshift donot have eigenphred scores, hence they are assigned a score of 15 manually
+Ex_tab_noCH_filt3$comb_score <- ifelse(is.na(Ex_tab_noCH_filt3$comb_score), 15, Ex_tab_noCH_filt3$comb_score)
+##last 5 percent of protein sequence based score penalty
+Cterm_C3_C4 <- c("C3", "C4")
 Ex_tab_noCH_filt3$comb_score <- as.numeric(ifelse(Ex_tab_noCH_filt3$auto_call %in% Cterm_C3_C4 &
                                                     Ex_tab_noCH_filt3$last_five_perc == 1, (Ex_tab_noCH_filt3$comb_score)/2,
                                                   Ex_tab_noCH_filt3$comb_score))
+
+##VAF filter: if DP >= 35 use VAF >= 0.3 else VAF > 0.25 (done earlier)
+Ex_tab_noCH_filt3 <- Ex_tab_noCH_filt3[Ex_tab_noCH_filt3$VAF >= 0.3 & Ex_tab_noCH_filt3$DP >= 35, ]
+
 
 #saveRDS(Ex_tab_noCH_filt3, file = "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/Exome_filt3_nCH_C5eqC4_noNAs_auto.rds", compress = T)
 #saveRDS(Ex_tab_noCH_filt3, file = "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/Exome_filt3_nCH_C5eqC4_noNAs_auto_4Aug.rds", compress = T)
@@ -175,7 +190,8 @@ Ex_tab_noCH_filt3$comb_score <- as.numeric(ifelse(Ex_tab_noCH_filt3$auto_call %i
 #saveRDS(Ex_tab_noCH_filt3, file = "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/Exome_filt3_nCH_C5eqC4_nonmds_auto_7Aug.rds", compress = T)
 #saveRDS(Ex_tab_noCH_filt3, file = "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/Exome_filt3_nCH_C5eqC4_nonmds_iskrisc_12Aug.rds", compress = T)
 #saveRDS(Ex_tab_noCH_filt3, file = "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/Exome_filt3_nCH_C5eqC4_nonmds_iskrisc_05Sept_rect.rds", compress = T)
-saveRDS(Ex_tab_noCH_filt3, file = "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/Exome_filt3_nCH_C5eqC4_nonmds_iskrisc_05Sept_rect_ASP.rds", compress = T)
+#saveRDS(Ex_tab_noCH_filt3, file = "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/Exome_filt3_nCH_C5eqC4_nonmds_iskrisc_05Sept_rect_ASP.rds", compress = T)
+saveRDS(Ex_tab_noCH_filt3, file = "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/Exome_filt3_nCH_C5eqC4_nonmds_iskrisc_05Sept_rect_ASP_new_score.rds", compress = T)
 
 
 #########QC
