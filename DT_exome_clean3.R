@@ -181,9 +181,11 @@ Ex_tab_noCH_filt3$comb_score <- as.numeric(ifelse(Ex_tab_noCH_filt3$auto_call %i
                                                   Ex_tab_noCH_filt3$comb_score))
 
 ##VAF filter: if DP >= 35 use VAF >= 0.3 else VAF > 0.25 (done earlier)
-Ex_tab_noCH_filt3 <- Ex_tab_noCH_filt3[Ex_tab_noCH_filt3$VAF >= 0.3 & Ex_tab_noCH_filt3$DP >= 35, ]
+#if(Ex_tab_noCH_filt3$DP >= 35){
+Ex_tab_noCH_filt4 <- Ex_tab_noCH_filt3[Ex_tab_noCH_filt3$VAF >= 0.3 & Ex_tab_noCH_filt3$DP >= 35, ]
+Ex_tab_noCH_filt5 <- Ex_tab_noCH_filt3[Ex_tab_noCH_filt3$DP < 35, ]
 
-
+Ex_tab_noCH_filt6 <- rbind.data.frame(Ex_tab_noCH_filt4, Ex_tab_noCH_filt5)
 #saveRDS(Ex_tab_noCH_filt3, file = "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/Exome_filt3_nCH_C5eqC4_noNAs_auto.rds", compress = T)
 #saveRDS(Ex_tab_noCH_filt3, file = "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/Exome_filt3_nCH_C5eqC4_noNAs_auto_4Aug.rds", compress = T)
 #saveRDS(Ex_tab_noCH_filt3, file = "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/Exome_filt3_nCH_C5eqC4_noNAs_auto_6Aug.rds", compress = T)
@@ -191,7 +193,7 @@ Ex_tab_noCH_filt3 <- Ex_tab_noCH_filt3[Ex_tab_noCH_filt3$VAF >= 0.3 & Ex_tab_noC
 #saveRDS(Ex_tab_noCH_filt3, file = "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/Exome_filt3_nCH_C5eqC4_nonmds_iskrisc_12Aug.rds", compress = T)
 #saveRDS(Ex_tab_noCH_filt3, file = "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/Exome_filt3_nCH_C5eqC4_nonmds_iskrisc_05Sept_rect.rds", compress = T)
 #saveRDS(Ex_tab_noCH_filt3, file = "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/Exome_filt3_nCH_C5eqC4_nonmds_iskrisc_05Sept_rect_ASP.rds", compress = T)
-saveRDS(Ex_tab_noCH_filt3, file = "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/Exome_filt3_nCH_C5eqC4_nonmds_iskrisc_05Sept_rect_ASP_new_score.rds", compress = T)
+saveRDS(Ex_tab_noCH_filt6, file = "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/Exome_filt3_nCH_C5eqC4_nonmds_iskrisc_05Sept_rect_ASP_new_score.rds", compress = T)
 
 
 #########QC
