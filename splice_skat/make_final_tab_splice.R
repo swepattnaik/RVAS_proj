@@ -1,6 +1,6 @@
 ##This script generates a summary of SKAT analysis by combining various attributes to better visualise case control
 ##variants with corresponding SKAT p-values
-fil_tab_noCH <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/Exome_filt3_nCH_C5eqC4_nonmds_iskrisc_05Sept_splice_ASP.rds")
+fil_tab_noCH <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/Exome_filt3_nCH_C5eqC4_nonmds_iskrisc_05Sept_splice_ASP_new_score.rds")
 fil_tab_noCH <- fil_tab_noCH[!is.na(fil_tab_noCH$SAMPLE),]
 
 get_coh_dist <- function(gene_sym, fil_db){
@@ -49,7 +49,7 @@ case_call_auto <- paste(apply(as.data.frame(table(as.character(fil_db_genes[fil_
 }
 
 ##SKAT output is used to add p-values to all enriched genes
-Exome_skat <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/Exome_skat_wsing_load123_noCH_C5eqC4_nonmds_gt_isksrisc_sept05_splice_ASP.rds")
+Exome_skat <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/Exome_skat_wsing_load123_noCH_C5eqC4_nonmds_gt_isksrisc_sept05_splice_ASP_new_score.rds")
 df_skat <- lapply(Exome_skat, function(x)do.call("rbind.data.frame", x))
 Exome_pc123_srt_SKAT <- lapply(df_skat, function(x) x[order(x$pval_SKATbin, decreasing = F),])
 #Exome_pc123_srt_SKATO <- lapply(df_skat, function(x) x[order(x$pval_SKATO, decreasing = F),])
@@ -57,4 +57,4 @@ Exome_pc123_srt_SKAT <- lapply(Exome_pc123_srt_SKAT, function(x){colnames(x)[1] 
 
 Exome_pc123_srt_SKAT_case_enr_nCH <- lapply(Exome_pc123_srt_SKAT, 
                                          function(x)get_coh_dist(x[,1], fil_db = fil_tab_noCH))
-saveRDS(Exome_pc123_srt_SKAT_case_enr_nCH, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/Exome_pc123_srt_SKAT_case_enr_nCH_iskrisc_05Sept_rect_splice_ASP.rds", compress = T)
+saveRDS(Exome_pc123_srt_SKAT_case_enr_nCH, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/Exome_pc123_srt_SKAT_case_enr_nCH_iskrisc_05Sept_rect_splice_ASP_new_score.rds", compress = T)
