@@ -165,7 +165,7 @@ get_topSKAT_degree <- function(enr_df){
 skat_genes_top100 <- as.character(enr_df[,3])
 
 can_net <- read.delim("~/VDLab_scripts/BioGrid/biogrid_db_all_subnet.sif", header = T, sep = " ", stringsAsFactor = F)
-
+#can_net <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/Biogrid_latest/Biog_net_hs.sif", header = T, sep = "\t", stringsAsFactor = F)
 can_net_graph <- igraph::graph.data.frame(can_net, directed = F)
 can_net_graph1 <- igraph::simplify(can_net_graph, remove.loops=T, remove.multiple = T)
 can_net1 <- igraph::as_data_frame(can_net_graph1, what = "edges")
@@ -201,44 +201,86 @@ gender_PC123_cont_df <- gender_PC123_cont_df[order(gender_PC123_cont_df$rank_PPI
 
 can_net <- read.delim("~/VDLab_scripts/BioGrid/biogrid_db_all_subnet.sif", header = T, sep = " ", stringsAsFactor = F)
 top_genes_enr <- as.character(gender_PC123_cont_df$gene)
-fisher_fun_new <- function(gene_sym, top_genes){
+# fisher_fun_new <- function(gene_sym, top_genes){
+#   
+# can_net_graph <- igraph::graph.data.frame(can_net, directed = F)
+# can_net_graph1 <- igraph::simplify(can_net_graph, remove.loops=T, remove.multiple = T)
+# can_net1 <- igraph::as_data_frame(can_net_graph1, what = "edges")
+# prot_np_all <- unique(can_net1[as.character(can_net1$from) %in% top_genes 
+#                                & as.character(can_net1$to) %in% top_genes, ])
+# uniongraph <- igraph::graph.data.frame(prot_np_all, directed = F)
+# 
+# ##degree biogrid
+# deg_biog <- igraph::degree(can_net_graph1)[which(names(igraph::degree(can_net_graph1)) %in% gene_sym)]
+# deg_union <- igraph::degree(uniongraph)[which(names(igraph::degree(uniongraph)) %in% gene_sym)]
+# #tot_biog <- igraph::vcount(can_net_graph1) ##should be edge count not vertex count
+# #tot_union <- igraph::vcount(uniongraph)
+# tot_biog <- igraph::ecount(can_net_graph1) 
+# tot_union <- igraph::ecount(uniongraph)
+# 
+# ##test
+# inp <- c(deg_union, deg_biog, tot_union, tot_biog)
+#    mgrb_tsg <- matrix(inp ,nrow = 2, ncol = 2)
+#    colnames(mgrb_tsg) <- c("deg_enr", "deg_bio")
+#    rownames(mgrb_tsg) <- c("Enriched", "Biog")
+#    #ft <- fisher.test(mgrb_tsg, alternative = "greater")
+#    ft <- fisher.test(mgrb_tsg)
+#    ft_df <- cbind.data.frame("gene" =  gene_sym, "PPI_p_val_wt" = ft$p.value,
+#                              "CI_lower" = ft$conf.int[1],
+#                              "CI_upper" = ft$conf.int[2],
+#                              "OR" = ft$estimate)
+#   
+#    return(ft_df)
+# }
+# ##run fisher test
+# test_fis <- list()
+# for(i in 1:length(top_genes_enr)){
+# test_fis[[i]] <- fisher_fun_new(top_genes_enr[i], top_genes_enr)
+# }
+# fisher_res <- do.call("rbind.data.frame",test_fis)
+
+para_fisher_fun_new <- function(gene_sym){
+  gene_sym <- gene_sym[3]
+  print(gene_sym)
+  can_net_graph <- igraph::graph.data.frame(can_net, directed = F)
+  can_net_graph1 <- igraph::simplify(can_net_graph, remove.loops=T, remove.multiple = T)
+  can_net1 <- igraph::as_data_frame(can_net_graph1, what = "edges")
+  prot_np_all <- unique(can_net1[as.character(can_net1$from) %in% top_genes_enr 
+                                 & as.character(can_net1$to) %in% top_genes_enr, ])
+  uniongraph <- igraph::graph.data.frame(prot_np_all, directed = F)
   
-can_net_graph <- igraph::graph.data.frame(can_net, directed = F)
-can_net_graph1 <- igraph::simplify(can_net_graph, remove.loops=T, remove.multiple = T)
-can_net1 <- igraph::as_data_frame(can_net_graph1, what = "edges")
-prot_np_all <- unique(can_net1[as.character(can_net1$from) %in% top_genes 
-                               & as.character(can_net1$to) %in% top_genes, ])
-uniongraph <- igraph::graph.data.frame(prot_np_all, directed = F)
-
-##degree biogrid
-deg_biog <- igraph::degree(can_net_graph1)[which(names(igraph::degree(can_net_graph1)) %in% gene_sym)]
-deg_union <- igraph::degree(uniongraph)[which(names(igraph::degree(uniongraph)) %in% gene_sym)]
-#tot_biog <- igraph::vcount(can_net_graph1) ##should be edge count not vertex count
-#tot_union <- igraph::vcount(uniongraph)
-tot_biog <- igraph::ecount(can_net_graph1) 
-tot_union <- igraph::ecount(uniongraph)
-
-##test
-inp <- c(deg_union, deg_biog, tot_union, tot_biog)
-   mgrb_tsg <- matrix(inp ,nrow = 2, ncol = 2)
-   colnames(mgrb_tsg) <- c("deg_enr", "deg_bio")
-   rownames(mgrb_tsg) <- c("Enriched", "Biog")
-   #ft <- fisher.test(mgrb_tsg, alternative = "greater")
-   ft <- fisher.test(mgrb_tsg)
-   ft_df <- cbind.data.frame("gene" =  gene_sym, "PPI_p_val_wt" = ft$p.value,
-                             "CI_lower" = ft$conf.int[1],
-                             "CI_upper" = ft$conf.int[2],
-                             "OR" = ft$estimate)
+  ##degree biogrid
+  deg_biog <- igraph::degree(can_net_graph1)[which(names(igraph::degree(can_net_graph1)) %in% gene_sym)]
+  deg_union <- igraph::degree(uniongraph)[which(names(igraph::degree(uniongraph)) %in% gene_sym)]
+  #tot_biog <- igraph::vcount(can_net_graph1) ##should be edge count not vertex count
+  #tot_union <- igraph::vcount(uniongraph)
+  tot_biog <- igraph::ecount(can_net_graph1) 
+  tot_union <- igraph::ecount(uniongraph)
   
-   return(ft_df)
+  ##test
+  inp <- c(deg_union, deg_biog, tot_union, tot_biog)
+  mgrb_tsg <- matrix(inp ,nrow = 2, ncol = 2)
+  colnames(mgrb_tsg) <- c("deg_enr", "deg_bio")
+  rownames(mgrb_tsg) <- c("Enriched", "Biog")
+  #ft <- fisher.test(mgrb_tsg, alternative = "greater")
+  ft <- fisher.test(mgrb_tsg)
+  ft_df <- cbind.data.frame("gene" =  gene_sym, "PPI_p_val_wt" = ft$p.value,
+                            "CI_lower" = ft$conf.int[1],
+                            "CI_upper" = ft$conf.int[2],
+                            "OR" = ft$estimate)
+  
+  return(ft_df)
 }
-##run fisher test
-test_fis <- list()
-for(i in 1:length(top_genes_enr)){
-test_fis[[i]] <- fisher_fun_new(top_genes_enr[i], top_genes_enr)
-}
-fisher_res <- do.call("rbind.data.frame",test_fis)
 
+
+
+library(parallel)
+cl <- makeCluster(25)
+#para_pheno <- parLapply(cl, 1:nrow(IBD_dist1), function(i) pick_pinf(IBD_dist1[i,]))
+clusterExport(cl, c("can_net", "top_genes_enr", "para_fisher_fun_new"))
+system.time(para_fish <- parApply(cl, gender_PC123_cont_df, 1, para_fisher_fun_new))
+stopCluster(cl)
+fisher_res <- do.call("rbind.data.frame",para_fish)
 ppi_res_fil_final <- cbind.data.frame(gender_PC123_cont_df, fisher_res)
 
 ```
@@ -370,9 +412,14 @@ full.graph <- string_db$get_graph()
 
 string_proteins <- string_db$get_proteins()
 
-#gender_PC123_cont_df <- Exome_pc123_srt_SKAT_case_enr_nCH_ranked[[4]]
 
-# gender_PC123_mapped <- string_db$map( gender_PC123_cont_df, "gene", removeUnmappedRows = TRUE )
+
+#gender_PC123_cont_df <- Exome_pc123_srt_SKAT_case_enr_nCH_ranked[[4]]
+gender_PC123_mapped <- string_db$map( ppi_res_fil_final, "gene", removeUnmappedRows = F )
+
+string_ints <- string_db$get_interactions(string_ids = gender_PC123_mapped$STRING_id)
+
+string_pubs <- string_db$get_pubmed(string_ids = gender_PC123_mapped$STRING_id[1:300])
 
 get_stringdb_degree <- function(enr_df){
   
