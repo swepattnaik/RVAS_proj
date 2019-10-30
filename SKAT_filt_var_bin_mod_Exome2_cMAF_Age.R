@@ -118,7 +118,7 @@ skat_pvals_sex_pc12 <- list()
 #    skat_pvals_age <- list()
 #   skat_pvals_age_pc12 <- list()
 #   skat_pvals_age_sex <- list()
-#    skat_pvals_age_sex_pc12 <- list()
+skat_pvals_age_sex_pc12 <- list()
 
 for(i in 1:length(genes)){
   print(i)
