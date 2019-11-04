@@ -98,7 +98,7 @@ source("~/APCluster_graphs/case_TCGA_new_PRAD_3431/multi_plot.R")
 
 ```{r, out.width='\\textwidth', fig.height = 7, fig.align='center', echo=FALSE}
 
-Exome_skat <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/Syn/Exome_skat_filt3_nCH_C5eqC4_nonmds_iskrisc_05Sept_rect_ASP_syn.rds")
+Exome_skat <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/Syn/Exome_skat_filt3_nCH_C5eqC4_nonmds_iskrisc_05Sept_rect_ASP_syn_GERP.rds")
 
 df_skat <- lapply(Exome_skat, function(x)do.call("rbind.data.frame", x))
 Exome_pc123_srt_SKAT <- lapply(df_skat, function(x) x[order(x$pval_SKATbin, decreasing = F),])
@@ -116,12 +116,13 @@ multiplot(plotlist = SKAT_plots_eigen, cols = 2)
 ##Enrichment of positive correlations to phenotype
 
 ```{r, out.width='\\textwidth', fig.height = 7, fig.align='center', echo=FALSE}
-Exome_skat <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/Syn/Exome_skat_filt3_nCH_C5eqC4_nonmds_iskrisc_05Sept_rect_ASP_syn.rds")
+Exome_skat <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/Syn/Exome_skat_filt3_nCH_C5eqC4_nonmds_iskrisc_05Sept_rect_ASP_syn_GERP.rds")
 
 df_skat <- lapply(Exome_skat, function(x)do.call("rbind.data.frame", x))
 Exome_pc123_srt_SKAT <- lapply(df_skat, function(x) x[order(x$pval_SKATbin, decreasing = F),])
 Exome_pc123_srt_SKAT <- lapply(Exome_pc123_srt_SKAT, function(x){colnames(x)[1] <- c("symbol"); return(x)})
-Exome_pc123_srt_SKAT_case_enr_nCH <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/Syn/Exome_pc123_srt_SKAT_case_enr_nCH_iskrisc_05Sept_rect_ASP_cmaf_syn.rds")
+#Exome_pc123_srt_SKAT_case_enr_nCH <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/Syn/Exome_pc123_srt_SKAT_case_enr_nCH_iskrisc_05Sept_rect_ASP_cmaf_syn.rds")
+Exome_pc123_srt_SKAT_case_enr_nCH <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/Syn/Exome_pc123_srt_SKAT_case_enr_nCH_iskrisc_05Sept_rect_ASP_cmaf_syn_GERP.rds")
 ##Add p-value
 Exome_pc123_srt_SKAT_case_enr_nCH_pval <- Map(cbind.data.frame, Exome_pc123_srt_SKAT_case_enr_nCH, Exome_pc123_srt_SKAT)
 
@@ -238,6 +239,7 @@ system.time(para_fish <- parApply(cl, gender_PC123_cont_df, 1, para_fisher_fun_n
 stopCluster(cl)
 fisher_res <- do.call("rbind.data.frame",para_fish)
 ppi_res_fil_final <- cbind.data.frame(gender_PC123_cont_df, fisher_res)
+write.table(ppi_res_fil_final, "/home/shu/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/Syn/Exome_ASP_MAF_syn_GERP.tsv", sep = "\t", row.names = F, quote = F)
 
 ```
 
