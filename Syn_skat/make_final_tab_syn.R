@@ -1,6 +1,6 @@
 ##This script generates a summary of SKAT analysis by combining various attributes to better visualise case control
 ##variants with corresponding SKAT p-values
-fil_tab_noCH <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/Syn/Exome_skat_filt3_nCH_C5eqC4_nonmds_iskrisc_05Sept_rect_ASP_syn_GERP.rds")
+fil_tab_noCH <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/Syn/Exome_filt3_nCH_C5eqC4_nonmds_iskrisc_05Sept_rect_ASP_syn.rds")
 fil_tab_noCH <- fil_tab_noCH[!is.na(fil_tab_noCH$SAMPLE),]
 
 get_coh_dist <- function(gene_sym, fil_db){
@@ -62,4 +62,4 @@ Exome_pc123_srt_SKAT <- lapply(Exome_pc123_srt_SKAT, function(x){colnames(x)[1] 
 
 Exome_pc123_srt_SKAT_case_enr_nCH <- lapply(Exome_pc123_srt_SKAT, 
                                             function(x)get_coh_dist(x[,1], fil_db = fil_tab_noCH))
-saveRDS(Exome_pc123_srt_SKAT_case_enr_nCH, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/Syn/Exome_pc123_srt_SKAT_case_enr_nCH_iskrisc_05Sept_rect_ASP_cmaf_syn_GERP.rds", compress = T)
+saveRDS(Exome_pc123_srt_SKAT_case_enr_nCH, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/Syn/Exome_pc123_srt_SKAT_case_enr_nCH_iskrisc_05Sept_rect_ASP_cmaf_syn.rds", compress = T)
