@@ -120,6 +120,9 @@ Exome_pc123_srt_SKAT_case_enr_nCH <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EX
 ##Add p-value
 Exome_pc123_srt_SKAT_case_enr_nCH_pval <- Map(cbind.data.frame, Exome_pc123_srt_SKAT_case_enr_nCH, Exome_pc123_srt_SKAT)
 
+##save for volcano_plot
+#write.table(Exome_pc123_srt_SKAT_case_enr_nCH_pval[[4]], "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/Sep05_rect_ASP_graph_final_cmaf_new_score_volcano.tsv", sep = "\t", row.names = F, quote = F)
+
 ##Remove genes that have SKATbin_pval >= 0.1, this selects only significant genes for the PPI enrichment
 Exome_pc123_srt_SKAT_case_enr_nCH_pval <- lapply(Exome_pc123_srt_SKAT_case_enr_nCH_pval, function(x)
   x[x$pval_SKATbin < 0.1 & x$wt_diff > 0,])
@@ -317,7 +320,10 @@ gnet <- ggnet2(net_new_t_list, alpha = 0.75, edge.alpha = 0.5, label = TRUE, lab
 ```{r}
 
 ##change input as per requirement
-var_all_45 <- read.delim("/home/shu/RVAS/shard_sub_tier3/DT_sheet/Enriched_pc_gender_controlled_all_genes_C5eqC4_noNAs_auto_45.tsv", sep = "\t", header = T)
+var_all_45 <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/Sep05_rect_ASP_graph_final_cmaf_new_score_volcano.tsv", sep = "\t", header = T)
+var_all_45$rank_score <-  -log10(var_all_45[,14]) * var_all_45[,6] 
+                                                    
+var_all_45 <- var_all_45[order(var_all_45[,17], decreasing = T),] ##added intra cohort MAF filtered variant positions
 
 results = mutate(var_all_45, sig=ifelse(var_all_45$wt_diff  <= -100 | var_all_45$wt_diff >= 100, "Sig", "Not Sig"))
 
@@ -325,10 +331,12 @@ results$nom <- ifelse(results$pval_SKATbin < 0.1 & results$sig == "Sig", "high",
 
 results$log_wt_diff <- ifelse(results$wt_diff > 0, log(results$wt_diff), -log(abs(results$wt_diff)))
 
+results <- results[!is.infinite(results$log_wt_diff),]
+
 p = ggplot(results, aes(log_wt_diff, -log10(pval_SKATbin))) +
   geom_point(aes(col=nom)) + scale_color_manual(values=c("red", "black"))
 
-p + geom_text_repel(data=filter(results, nom == "high"), aes(label=gene)) + theme(legend.position = "none")
+#p1 <- p + geom_text_repel(data=filter(results, nom == "high"), aes(label=gene)) + theme(legend.position = "none")
 
 ```
 
