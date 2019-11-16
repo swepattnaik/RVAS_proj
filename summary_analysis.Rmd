@@ -585,9 +585,23 @@ comb_fisher <- function(p_val_vec){
   return(c_pval)
 }
 
+##combine p-values of genes interacting with a protein
+get_int_comb_pval <- function(gene_vec){
+     pval_vec <- fil_graph_final_comb_GO[fil_graph_final_comb_GO$gene %in% gene_vec, 12]
+    comb_pval <- comb_fisher(pval_vec)
+ # }
+}
+#fil_graph_final_comb_GO
+##testing
+all_int <- paste(fil_graph_final_comb_GO$gene, fil_graph_final_comb_GO$int, sep = ",")
+all_int <- lapply(all_int, function(x)unlist(strsplit(as.character(x), split = ",")))
+all_int_comb_pval <- lapply(all_int, function(x)get_int_comb_pval(x))
+
+
 #fil_graph_final_comb_GO <- fil_graph_final_comb_GO[,c(1:10,13:14,17:20,22,25:31)]
 inp_pval <- fil_graph_final_comb_GO[,c(12,29)]
 fil_graph_final_comb_GO$comb_pval_str <- apply(inp_pval, 1, comb_fisher)
+fil_graph_final_comb_GO$comb_pval_str_int <- unlist(all_int_comb_pval)
 write.table(fil_graph_final_comb_GO, 
 file = "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/Sep05_rect_ASP_graph_final_PPI_comb_GO_cmaf_new_score_str.tsv", sep = "\t", row.names = F, quote = F)
 
