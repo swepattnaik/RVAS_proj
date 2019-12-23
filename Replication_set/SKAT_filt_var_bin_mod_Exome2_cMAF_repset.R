@@ -58,12 +58,15 @@ p_Data$isCHIP <- ifelse(grepl("^CN", p_Data$isCHIP), 1, 0)
 ##remove MGRB CHIP
 p_Data_noCH <- p_Data[p_Data$isCHIP == 0,]
 
-#binary phenotype vector 
-p_vec <- ifelse(!is.na(as.numeric(as.character(p_Data_noCH$sample))) | grepl("^CR|^LK",as.character(p_Data_noCH$sample)), 1, 0)
-
 ##570 cases, 1276 control
 ##remove CHIP from variant data
 fil_tab <- fil_tab[fil_tab$SAMPLE %in% p_Data_noCH$sample,]
+p_Data_noCH <- p_Data_noCH[p_Data_noCH$sample %in% fil_tab$SAMPLE,]
+
+Ex_samp_id <- Ex_samp_id[Ex_samp_id %in% p_Data_noCH$sample]
+Ex_samp_id <- Ex_samp_id[match(p_Data_noCH$sample, Ex_samp_id)]
+#binary phenotype vector 
+p_vec <- ifelse(!is.na(as.numeric(as.character(p_Data_noCH$sample))) | grepl("^CR|^LK",as.character(p_Data_noCH$sample)), 1, 0)
 
 
 ##SKAT null function with customised covariate
@@ -144,7 +147,7 @@ genes <- unique(fil_tab$gene_symbol)
           ##compute cohort specific MAF
            maf_vec_cont <- sum(ifelse(is.na(as.numeric(sam_gene_gt$SAMPLE)), 1, 0))/(2*1270)
            maf_vec_case <- sum(ifelse(!is.na(as.numeric(sam_gene_gt$SAMPLE)) | 
-                                    grepl("^CR", as.character(sam_gene_gt$SAMPLE)), 1, 0))/(2*570)
+                                    grepl("^CR|^LK", as.character(sam_gene_gt$SAMPLE)), 1, 0))/(2*570)
            #maf_vec <- (maf_vec_cont + maf_vec_case)/(2*(1572 + 1110))
           ##genotype matrix  
           sam_gene_gt$add_mod <- as.numeric(sam_gene_gt$GT)
