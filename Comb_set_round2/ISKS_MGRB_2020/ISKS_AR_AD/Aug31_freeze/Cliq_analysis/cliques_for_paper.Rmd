@@ -1,0 +1,434 @@
+---
+title: "visualization_summary"
+author: "Swetansu Pattnaik"
+date: "07/10/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+.libPaths(c( "/home/shu/R/x86_64-redhat-linux-gnu-library/3.4", .libPaths() ) )
+`%nin%` = Negate(`%in%`)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##load libraries
+```{r echo = FALSE, warning = FALSE, message = FALSE, figure.align = "center", figure.height = 10, figure.width = 12}
+library(readxl)
+library(ggplot2)
+library(ggdendro)
+library(dendextend)
+library(dplyr)
+library(ggrepel)
+library(knitr)
+library(igraph)
+library(ggnet)
+library(intergraph)
+library(network)
+library(org.Hs.eg.db)
+library(topGO)
+```
+
+
+##Clique detection and significance
+```{r}
+##refer script (cliq_OR_SKAT.R)
+
+#cpx_list <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Aug31/Cliques/Cliques_max101.rds")
+cpx_list <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Aug31/Cliques/Cliques_max64.rds")
+
+cpx_genes <- unique(unlist(lapply(cpx_list, function(x)names(x))))
+##filter list based on burden test (adjusted Pval < 0.01)
+comb_burd_SKAT <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Aug31/Cliques/Clique_OR_SKAT_968.tsv", sep = "\t", header = T, stringsAsFactors = F)
+sig_cliq <- comb_burd_SKAT[comb_burd_SKAT$adj_pval < 0.01,]$clique
+sig_cliq_df <- comb_burd_SKAT[comb_burd_SKAT$adj_pval < 0.01,]
+sig_cliq_df$size <- unlist(lapply(strsplit(sig_cliq_df$genes, ","), function(x)length(x)))
+
+cpx_list_filt <- cpx_list[sig_cliq]
+cpx_genes_filt <- unique(unlist(lapply(cpx_list_filt, function(x)names(x))))
+
+##plot p-values
+sig_cliq_df_sub <- sig_cliq_df[,c(11:12,15)]
+sig_cliq_df_sub <- sig_cliq_df_sub[order(sig_cliq_df_sub$adj_pval, decreasing = F),]
+sig_cliq_df_sub$eg_ID <- factor(sig_cliq_df_sub$eg_ID, levels = sig_cliq_df_sub$eg_ID[order(sig_cliq_df_sub$adj_pval)])
+sig_cliq_df_sub$size <- as.factor(sig_cliq_df_sub$size)
+#melted_sig_cliq <- melt(sig_cliq_df_sub) ##pairwise bar plot of SKAT and burden test pvalues
+
+# p2 <- ggplot(data=melted_sig_cliq, aes(x=eg_ID, y=-log10(value), fill=variable)) +
+# geom_bar(stat="identity", position=position_dodge())
+# p2 + theme(axis.text.x = element_text(angle = 45))
+
+p3 <- ggplot(data=sig_cliq_df_sub, aes(x=eg_ID, y=-log10(adj_pval), fill=size)) +
+geom_bar(stat="identity", position=position_dodge()) + theme_minimal()
+p3 + theme(axis.text.x = element_text(angle = 45)) + scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9", "#4032A8", "#9c9014")) 
+
+##cliques of size greater than 4
+
+# sig_cliq_df_sub_gt4 <- sig_cliq_df_sub[as.numeric(as.character(sig_cliq_df_sub$size)) > 4, ]
+# p4 <- ggplot(data=sig_cliq_df_sub_gt4, aes(x=eg_ID, y=-log10(adj_pval), fill=size)) +
+# geom_bar(stat="identity", position=position_dodge()) + theme_minimal()
+# p4 + theme(axis.text.x = element_text(angle = 45)) + scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9", "#4032A8", "#9c9014"))
+
+```
+
+
+##cliques of interest(redundant chunk)
+```{r}
+
+strindb_biog_graph1 <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/strindb_biog_graph_cyto.rds")
+
+plot_func_cliq <- function(cliq_list){
+  cpx_genes <- names(cliq_list)
+  can_net1 <- igraph::as_data_frame(strindb_biog_graph1, what = "edges")
+  prot_np_all <- unique(can_net1[as.character(can_net1$from) %in% cpx_genes 
+                                 & as.character(can_net1$to) %in% cpx_genes, ])
+  
+  cpx_graph <- igraph::graph.data.frame(prot_np_all, directed = F)
+  
+  net_mat_t_list <- get.adjacency(cpx_graph, type=c("both"), attr=NULL, names=TRUE, sparse = FALSE)
+  net_new_t_list <- network(net_mat_t_list, directed = FALSE)
+  network.vertex.names(net_new_t_list) <- V(cpx_graph)$name
+  
+  cpx_plt <- ggnet2(net_new_t_list, alpha = 0.75, node.size = 4, edge.alpha = 0.5, label = TRUE, label.size = 2.5,  mode = "kamadakawai")
+return(cpx_plt)
+}
+
+#all_cliq_plot <- lapply(cpx_list_filt, function(x)plot_func_cliq(x))
+e1 <- plot_func_cliq(cpx_list_filt$c_101)
+#plot_func_cliq(cpx_list_filt$c_71)
+e2 <- plot_func_cliq(cpx_list_filt$c_88)
+e3 <- plot_func_cliq(cpx_list_filt$c_78)
+e4 <- plot_func_cliq(cpx_list_filt$c_68)
+e5 <- plot_func_cliq(cpx_list_filt$c_34)
+##cliques of size greater than 4
+#cpx_list_filt_gt4 <- cpx_list_filt[names(cpx_list_filt[which(sapply(cpx_list_filt, function(x)length(x) > 4))])]
+source("~/APCluster_graphs/case_TCGA_new_PRAD_3431/multi_plot.R")
+multiplot(e1,e2,e3,e4,e5, cols = 2)
+multiplot(e1,e2,e3,e5, cols = 2)
+
+```
+
+
+```{r}
+#source("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/git_proj_rvas/Comb_set_round2/ISKS_MGRB_2020/ISKS_AR_AD/Aug31_freeze/Cliq_analysis/Cliq_collapse.R")
+```
+
+
+##hierarchical clustering of cliques based on similarity
+```{r}
+
+## Jaccard similarity function
+library(arrangements)
+make_matrix <- function(cliq_list) {
+  
+ # comb <- combinations(names(cliq_list), 2, replace = F)
+ comb <- combinations(names(cliq_list), 2, replace = T) #include diagonals
+  prct <- list()
+  a_len <- list()
+  b_len <- list()
+  a_len_ov <- list()
+  b_len_ov <- list()
+  ov_tot <- list()
+  for (i in 1:nrow(comb)) {
+  #  a <- unlist(strsplit(as.character(exemp_df_L1[exemp_df_L1$L1 == comb[i, 1],]$mods), ","))
+  #  b <- unlist(strsplit(as.character(exemp_df_L1[exemp_df_L1$L1 == comb[i, 2],]$mods), ","))
+    a <- cliq_list[[comb[i,1]]]
+    b <- cliq_list[[comb[i,2]]]
+    prct[[i]] <- 2 * length(intersect(a, b)) / (length(a) + length(b))
+    a_len[[i]] <- length(a) 
+    b_len[[i]] <- length(b)
+    a_len_ov[[i]] <- length(a[a %in% b])/length(a)
+    b_len_ov[[i]] <- length(b[b %in% a])/length(b)
+    ov_tot[[i]] <- length(intersect(a, b))
+    # cat("\nMatching between", comb[i, 1], "and", comb[i, 2], "is", prct)
+  }
+  
+  comb1 <- cbind.data.frame(comb, "perc" = unlist(prct), "c1" = unlist(a_len), "c2" = unlist(b_len),
+                            "c1_perc_ov" = unlist(a_len_ov), "c2_perc_ov" = unlist(b_len_ov), 
+                            "ov_tot" = unlist(ov_tot), stringsAsFactors=FALSE)
+  colnames(comb1)[1] <- "m1"
+  colnames(comb1)[2] <- "m2"
+  
+  return(comb1)
+ 
+}
+
+cliq_jacc_sim <- make_matrix(cpx_list_filt)
+#library(reshape2)
+#raw_mat <- acast(cliq_jacc_sim, m1 ~ m2, value.var="ov_tot")
+
+g <- graph.data.frame(cliq_jacc_sim[,c(1:3)], directed=FALSE)
+raw_mat <- get.adjacency(g, attr="perc", sparse=FALSE)
+##function to extract cluster after specifying a cutpoint
+cluster_mem <- function(mat_inp){
+hc <- hclust(dist(mat_inp), "ave")
+#plot(hc, hang = -1, cex = 0.8)
+#abline(h = 1.5, lty = 2)
+groups <- cutree(hc, h=1.5)
+
+#cliq_clusters <- cbind("cliq_name"= rownames(raw_mat),groups)
+
+###start here
+groups <- cutree(hc, h=1.5)
+plot(hc, hang = -1, cex = 0.8)
+gg <- rect.hclust(hc,k=length(unique(groups)))
+return(gg)
+}
+gg1 <- cluster_mem(raw_mat)
+hc <- hclust(dist(raw_mat), "ave")
+groups <- cutree(hc, h=1.5)
+clust.gr<-data.frame(num=unlist(gg1), clust=rep(c(paste0("Clust_",1:length(unique(groups)))),times=sapply(gg1,length)))
+dendr <- dendro_data(hc, type="rectangle") 
+text.df<-merge(label(dendr),clust.gr,by.x="label",by.y="row.names")
+
+ggplot() + 
+  geom_segment(data=segment(dendr), aes(x=x, y=y, xend=xend, yend=yend)) + 
+  geom_text(data=text.df, aes(x=x, y=y, label=label, hjust=0,color=clust), size=3) +
+  geom_hline(yintercept=1.5, linetype="dashed") + 
+  coord_flip() + scale_y_reverse(expand=c(0.2, 0)) + 
+  theme(axis.line.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.title.y=element_blank(),
+        panel.background=element_rect(fill="white"),
+        panel.grid=element_blank())
+
+
+
+```
+
+
+##Alternate plotting
+
+```{r}
+#dend <- raw_mat %>%  scale %>% 
+#        dist %>% hclust %>% as.dendrogram
+#Already scaled as the Jaccard Index is expressed as percentages
+dend <- raw_mat %>% dist %>% hclust %>% as.dendrogram
+dend %>% plot
+lab_ord <- labels(dend)
+cust_col_df <- cbind.data.frame("code" = paste("Clust", 1:6, sep = "_"), "col_cust" = c("#008fd5","#de6b35", "#7a9406", "#fc0373","#8f5467", "#6c0ee8"))
+text.df$col_cust <- as.character(cust_col_df[match(as.character(text.df$clust), cust_col_df$code), 2])
+text.df <- text.df[match(lab_ord, as.character(text.df$label)),]
+#write.table(text.df, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Aug31/Cliques/node_cluster_color_map.tsv", sep = "\t", row.names = F, quote = F)
+#dend %>% set("labels_col", text.df$col_cust) %>% plot
+#abline(v = 1.5, lty = 2)
+##use this
+dend1 <- dend %>% set("branches_k_color", text.df$col_cust) %>% set("branches_lwd", 1.2) %>%
+   set("labels_colors", text.df$col_cust) %>% set("labels_cex", 0.8)
+ggd1 <- as.ggdend(dend1)
+ggplot(ggd1, horiz = TRUE, theme = NULL) + geom_hline(yintercept=1.5, linetype="dashed") + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black"))
+
+##Circular dendrogram
+ggplot(ggd1, labels = FALSE) + 
+  scale_y_reverse(expand = c(0.2, 0)) +
+  coord_polar(theta="x")
+
+```
+
+##Clique collapse based on clustering and adding color
+```{r warning = FALSE, figure.align = "center", figure.height = 10, figure.width = 12}
+
+strindb_biog_graph1 <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/strindb_biog_graph_cyto.rds")
+collapsed_cliques <- lapply(gg1, function(x)unique(unlist(lapply(cpx_list_filt[names(x)], function(y)names(y)))))
+names(collapsed_cliques) <- paste("Clust", 1:6, sep = "_")
+#text.df
+plot_col_cliq <- function(col_cliq_df, clust_id){
+ # cpx_genes <- names(cliq_list)
+  col <- unique(as.character(col_cliq_df[as.character(col_cliq_df$clust) %in% clust_id,6]))
+  print(col)
+  cliq_mem <- unlist(collapsed_cliques[clust_id])
+  can_net1 <- igraph::as_data_frame(strindb_biog_graph1, what = "edges")
+  prot_np_all <- unique(can_net1[as.character(can_net1$from) %in% cliq_mem 
+                                 & as.character(can_net1$to) %in% cliq_mem, ])
+  
+  cpx_graph <- igraph::graph.data.frame(prot_np_all, directed = F)
+  
+  net_mat_t_list <- get.adjacency(cpx_graph, type=c("both"), attr=NULL, names=TRUE, sparse = FALSE)
+  net_new_t_list <- network(net_mat_t_list, directed = FALSE)
+  network.vertex.names(net_new_t_list) <- V(cpx_graph)$name
+  
+  cpx_plt <- ggnet2(net_new_t_list, alpha = 0.75, node.size = 4, edge.alpha = 0.5, label = TRUE, label.size = 2.5, edge.color = col,  mode = "kamadakawai")
+  cpx_plt <- cpx_plt + scale_color_manual(values = col)
+return(cpx_plt)
+}
+
+cliq_col_list <- list()
+for(k in 1:6){
+  cliq_col_list[[k]] <- plot_col_cliq(text.df, paste("Clust", k, sep = "_"))
+}
+
+source("~/APCluster_graphs/case_TCGA_new_PRAD_3431/multi_plot.R")
+#multiplot(plotlist = cliq_col_list, cols = 3)
+multiplot(cliq_col_list[[6]], 
+          cliq_col_list[[5]],
+          cliq_col_list[[4]],
+          cliq_col_list[[3]],
+          cliq_col_list[[1]],
+          cliq_col_list[[2]],
+          cols = 2)
+```
+
+
+##Burden test 
+```{r warning = FALSE, figure.align = "center", figure.height = 10, figure.width = 12}
+
+cpx_OR_fisher <- function(ppi_res,case_coh_size, cont_coh_size, coh){
+  ft_df <- list()
+  for(i in 1:length(collapsed_cliques)){
+    ppi_res_tab <- ppi_res[ppi_res$gene %in% collapsed_cliques[[i]],]
+   # ppi_res_tab[,2] <- ifelse(ppi_res_tab[,2] == 0, 1, ppi_res_tab[,2])
+    inp <- c(sum(ppi_res_tab[,1]), case_coh_size - sum(ppi_res_tab[,1]) , 
+             sum(ppi_res_tab[,2]), cont_coh_size - sum(ppi_res_tab[,2]))
+    sim_mat <- matrix(inp ,nrow = 2, ncol = 2)
+    colnames(sim_mat) <- c("case", "cont")
+    rownames(sim_mat) <- c("hits", "no_hits")
+    #ft <- fisher.test(sim_mat, alternative = "greater")
+    #ft <- fisher.test(sim_mat)
+    ft <- fisher.test(sim_mat, conf.int = T, conf.level = 0.99)
+    ft_df[[i]] <- cbind.data.frame("gene" = names(collapsed_cliques)[i] ,"Cases" = sum(ppi_res_tab[,1]), "Controls" = sum(ppi_res_tab[,2]),
+                                   "Fish_pval" = ft$p.value,"CI_lower" = ft$conf.int[1],
+                                   "CI_upper" = ft$conf.int[2],
+                                   "OR_Fish" = ft$estimate, "case_coh_size" = case_coh_size,
+                                     "Coh" = coh)
+  }
+  return(ft_df)
+}
+
+##get frequency tables
+isks_mgrb_genes <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/Exome_para_tab_ISKS_MGRB_C345_Aug31.rds")
+isks_mgrb_genes_noC3 <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Exome_para_tab_ISKS_MGRB_minusC3_Aug31.rds")
+
+##burden test
+cpx_ISKS_OR_df <- do.call("rbind.data.frame", cpx_OR_fisher(isks_mgrb_genes, 1644, 3205, "ISKS_C345"))
+cpx_ISKS_OR_df_noC3 <- do.call("rbind.data.frame", cpx_OR_fisher(isks_mgrb_genes_noC3, 1644, 3205, "ISKS_C45"))
+comb_df_C45_C3 <- rbind.data.frame(cpx_ISKS_OR_df, cpx_ISKS_OR_df_noC3)
+comb_df_C45_C3$col <- text.df[match(comb_df_C45_C3$gene,text.df$clust),6]
+  
+forest_custplot <- function(df, repset = NULL){
+#  dotCOLS = c("#a6d8f0","#f9b282", "#78f542", "#f5c6e5", "#ffe3bf", "#cfabff")
+#  barCOLS = c("#008fd5","#de6b35", "#7a9406", "#fc0373", "#f79514", "#6c0ee8")
+  df$Coh <- droplevels(df$Coh)
+  ##with replication set (combined sarcomas)
+  if(repset == 1){
+ # dotCOLS = c("#a6d8f0","#f9b282", "#78f542", "#f5c6e5","#cfabff", "#232533", "#bdb071", "#f52a6b", "#2a7ff5")
+#  barCOLS = c("#008fd5","#de6b35", "#7a9406", "#fc0373","#6c0ee8", "#a3ceff", "#717bbd", "#8f5467", "#f5822a")
+    
+  dotCOLS = c("Red", "Blue")
+  barCOLS = rep("#232533", length(dotCOLS))
+  
+  }
+  else{
+    df <- df[df$Coh %nin% "REP",]
+    ##without Cairns
+  #  dotCOLS = c("#a6d8f0","#f9b282", "#78f542", "#f5c6e5","#cfabff")
+  #  barCOLS = c("#008fd5","#de6b35", "#7a9406", "#fc0373","#6c0ee8")
+    dotCOLS = c("Red", "Blue")
+  barCOLS = rep("#232533", length(dotCOLS))
+  }
+  p <- ggplot(df, aes(x=gene, y=log(OR_Fish), ymin=log(CI_lower), ymax=log(CI_upper),col=Coh,fill=Coh)) + 
+    #specify position here
+    geom_linerange(size=1,position=position_dodge(width = 0.5)) +
+    geom_hline(yintercept=0, lty=2) +
+  #  geom_hline(yintercept=1, lty=2) +
+    #specify position here too
+    geom_point(size=5, shape=21, colour="white", stroke = 0.5,position=position_dodge(width = 0.5)) +
+    scale_fill_manual(values=dotCOLS)+
+    scale_color_manual(values=barCOLS)+
+    scale_x_discrete(name="Protein modules") + 
+    scale_y_continuous(name="Log Odds ratio") +
+    coord_flip() +
+    theme_minimal() + theme(legend.position="bottom") + theme(legend.title = element_blank()) +
+    theme(legend.text = element_text(size=8)) + theme(axis.text.y = element_text(hjust = 1, colour = unique(comb_df_C45_C3$col)))
+  return(p)
+}
+
+p_isks <- forest_custplot(comb_df_C45_C3, repset = 1) + ggtitle("Clustered Cliques") + guides(fill=guide_legend(nrow=2,byrow=TRUE)) + theme(legend.position="right")
+
+p_isks
+
+#devtools::install_github("haozhu233/kableExtra")
+#library(kableExtra)
+df_tab <- comb_df_C45_C3[,c(1:7,9)]
+rownames(df_tab) <- NULL
+kable(df_tab, caption = "Final Cliques")
+
+```
+
+
+##make sif files from collapsed cliques for cytoscape
+```{r}
+make_sif_cliq <- function(col_cliq_list){
+ # cpx_genes <- names(cliq_list)
+  #col <- unique(as.character(col_cliq_df[as.character(col_cliq_df$clust) %in% clust_id,6]))
+  #print(col)
+  
+  cliq_mem <- unlist(col_cliq_list)
+  can_net1 <- igraph::as_data_frame(strindb_biog_graph1, what = "edges")
+  prot_np_all <- unique(can_net1[as.character(can_net1$from) %in% cliq_mem 
+                                 & as.character(can_net1$to) %in% cliq_mem, ])
+  prot_np_all$interaction <- "combined_score"
+  prot_np_all$combined_score <- 1
+  colnames(prot_np_all)[1:2] <- c("node1", "node2")
+  prot_np_all_sif <- prot_np_all[,c(1,3,2,4)]
+  return(prot_np_all_sif)
+}
+sif_list <- lapply(collapsed_cliques, function(x)make_sif_cliq(x))
+sif_list_comb <- do.call("rbind.data.frame", sif_list)
+write.table(sif_list_comb,"~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Aug31/Cliques/Collapse_cliques.sif", sep = " ", row.names = F, quote = F)
+
+color_map_prot <- mapply(cbind, collapsed_cliques, "SampleID"=names(collapsed_cliques), SIMPLIFY=F)
+color_map_prot_df <- do.call("rbind.data.frame", color_map_prot)
+color_map_prot_df$SampleID <- as.numeric(gsub("Clust_", "", color_map_prot_df$SampleID))
+colnames(color_map_prot_df) <- c("node1", "col_name")
+write.table(color_map_prot_df,"~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Aug31/Cliques/Colormap_cliques.tsv", sep = "\t", row.names = F, quote = F)
+```
+
+
+##Clique collapse based on clustering
+
+```{r}
+
+collapsed_cliques <- lapply(gg1, function(x)unique(unlist(lapply(cpx_list_filt[names(x)], function(y)names(y)))))
+names(collapsed_cliques)
+strindb_biog_graph1 <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/strindb_biog_graph_cyto.rds")
+
+plot_collap_cliq <- function(cliq_mem){
+ # cpx_genes <- names(cliq_list)
+  can_net1 <- igraph::as_data_frame(strindb_biog_graph1, what = "edges")
+  prot_np_all <- unique(can_net1[as.character(can_net1$from) %in% cliq_mem 
+                                 & as.character(can_net1$to) %in% cliq_mem, ])
+  
+  cpx_graph <- igraph::graph.data.frame(prot_np_all, directed = F)
+  
+  net_mat_t_list <- get.adjacency(cpx_graph, type=c("both"), attr=NULL, names=TRUE, sparse = FALSE)
+  net_new_t_list <- network(net_mat_t_list, directed = FALSE)
+  network.vertex.names(net_new_t_list) <- V(cpx_graph)$name
+  
+  cpx_plt <- ggnet2(net_new_t_list, alpha = 0.75, node.size = 4, edge.alpha = 0.5, label = TRUE, label.size = 2.5,  mode = "kamadakawai")
+return(cpx_plt)
+}
+
+
+cliq_plots <- lapply(collapsed_cliques, function(x)plot_collap_cliq(x))
+source("~/APCluster_graphs/case_TCGA_new_PRAD_3431/multi_plot.R")
+multiplot(plotlist = cliq_plots, cols = 2)
+```
+
+##GO enrichment of clustered cliques
+
+```{r}
+library(enrichR)
+
+```
+
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

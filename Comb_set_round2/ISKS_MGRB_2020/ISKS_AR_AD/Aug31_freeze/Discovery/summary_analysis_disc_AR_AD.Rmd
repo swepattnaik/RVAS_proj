@@ -1,0 +1,1323 @@
+---
+title: "Summary_exome_analysis"
+author: "Swetansu Pattnaik"
+date: "23/09/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+.libPaths(c( "/home/shu/R/x86_64-redhat-linux-gnu-library/3.4", .libPaths() ) )
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##Meta analysis of custom geneset
+
+```{r echo=FALSE, message=FALSE}
+library(ggplot2)
+library(dplyr)
+library(ggrepel)
+library(knitr)
+library(igraph)
+library(ggnet)
+library(intergraph)
+library(network)
+library(org.Hs.eg.db)
+library(topGO)
+```
+
+```{r echo=FALSE}
+##qqplot function SKAT output
+gg_qqplot_genes <- function(data, ci = 0.95, genes, SKAT = NULL) {
+  
+  if(is.null(SKAT)){
+    data$symbol <- ifelse(is.na(data$symbol), as.character(data$eg_ID) , as.character(data$symbol) )
+    gene_top <- head(as.character(data[order(data$pval_SKATO, decreasing = F),]$symbol), 10)
+    gene_ID <- as.character(data[order(data$pval_SKATO, decreasing = F),]$symbol)
+    ps <- data$pval_SKATO
+  }
+  else if(SKAT == "pval_SKATbin"){
+    data$symbol <- ifelse(is.na(data$symbol), as.character(data$eg_ID) , as.character(data$symbol) )
+    gene_top <- head(as.character(data[order(data$pval_SKATbin, decreasing = F),]$symbol), 10)
+    gene_ID <- as.character(data[order(data$pval_SKATbin, decreasing = F),]$symbol)
+    ps <- data$pval_SKATbin
+  }
+  else if(SKAT == "pval_SKAT"){
+    data$symbol <- ifelse(is.na(data$symbol), as.character(data$eg_ID) , as.character(data$symbol) )
+    gene_top <- head(as.character(data[order(data$pval_SKAT, decreasing = F),]$symbol), 10)
+    gene_ID <- as.character(data[order(data$pval_SKAT, decreasing = F),]$symbol)
+    ps <- data$pval_SKAT
+  }
+  # all_genes <- ifelse(is.na(data$symbol), as.character(data$eg_ID) , as.character(data$symbol) )
+  n  <- length(ps)
+  df <- data.frame(
+    observed = -log10(sort(ps)),
+    expected = -log10(ppoints(n)),
+    #expected = -log10(sort(pe)),
+    clower   = -log10(qbeta(p = (1 - ci) / 2, shape1 = 1:n, shape2 = n:1)),
+    cupper   = -log10(qbeta(p = (1 + ci) / 2, shape1 = 1:n, shape2 = n:1)),
+    gene_ID  = gene_ID
+  )
+  log10Pe <- expression(paste("Expected -log"[10], plain(P)))
+  log10Po <- expression(paste("Observed -log"[10], plain(P)))
+  
+  genes_all <- c(genes, gene_top)
+  df <- mutate(df, sel=ifelse(df$gene_ID %in% genes_all, 1, 0))
+  ptest = ggplot(df, aes(expected, observed)) +
+    geom_point(aes(col=as.factor(sel))) +
+    scale_color_manual(values=c( "black", "red"))
+  ptest = ptest + geom_text_repel(data=filter(df, sel > 0), aes(label=gene_ID), colour = "red", size = 3.5,
+                                  box.padding = unit(0.35, "lines"),
+                                  point.padding = unit(0.3, "lines"))
+  ptest + geom_abline(intercept = 0, slope = 1, alpha = 0.5) +
+    geom_line(aes(expected, cupper), linetype = 2) +
+    geom_line(aes(expected, clower), linetype = 2) +
+    xlab(log10Pe) +
+    ylab(log10Po) + theme(legend.position="none")
+}
+
+source("~/APCluster_graphs/case_TCGA_new_PRAD_3431/multi_plot.R")
+
+```
+
+**Filter Thresholds** <br />
+1. VAF >= 0.35 <br />
+2. Eigenphred/Comb_score >= 3 <br />
+2. intra cohort_MAF filter <= 3/(2*Number in cohort) <br />
+3. gnomad_AF_NFE <= 0.005 <br />
+
+**Scoring/Weighting** <br />
+EigenPhred scale scoring was introduced manually for the following variants:<br />
+C3 = EigenPhredscore <br />
+C4 = 45 <br />
+ClinVar (*Pathogenic/likely Pathogenic*) C5 = 45 <br />
+C3/C4 Variants in the last 5 percent of the C-terminal region of the protein = assigned score/2 <br />
+
+
+```{r, out.width='\\textwidth', fig.height = 7, fig.align='center', echo=FALSE}
+
+Exome_skat <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT_disc/Exome_skat_para_DISC_isks_combset2020_uni_MAF_PC1234_clinrect_Aug31_230920.rds")
+
+df_skat <- lapply(Exome_skat, function(x)do.call("rbind.data.frame", x))
+Exome_pc123_srt_SKAT <- lapply(df_skat, function(x) x[order(x$pval_SKATbin, decreasing = F),])
+#Exome_pc123_srt_SKATO1 <- lapply(df_skat, function(x) x[order(x$pval_SKATO, decreasing = F),])
+Exome_pc123_srt_SKAT <- lapply(Exome_pc123_srt_SKAT, function(x){colnames(x)[1] <- c("symbol"); return(x)})
+
+SKAT_plots_eigen <- lapply(Exome_pc123_srt_SKAT, function(x)gg_qqplot_genes(data = x, ci = 0.95, genes = x[,1], SKAT = "pval_SKATbin"))
+main_lab <- c("No Adjustment", "PC1234", "Gender", "Gender_PC1234")
+names(SKAT_plots_eigen) <- main_lab
+SKAT_plots_eigen <- lapply(names(SKAT_plots_eigen), function(x) SKAT_plots_eigen[[x]] + ggtitle(x) + theme(plot.title = element_text(size = 8, face = "bold")))
+multiplot(plotlist = SKAT_plots_eigen, cols = 2)
+
+```
+
+
+```{r, out.width='\\textwidth', fig.height = 7, fig.align='center', echo=FALSE}
+##Add filtering option to final set by limiting the gene set to using a total variant cutoff of greater than
+## or equal to 3
+
+Exome_skat <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT_disc/Exome_skat_para_DISC_isks_combset2020_uni_MAF_PC1234_clinrect_Aug31_230920.rds")
+df_skat <- lapply(Exome_skat, function(x)do.call("rbind.data.frame", x))
+Exome_pc123_srt_SKAT <- lapply(df_skat, function(x) x[order(x$pval_SKATbin, decreasing = F),])
+Exome_pc123_srt_SKAT <- lapply(Exome_pc123_srt_SKAT, function(x){colnames(x)[1] <- c("symbol"); return(x)})
+Exome_pc123_srt_SKAT_case_enr_nCH <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT_disc/Exome_para_DISC_pc1234_SKAT_Enriched_ISKS_2020_Aug31_230920.rds")
+##Add p-value
+Exome_pc123_srt_SKAT_case_enr_nCH_pval <- Map(cbind.data.frame, Exome_pc123_srt_SKAT_case_enr_nCH, Exome_pc123_srt_SKAT)
+
+##save for volcano_plot
+#write.table(Exome_pc123_srt_SKAT_case_enr_nCH_pval[[4]], "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/Sep05_rect_ASP_graph_final_cmaf_new_score_volcano.tsv", sep = "\t", row.names = F, quote = F)
+
+##Remove genes that have SKATbin_pval >= 0.1, this selects only significant genes for the PPI enrichment
+##Add condition to remove genes with less than 3 variants in case + control
+Exome_pc123_srt_SKAT_case_enr_nCH_pval <- lapply(Exome_pc123_srt_SKAT_case_enr_nCH_pval, function(x) x[x$pval_SKATbin < 0.11 & x$wt_diff > 0,])
+
+##Better option for Enriched list: sort by -log(p_val) * weight difference ; appropriately factors influence of variant on ISKS phenotype
+##use SKATO p-value; go back to using SKATbin (x[,14])
+Exome_pc123_srt_SKAT_case_enr_nCH_ranked <- lapply(Exome_pc123_srt_SKAT_case_enr_nCH_pval, 
+                                                  function(x) cbind.data.frame(x, "rank_score" = -log10(x[,14]) * x[,6])) ##added intra cohort MAF filtered variant positions
+                                                    
+Exome_pc123_srt_SKAT_case_enr_nCH_ranked <- lapply(Exome_pc123_srt_SKAT_case_enr_nCH_ranked, function(x)
+  x[order(x[,17], decreasing = T),]) ##added intra cohort MAF filtered variant positions
+
+##get variant tab
+pc123_gender_tab_top1000 <- Exome_pc123_srt_SKAT_case_enr_nCH_ranked[[4]]
+fil_tab_noCH <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT_disc/all_DISC_isksmgrb_skatinp_combset2020_clin_C3C4C5_NFE0002_AD_rm_dup_freeze.tsv", sep = "\t", header = T, stringsAsFactors = F)
+
+pc123_gender_tab_top1000_VAR <- fil_tab_noCH[fil_tab_noCH$gene_symbol %in% pc123_gender_tab_top1000$gene & fil_tab_noCH$comb_score >= 5.6 & fil_tab_noCH$VAF >= 0.35,]
+pc123_gender_tab_top1000_VAR <- pc123_gender_tab_top1000_VAR[pc123_gender_tab_top1000_VAR$VARIANT %in% unlist(strsplit(as.character(pc123_gender_tab_top1000$maf_filt_var), split = ",")),]
+pc123_gender_tab_top1000_VAR$gene_Pval <- pc123_gender_tab_top1000[match(pc123_gender_tab_top1000_VAR$gene_symbol, pc123_gender_tab_top1000$gene),14] ##SKATO; add SKATbin instead
+#head(pc123_gender_tab_top1000_VAR[,c(1:6,8:9,11,15,17:18,20,23:25,30,53,57,59:68,72,119:121)])
+pc123_gender_tab_top1000_VAR <- pc123_gender_tab_top1000_VAR[,c(1:6,8:9,11,15,17:18,20,23:25,30,53,57,59:68,72,125:132)]
+pc123_gender_tab_top1000_VAR <- unique(pc123_gender_tab_top1000_VAR)
+#write.table(pc123_gender_tab_top1000_VAR, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS/round2/Exome_Enriched_pc_gender_controlled_top_geneVARIANTS_comset2020_pval01.tsv", sep = "\t", row.names = F, quote = F)
+#write.table(pc123_gender_tab_top1000_VAR, "/home/shu/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/discovery_set/round2/Exome_Enriched_pc_gender_controlled_top_geneVARIANTS_sep05_ASP_cmaf02_new_score_rnd2.tsv",sep = "\t", row.names = F, quote = F)
+
+```
+
+
+##Use PPI approach to derive differential enrichment of mutated interactomes in ISKS and RISC(15) combined.
+```{r, out.width='\\textwidth', fig.height = 7, fig.align='center', echo=FALSE}
+##get graph degree from the genes in the top 1000 enriched list
+library(igraph)
+library(ggnet)
+library(intergraph)
+library(network)
+library(org.Hs.eg.db)
+
+
+get_topSKAT_degree <- function(enr_df){
+
+skat_genes_top100 <- as.character(enr_df[,3])
+
+can_net <- read.delim("~/VDLab_scripts/BioGrid/biogrid_db_all_subnet.sif", header = T, sep = " ", stringsAsFactor = F)
+#can_net <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/Biogrid_latest/Biog_net_hs.sif", header = T, sep = "\t", stringsAsFactor = F)
+can_net_graph <- igraph::graph.data.frame(can_net, directed = F)
+can_net_graph1 <- igraph::simplify(can_net_graph, remove.loops=T, remove.multiple = T)
+can_net1 <- igraph::as_data_frame(can_net_graph1, what = "edges")
+prot_np_all <- unique(can_net1[as.character(can_net1$from) %in% skat_genes_top100 
+                               & as.character(can_net1$to) %in% skat_genes_top100, ])
+uniongraph <- igraph::graph.data.frame(prot_np_all, directed = F)
+
+
+
+ret_df <- as.data.frame(igraph::degree(uniongraph))
+ret_df$gene <- rownames(ret_df)
+colnames(ret_df)[1] <- c("degree")
+
+l1 <- lapply(ret_df[,2], function(x)as_ids(adjacent_vertices(uniongraph, v = x)[[1]]))
+l2 <- lapply(l1, function(x)paste(x, sep=",", collapse=","))
+ret_df$interactors <- unlist(l2)
+
+return(ret_df)
+}
+
+
+##Fisher exact test for enrichment of subgraph related to each protein
+gender_PC123_cont_df <- Exome_pc123_srt_SKAT_case_enr_nCH_ranked[[4]]
+#remove genes with one hit in ISKS
+gender_PC123_cont_df <- gender_PC123_cont_df[gender_PC123_cont_df$ISKS > 1,]
+
+df_degree <- get_topSKAT_degree(gender_PC123_cont_df)
+gender_PC123_cont_df$degree <- df_degree[match(gender_PC123_cont_df$gene, df_degree$gene), 1]
+gender_PC123_cont_df$int <- df_degree[match(gender_PC123_cont_df$gene, df_degree$gene), 3]
+gender_PC123_cont_df$degree <- ifelse(is.na(gender_PC123_cont_df$degree), 0, gender_PC123_cont_df$degree)
+gender_PC123_cont_df$rank_PPI <- gender_PC123_cont_df$rank_score * log(gender_PC123_cont_df$degree + 2)
+gender_PC123_cont_df <- gender_PC123_cont_df[order(gender_PC123_cont_df$rank_PPI, decreasing = T),]
+###latest fisher test based on degrees in biogrid versus enriched graphs
+
+can_net <- read.delim("~/VDLab_scripts/BioGrid/biogrid_db_all_subnet.sif", header = T, sep = " ", stringsAsFactor = F)
+top_genes_enr <- as.character(gender_PC123_cont_df$gene)
+
+para_fisher_fun_new <- function(gene_sym){
+  gene_sym <- gene_sym[3]
+  print(gene_sym)
+  can_net_graph <- igraph::graph.data.frame(can_net, directed = F)
+  can_net_graph1 <- igraph::simplify(can_net_graph, remove.loops=T, remove.multiple = T)
+  can_net1 <- igraph::as_data_frame(can_net_graph1, what = "edges")
+  prot_np_all <- unique(can_net1[as.character(can_net1$from) %in% top_genes_enr 
+                                 & as.character(can_net1$to) %in% top_genes_enr, ])
+  uniongraph <- igraph::graph.data.frame(prot_np_all, directed = F)
+  
+  ##degree biogrid
+  deg_biog <- igraph::degree(can_net_graph1)[which(names(igraph::degree(can_net_graph1)) %in% gene_sym)]
+  deg_union <- igraph::degree(uniongraph)[which(names(igraph::degree(uniongraph)) %in% gene_sym)]
+  #tot_biog <- igraph::vcount(can_net_graph1) ##should be edge count not vertex count
+  #tot_union <- igraph::vcount(uniongraph)
+  tot_biog <- igraph::ecount(can_net_graph1) 
+  tot_union <- igraph::ecount(uniongraph)
+  
+  ##test
+  #inp <- c(deg_union, deg_biog, tot_union - deg_union, tot_biog - deg_biog)
+  inp <- c(deg_union, deg_biog, tot_union, tot_biog)
+  mgrb_tsg <- matrix(inp ,nrow = 2, ncol = 2)
+  colnames(mgrb_tsg) <- c("deg_enr", "deg_bio")
+  rownames(mgrb_tsg) <- c("Enriched", "Biog")
+  #ft <- fisher.test(mgrb_tsg, alternative = "greater")
+  ft <- fisher.test(mgrb_tsg, conf.int = T, conf.level = 0.95)
+  ft_df <- cbind.data.frame("gene" =  gene_sym, "PPI_p_val_wt" = ft$p.value,
+                            "CI_lower" = ft$conf.int[1],
+                            "CI_upper" = ft$conf.int[2],
+                            "OR" = ft$estimate)
+  
+  return(ft_df)
+}
+
+
+library(parallel)
+cl <- makeCluster(25)
+#para_pheno <- parLapply(cl, 1:nrow(IBD_dist1), function(i) pick_pinf(IBD_dist1[i,]))
+clusterExport(cl, c("can_net", "top_genes_enr", "para_fisher_fun_new"))
+system.time(para_fish <- parApply(cl, gender_PC123_cont_df, 1, para_fisher_fun_new))
+stopCluster(cl)
+fisher_res <- do.call("rbind.data.frame",para_fish)
+ppi_res_fil_final <- cbind.data.frame(gender_PC123_cont_df, fisher_res)
+write.table(ppi_res_fil_final, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT_disc/ppi_res_fil_final_SKATbin_Aug31_230920.tsv", sep = "\t", row.names = F, quote = F)
+
+```
+
+
+##Cliques in the enriched set of genes
+```{r, out.width='\\textwidth', fig.height = 7, fig.align='center', echo=FALSE}
+######Cliques in uniongraph (enriched cliques from SKAT)
+ppi_res_fil_final <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT_disc/ppi_res_fil_final_SKATbin_Aug31_230920.tsv", sep = "\t", header = T, stringsAsFactors = F)
+top_genes <- as.character(ppi_res_fil_final$gene)
+can_net_graph <- igraph::graph.data.frame(can_net, directed = F)
+can_net_graph1 <- igraph::simplify(can_net_graph, remove.loops=T, remove.multiple = T)
+can_net1 <- igraph::as_data_frame(can_net_graph1, what = "edges")
+prot_np_all <- unique(can_net1[as.character(can_net1$from) %in% top_genes 
+                               & as.character(can_net1$to) %in% top_genes, ])
+
+uniongraph <- igraph::graph.data.frame(prot_np_all, directed = F)
+
+te1 <- cliques(uniongraph, min=4)
+cpx <- names(unlist(te1))
+cpx_np_all <- unique(can_net1[as.character(can_net1$from) %in% cpx 
+                               & as.character(can_net1$to) %in% cpx, ])
+cpx_graph <- igraph::graph.data.frame(cpx_np_all, directed = F)
+cpx_graph <- igraph::simplify(cpx_graph, remove.loops=T, remove.multiple = T)
+
+net_mat_t_list <- get.adjacency(cpx_graph, type=c("both"), attr=NULL, names=TRUE, sparse = FALSE)
+net_new_t_list <- network(net_mat_t_list, directed = FALSE)
+network.vertex.names(net_new_t_list) <- V(cpx_graph)$name
+#gnet <- ggnet2(net_new_t_list, alpha = 0.75, edge.alpha = 0.5, label = TRUE, label.size = 3,  mode = #"kamadakawai") + theme(legend.position = "bottom") + theme(legend.title = element_blank())
+  
+gnet <- ggnet2(net_new_t_list, alpha = 0.75, edge.alpha = 0.5, label = TRUE, label.size = 3,  mode = "kamadakawai")
+  gnet
+
+  ##Add community detection
+#cfg <- cluster_fast_greedy(cpx_graph)
+#plot(cfg, cpx_graph)
+  
+  ##customised modules visualisation
+  ppi_res_fil_final <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/ppi_res_fil_final_SKATbin_Aug31.tsv", sep = "\t", header = T)
+
+Extn_sheltrin <- c("POT1", "TINF2", "TERF1","TCP1", "CCT2", "CCT6A", "SMARCAL1",  "TIMELESS",  "STAG3",  "NBN",  "ERCC1",  "ATR",  "MAP3K4",  "ACD",  "TERF2IP",  "TERF2")
+
+NMDA_AMPA <- c("DLG1", "GRIN2A", "GRIA1", "GRM4", "CAM2KB", "CAM2KD", "GRIK4", "CACNG2", "CACNG4")
+
+Ext12_cmpx <- c("EXT1", "EXT2", "SDC1")
+
+centro_cmpx <- c("CEP63", "CEP72", "HAUS4", "HAUS5", "MZT1", "SSNA1", "CEP57")
+
+pos_TP53 <- c("TP53")
+
+comb_genes <- list(Extn_sheltrin, NMDA_AMPA, Ext12_cmpx, centro_cmpx, pos_TP53)
+names(comb_genes) <- c("Extn_sheltrin", "NMDA_AMPA", "Ext12_cmpx", "centro_cmpx", "pos_TP53")
+comb_genes <- Map(cbind.data.frame, genes = comb_genes, mod = names(comb_genes))
+comb_genes_df <- do.call("rbind.data.frame", comb_genes)
+rownames(comb_genes_df) <- NULL
+
+top_genes <- as.character(ppi_res_fil_final$gene)
+can_net_graph <- igraph::graph.data.frame(can_net, directed = F)
+can_net_graph1 <- igraph::simplify(can_net_graph, remove.loops=T, remove.multiple = T)
+can_net1 <- igraph::as_data_frame(can_net_graph1, what = "edges")
+prot_np_all <- unique(can_net1[as.character(can_net1$from) %in% top_genes 
+                               & as.character(can_net1$to) %in% top_genes, ])
+
+uniongraph <- igraph::graph.data.frame(prot_np_all, directed = F)
+
+te1 <- cliques(uniongraph, min=4)
+cpx_new <- unique(c(names(unlist(te1)),as.character(comb_genes_df$genes)))
+`%nin%` = Negate(`%in%`)
+cpx_new1 <- cpx_new[cpx_new %nin% as.character(comb_genes_df$genes)] 
+cpx_new1_df <- cbind.data.frame("genes" = cpx_new1, "mod" = "other")
+comb_genes_df_new <- rbind.data.frame(comb_genes_df, cpx_new1_df)
+
+cpx_np_all <- unique(can_net1[as.character(can_net1$from) %in% cpx_new 
+                               & as.character(can_net1$to) %in% cpx_new, ])
+cpx_graph <- igraph::graph.data.frame(cpx_np_all, directed = F)
+cpx_graph <- igraph::simplify(cpx_graph, remove.loops=T, remove.multiple = T)
+
+net_mat_t_list <- get.adjacency(cpx_graph, type=c("both"), attr=NULL, names=TRUE, sparse = FALSE)
+net_new_t_list <- network(net_mat_t_list, directed = FALSE)
+network.vertex.names(net_new_t_list) <- V(cpx_graph)$name
+
+net_new_t_list %v% "mod" <- as.character(comb_genes_df_new[match(network.vertex.names(net_new_t_list), as.character(comb_genes_df_new$genes)),2])
+set.seed(312016)
+
+ggnet2(net_new_t_list, color = "mod",
+size = 6, palette = "Set1", edge.alpha = 0.25, label = TRUE, label.size = 3,
+mode = "fruchtermanreingold",
+edge.color = c("color", "grey50"),
+color.legend = "modules") +
+theme(legend.position = "bottom")
+
+  
+```
+
+
+
+```{r}
+##combine biogrid and stringdb
+
+ppi_res_fil_final <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT_disc/ppi_res_fil_final_SKATbin_Aug31_230920.tsv", sep = "\t", header = T, stringsAsFactors = F)
+
+top_genes_enr <- as.character(ppi_res_fil_final$gene)
+
+##Biogrid
+can_net <- read.delim("~/VDLab_scripts/BioGrid/biogrid_db_all_subnet.sif", header = T, sep = " ", stringsAsFactor = F)
+#can_net_graph <- igraph::graph.data.frame(can_net, directed = F)
+#can_net_graph1 <- igraph::simplify(can_net_graph, remove.loops=T, remove.multiple = T)
+
+
+##String DB
+
+#library(STRINGdb)
+
+# string_db <- STRINGdb$new(version="10", species=9606,
+#                           score_threshold=400, input_directory="" )
+# full.graph <- string_db$get_graph()
+# string_graph1 <- igraph::simplify(full.graph, remove.loops=T, remove.multiple = T)
+# string_graph_df <- igraph::as_data_frame(string_graph1, what = "edges")
+# string_graph_df1 <- string_graph_df
+# 
+# string_proteins <- string_db$get_proteins()
+# 
+# string_graph_df1$from <- string_proteins[match(string_graph_df1$from, string_proteins$protein_external_id),2]
+# string_graph_df1$to <- string_proteins[match(string_graph_df1$to, string_proteins$protein_external_id),2]
+# strindb_graph <- igraph::graph.data.frame(string_graph_df1, directed = F)
+# saveRDS(strindb_graph, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/strindb_graph.rds", compress = T)
+# 
+# ##combine biogrid and stringdb
+# colnames(string_graph_df1) <- c("node1", "node2")
+# string_biog <- unique(rbind.data.frame(string_graph_df1,can_net))
+# strindb_biog_graph <- igraph::graph.data.frame(string_biog, directed = F)
+# strindb_biog_graph1 <- igraph::simplify(strindb_biog_graph, remove.loops=T, remove.multiple = T)
+# 
+# saveRDS(strindb_biog_graph1, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/strindb_biog_graph1.rds", compress = T)
+
+strindb_graph <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/strindb_graph.rds")
+strindb_graph_rmOR <- igraph::as_data_frame(strindb_graph, what = "edges")
+strindb_graph_rmOR <- strindb_graph_rmOR[!grepl("^OR", strindb_graph_rmOR$from),]
+strindb_graph_rmOR <- strindb_graph_rmOR[!grepl("^OR", strindb_graph_rmOR$to),]
+strindb_graph_rect <- igraph::graph.data.frame(strindb_graph_rmOR, directed = F)
+strindb_graph_rect1 <- igraph::simplify(strindb_graph_rect, remove.loops=T, remove.multiple = T)
+
+strindb_biog_graph1 <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/strindb_biog_graph1.rds")
+strindb_biog_graph1_rmOR <- igraph::as_data_frame(strindb_biog_graph1, what = "edges")
+strindb_biog_graph1_rmOR <- strindb_biog_graph1_rmOR[!grepl("^OR", strindb_biog_graph1_rmOR$from),]
+strindb_biog_graph1_rmOR <- strindb_biog_graph1_rmOR[!grepl("^OR", strindb_biog_graph1_rmOR$to),]
+strindb_biog_graph1_rect <- igraph::graph.data.frame(strindb_biog_graph1_rmOR, directed = F)
+strindb_biog_graph1_rect1 <- igraph::simplify(strindb_biog_graph1_rect, remove.loops=T, remove.multiple = T)
+
+para_fisher_fun_string_new <- function(gene_sym, graph){
+  print(gene_sym)
+ # can_net_graph <- igraph::graph.data.frame(strindb_graph, directed = F)
+ # can_net_graph1 <- igraph::simplify(can_net_graph, remove.loops=T, remove.multiple = T)
+  can_net1 <- igraph::as_data_frame(graph, what = "edges")
+  prot_np_all <- unique(can_net1[as.character(can_net1$from) %in% top_genes_enr 
+                                 & as.character(can_net1$to) %in% top_genes_enr, ])
+  uniongraph <- igraph::graph.data.frame(prot_np_all, directed = F)
+  
+  ##degree biogrid
+  deg_string <- as.numeric(igraph::degree(graph)[which(names(igraph::degree(graph)) %in% gene_sym)])
+  deg_union <- as.numeric(igraph::degree(uniongraph)[which(names(igraph::degree(uniongraph)) %in% gene_sym)])
+  deg_union <- ifelse(identical(deg_union, numeric(0)), 0, deg_union)
+    
+  #tot_biog <- igraph::vcount(can_net_graph1) ##should be edge count not vertex count
+  #tot_union <- igraph::vcount(uniongraph)
+  tot_string <- igraph::ecount(graph) 
+  tot_union <- igraph::ecount(uniongraph)
+  
+  ##test
+  #inp <- c(deg_union, deg_biog, tot_union - deg_union, tot_biog - deg_biog)
+  inp <- c(deg_union, deg_string, tot_union, tot_string)
+  mgrb_tsg <- matrix(inp ,nrow = 2, ncol = 2)
+  colnames(mgrb_tsg) <- c("deg_enr", "deg_bio")
+  rownames(mgrb_tsg) <- c("Enriched", "Biog")
+  #ft <- fisher.test(mgrb_tsg, alternative = "greater")
+  ft <- fisher.test(mgrb_tsg, conf.int = T, conf.level = 0.95)
+  ft_df <- cbind.data.frame("gene_str" =  gene_sym, "degree_str" = deg_union, "PPI_p_val_wt_str" = ft$p.value,
+                            "CI_lower_str" = ft$conf.int[1],
+                            "CI_upper_str" = ft$conf.int[2],
+                            "OR_str" = ft$estimate)
+  #"degree_str" = deg_union, 
+  return(ft_df)
+}
+
+
+library(doParallel)
+library(doMC)
+registerDoMC(30)
+
+##for string_db
+para_fish_str <- list()
+system.time(para_fish_str <- foreach(i=1:length(top_genes_enr), .errorhandling = 'remove') %dopar% 
+{para_fisher_fun_string_new(top_genes_enr[i],strindb_graph_rect1)})
+fisher_res_str <- do.call("rbind.data.frame",para_fish_str)
+
+##for combined biogrid and string_db
+para_fish_str_bio <- list()
+system.time(para_fish_str_bio <- foreach(i=1:length(top_genes_enr), .errorhandling = 'remove') %dopar% 
+{para_fisher_fun_string_new(top_genes_enr[i],strindb_biog_graph1_rect1)})
+fisher_res_str_bio <- do.call("rbind.data.frame",para_fish_str_bio)
+
+##QC with complex proteins
+# fisher_res_str_bio[fisher_res_str_bio$gene_str %in% c("TP53", "NF1", "POT1", "TINF2", "TERF1",
+#                                                           "DLG1", "GRIN2A", "GRIA1", "CAM2KB", "CAM2KD",
+#                                                           "CEP63", "CEP72", "HAUS4", "HAUS5",
+#                                                           "ZBTB16", "ATG7", "ASB10", "ASB8", "FBXO7", "TRIM4",
+#                                                           "PCM1",
+#                                                           "CENPC", "CENPF", "BUB1", "BUB1B", "AURKB", "RANGAP1", "RACGAP1", "MAD2L2",
+#                                                       "TCP1", "CCT2", "CCT6A",
+#                                                           "PRPF4", "DHX9", "DHX16", "SF3A1", "CPSF3", "PPIL3",
+#                                                           "L3MBTL3"),]
+
+ppi_res_fil_final_comb <- cbind.data.frame(ppi_res_fil_final,fisher_res_str, fisher_res_str_bio)
+colnames(ppi_res_fil_final_comb)[32:37] <- paste0(colnames(ppi_res_fil_final_comb)[32:37], "_biog")
+
+#write.table(ppi_res_fil_final_comb, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/ppi_res_fil_final_SKATbin_comb_str_biog_Aug31.tsv", sep = "\t", row.names = F, quote = F)
+write.table(ppi_res_fil_final_comb, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT_disc/ppi_res_fil_final_SKATbin_comb_str_biog_Aug31_noOlfac_230920.tsv", sep = "\t", row.names = F, quote = F)
+
+```
+
+##Peron-Frobenius eigen values to rank genes in the combined network
+```{r}
+top_genes_enr <- ppi_res_fil_final_comb$gene
+#biog + stringdb
+#can_net1 <- igraph::as_data_frame(strindb_biog_graph1, what = "edges")
+#biogrid (use biogrid as it is less noisy than stringdb)
+can_net_graph <- igraph::graph.data.frame(can_net, directed = F)
+can_net_graph1 <- igraph::simplify(can_net_graph, remove.loops=T, remove.multiple = T)
+
+graph_centrality <- function(graph){
+
+can_net1 <- igraph::as_data_frame(graph, what = "edges")
+  prot_np_all <- unique(can_net1[as.character(can_net1$from) %in% top_genes_enr 
+                                 & as.character(can_net1$to) %in% top_genes_enr, ])
+  uniongraph_comb <- igraph::graph.data.frame(prot_np_all, directed = F)
+  ##similar to eigen_centrality function
+  wt_nodes <- eigen_centrality(uniongraph_comb)
+  return(wt_nodes)
+}
+#biogrid
+eigen_wt_nodes_biog <- graph_centrality(can_net_graph1)
+eigen_wt_nodes_biog_vec <- as.data.frame(eigen_wt_nodes_biog[[1]])
+eigen_wt_nodes_biog_vec$gene <- rownames(eigen_wt_nodes_biog_vec)
+#stringdb
+#Delete olfactory receptor genes(do this in next round for methods paper)
+# strindb_graph_rmOR <- igraph::as_data_frame(strindb_graph, what = "edges")
+# strindb_graph_rmOR <- strindb_graph_rmOR[!grepl("^OR", strindb_graph_rmOR$from),]
+# strindb_graph_rmOR <- strindb_graph_rmOR[!grepl("^OR", strindb_graph_rmOR$to),]
+# strindb_graph_rect <- igraph::graph.data.frame(strindb_graph_rmOR, directed = F)
+# eigen_wt_nodes_str <- graph_centrality(strindb_graph_rect)
+eigen_wt_nodes_str <- graph_centrality(strindb_graph_rect1)
+eigen_wt_nodes_str_vec <- as.data.frame(eigen_wt_nodes_str[[1]])
+eigen_wt_nodes_str_vec$gene <- rownames(eigen_wt_nodes_str_vec)
+#stringdb + biogrid
+eigen_wt_nodes_str_biog <- graph_centrality(strindb_biog_graph1_rect1)
+eigen_wt_nodes_str_biog_vec <- as.data.frame(eigen_wt_nodes_str_biog[[1]])
+eigen_wt_nodes_str_biog_vec$gene <- rownames(eigen_wt_nodes_str_biog_vec)
+#  eigen_wt_nodes_srt <- eigen_wt_nodes[[1]][order(eigen_wt_nodes[[1]], decreasing = T)]
+#  head(eigen_wt_nodes[[1]][order(eigen_wt_nodes[[1]], decreasing = T)],30)
+#deg_graph <- igraph::degree(graph = uniongraph_comb)
+#deg_graph_srt <- deg_graph[order(deg_graph, decreasing = T)]
+#eigen_wt_nodes_srt_df <- as.data.frame(eigen_wt_nodes_srt)
+#eigen_wt_nodes_srt_df$gene <- rownames(eigen_wt_nodes_srt_df)
+ppi_res_fil_final_comb$eigen_wt_biog <- eigen_wt_nodes_biog_vec[match(ppi_res_fil_final_comb$gene,
+                                                          eigen_wt_nodes_biog_vec$gene),1]
+ppi_res_fil_final_comb$eigen_wt_str <- eigen_wt_nodes_str_vec[match(ppi_res_fil_final_comb$gene,
+                                                          eigen_wt_nodes_str_vec$gene),1]
+ppi_res_fil_final_comb$eigen_wt_str_biog <- eigen_wt_nodes_str_biog_vec[match(ppi_res_fil_final_comb$gene,
+                                                          eigen_wt_nodes_str_biog_vec$gene),1]
+set.seed(23334556)
+ppi_res_fil_final_comb[ppi_res_fil_final_comb$degree == 0,]$eigen_wt_biog <- sample(seq(0.00001, 0.0001, 0.001), size = 580, replace = T)
+set.seed(233345561)
+ppi_res_fil_final_comb[ppi_res_fil_final_comb$degree_str == 0,]$eigen_wt_str <- sample(seq(0.00001, 0.0001, 0.001), size = 287, replace = T)
+set.seed(233345563)
+ppi_res_fil_final_comb[ppi_res_fil_final_comb$degree_str_biog == 0,]$eigen_wt_str_biog <- sample(seq(0.00001, 0.0001, 0.001), size = 192, replace = T)
+
+#ppi_res_fil_final_comb[ppi_res_fil_final_comb$eigen_wt_biog == 0,]$eigen_wt_biog <- sample(seq(0.00001, 0.0001, 0.001), size = 5, replace = T)
+ppi_res_fil_final_comb[ppi_res_fil_final_comb$eigen_wt_str == 0,]$eigen_wt_str <- sample(seq(0.00001, 0.0001, 0.001), size = 12, replace = T)
+#ppi_res_fil_final_comb[ppi_res_fil_final_comb$eigen_wt_str_biog == 0,]$eigen_wt_str_biog <- sample(seq(0.00001, 0.0001, 0.001), size = 13, replace = T)
+
+set.seed(233345563)
+ppi_res_fil_final_comb[ppi_res_fil_final_comb$degree == 0,]$PPI_p_val_wt <- sample(seq(0.990, 0.999, 0.00001), size = 580, replace = F)
+set.seed(233345563)
+ppi_res_fil_final_comb[ppi_res_fil_final_comb$degree_str == 0,]$PPI_p_val_wt_str <- sample(seq(0.990, 0.999, 0.00001), size = 287, replace = F)
+set.seed(233345563)
+ppi_res_fil_final_comb[ppi_res_fil_final_comb$degree_str_biog == 0,]$PPI_p_val_wt_str_biog <- sample(seq(0.990, 0.999, 0.00001), size = 192, replace = F)
+##Liptak_Stouffer combined z-score and p-value
+#ppi_res_fil_final_comb$z_SKATbin <- -log10(ppi_res_fil_final_comb$pval_SKATbin) - mean(-log10(ppi_res_fil_final_comb$pval_SKATbin))/(sd(-log10(ppi_res_fil_final_comb$pval_SKATbin)))
+ppi_res_fil_final_comb$z_SKATbin <- abs(ppi_res_fil_final_comb$pval_SKATbin - mean(ppi_res_fil_final_comb$pval_SKATbin)/(sd(ppi_res_fil_final_comb$pval_SKATbin)))
+
+#combined network score for each gene
+comb_zscore <- function(gene_inp, ref_net){
+  net_genes <- c(unlist(strsplit(as.character(ppi_res_fil_final_comb[ppi_res_fil_final_comb$gene %in% as.character(gene_inp), 19]), ",")),as.character(gene_inp))
+  net_genes <- net_genes[!is.na(net_genes)]
+  ##SKAT p-value based Z score:product of eigen weights(for biogrid network) and zscore
+  if(ref_net %in% "biog"){
+  net_score_df <- ppi_res_fil_final_comb[ppi_res_fil_final_comb$gene %in% net_genes, c(41,38,22)]
+  if(length(net_genes) > 3){
+    net_score <- sum(net_score_df$z_SKATbin * net_score_df$eigen_wt_biog*-log10(net_score_df$PPI_p_val_wt))/(sd(net_score_df$eigen_wt_biog*-log10(net_score_df$PPI_p_val_wt)))
+}
+  else{
+  net_score <- sum(net_score_df$z_SKATbin * net_score_df$eigen_wt_biog*-log10(net_score_df$PPI_p_val_wt))/sqrt(sum(net_score_df$eigen_wt_biog*(-log10(net_score_df$PPI_p_val_wt)))^2)
+  }
+  }
+  
+  else if(ref_net %in% "str"){
+  net_score_df <- ppi_res_fil_final_comb[ppi_res_fil_final_comb$gene %in% net_genes, c(41,39,28)]
+  if(length(net_genes) > 3){
+    net_score <- sum(net_score_df$z_SKATbin * net_score_df$eigen_wt_str*-log10(net_score_df$PPI_p_val_wt_str))/(sd(net_score_df$eigen_wt_str*-log10(net_score_df$PPI_p_val_wt_str)))
+}
+  else{
+  net_score <- sum(net_score_df$z_SKATbin * net_score_df$eigen_wt_str*-log10(net_score_df$PPI_p_val_wt_str))/sqrt(sum(net_score_df$eigen_wt_str*(-log10(net_score_df$PPI_p_val_wt_str)))^2)
+  }
+  }
+  else if(ref_net %in% "str_biog"){
+  net_score_df <- ppi_res_fil_final_comb[ppi_res_fil_final_comb$gene %in% net_genes, c(41,40,34)]
+  if(length(net_genes) > 3){
+    net_score <- sum(net_score_df$z_SKATbin * net_score_df$eigen_wt_str_biog*-log10(net_score_df$PPI_p_val_wt_str_biog))/(sd(net_score_df$eigen_wt_str_biog*-log10(net_score_df$PPI_p_val_wt_str_biog)))
+}
+  else{
+  net_score <- sum(net_score_df$z_SKATbin * net_score_df$eigen_wt_str_biog*-log10(net_score_df$PPI_p_val_wt_str_biog))/sqrt(sum(net_score_df$eigen_wt_str_biog*(-log10(net_score_df$PPI_p_val_wt_str_biog)))^2)
+  }
+  }
+ # net_score <- sum(net_score_df$z_SKATbin * net_score_df$eigen_wt_biog)/(sd(net_score_df$eigen_wt_biog))
+
+  return(cbind.data.frame("gene" = as.character(gene_inp), "comb_zscore" = net_score))
+}
+
+library(doParallel)
+library(doMC)
+registerDoMC(30)
+
+##for biogrid
+para_net_score <- list()
+system.time(para_net_score <- foreach(i=1:length(top_genes_enr), .errorhandling = 'remove') %dopar% 
+{comb_zscore(top_genes_enr[i], "biog")})
+net_score_fin <- do.call("rbind.data.frame",para_net_score)
+
+##for stringdb
+para_net_score <- list()
+system.time(para_net_score <- foreach(i=1:length(top_genes_enr), .errorhandling = 'remove') %dopar% 
+{comb_zscore(top_genes_enr[i], "str")})
+net_score_fin_str <- do.call("rbind.data.frame",para_net_score)
+
+##for string_biogrid
+para_net_score <- list()
+system.time(para_net_score <- foreach(i=1:length(top_genes_enr), .errorhandling = 'remove') %dopar% 
+{comb_zscore(top_genes_enr[i],"str_biog")})
+net_score_fin_str_biog <- do.call("rbind.data.frame",para_net_score)
+
+##Add z-transforms and p-values
+zscore2pval <- function(net_df){
+  net_df$degree <- ppi_res_fil_final_comb[match(net_df$gene, ppi_res_fil_final_comb$gene),18]
+net_df <- net_df[order(net_df$comb_zscore, decreasing = T),]
+mean_x <- mean(net_df$comb_zscore)
+sd_x <- sd(net_df$comb_zscore)
+net_df$z_tran <- (net_df$comb_zscore - mean_x)/(sd_x/sqrt(length(net_df$comb_zscore)))
+net_df$pval_norm <- pnorm(net_df$z_tran, lower.tail=FALSE)
+net_df_pval <- net_df
+  return(net_df_pval)
+}
+net_pval_fin_biog <- zscore2pval(net_score_fin)
+net_pval_fin_str <- zscore2pval(net_score_fin_str)
+colnames(net_pval_fin_str)[4:5] <- paste0(colnames(net_pval_fin_str)[4:5], "_str")
+net_pval_fin_str_biog <- zscore2pval(net_score_fin_str_biog)
+colnames(net_pval_fin_str_biog)[4:5] <- paste0(colnames(net_pval_fin_str_biog)[4:5], "_str_biog")
+net_pval_fin <- cbind.data.frame(net_pval_fin_biog, net_pval_fin_str, net_pval_fin_str_biog)
+net_pval_fin[,6:10] <- net_pval_fin[match(net_pval_fin[,1], net_pval_fin[,6]),6:10]
+net_pval_fin[,11:15] <- net_pval_fin[match(net_pval_fin[,1], net_pval_fin[,11]),11:15]
+
+ppi_res_fil_final_comb[,42:47] <- net_pval_fin[match(ppi_res_fil_final_comb$gene, net_pval_fin[,1]),c(4:5, 9:10,14:15)]
+##test
+g1 <- c("TP53", "NF1", "POT1", "TINF2", "TERF1",
+        "DLG1", "GRIN2A", "GRIA1", "GRM4", "CAM2KB", "CAM2KD",
+        "CEP63", "CEP72", "HAUS4", "HAUS5",
+        "ZBTB16", "ATG7", "ASB10", "ASB8", "FBXO7", "TRIM4",
+        "PCM1",
+        "CENPC", "CENPF", "BUB1", "BUB1B", "AURKB", "RANGAP1", "RACGAP1", "MAD2L2",
+        "TCP1", "CCT2", "CCT6A",
+        "PRPF4", "DHX9", "DHX16", "SF3A1", "CPSF3", "PPIL3",
+        "L3MBTL3")
+
+##  
+
+#write.table(ppi_res_fil_final_comb, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/ppi_res_fil_final_SKATbin_comb_str_biog_Aug31.tsv", sep = "\t", row.names = F, quote = F)
+write.table(ppi_res_fil_final_comb, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT_disc/ppi_res_fil_final_SKATbin_comb_str_biog_Aug31_noOlfac_230920.tsv", sep = "\t", row.names = F, quote = F)
+
+```
+
+
+##clique detection with combined biogrid and string_db networks
+```{r}
+
+##too many cliques and the graph is too crowded
+top_genes <- as.character(ppi_res_fil_final_comb[ppi_res_fil_final_comb$PPI_p_val_wt_str_biog < 0.01 & 
+                                                   ppi_res_fil_final_comb$MGRB <= 14,]$gene)
+#can_net_graph <- igraph::graph.data.frame(can_net, directed = F)
+#can_net_graph1 <- igraph::simplify(can_net_graph, remove.loops=T, remove.multiple = T)
+can_net1 <- igraph::as_data_frame(strindb_biog_graph1, what = "edges")
+prot_np_all <- unique(can_net1[as.character(can_net1$from) %in% top_genes 
+                               & as.character(can_net1$to) %in% top_genes, ])
+
+uniongraph <- igraph::graph.data.frame(prot_np_all, directed = F)
+
+te1 <- cliques(uniongraph, min=4)
+cpx <- names(unlist(te1))
+cpx_np_all <- unique(can_net1[as.character(can_net1$from) %in% cpx 
+                               & as.character(can_net1$to) %in% cpx, ])
+cpx_graph <- igraph::graph.data.frame(cpx_np_all, directed = F)
+cpx_graph <- igraph::simplify(cpx_graph, remove.loops=T, remove.multiple = T)
+net_mat_t_list <- get.adjacency(cpx_graph, type=c("both"), attr=NULL, names=TRUE, sparse = FALSE)
+net_new_t_list <- network(net_mat_t_list, directed = FALSE)
+network.vertex.names(net_new_t_list) <- V(cpx_graph)$name
+#gnet <- ggnet2(net_new_t_list, alpha = 0.75, edge.alpha = 0.5, label = TRUE, label.size = 3,  mode = #"kamadakawai") + theme(legend.position = "bottom") + theme(legend.title = element_blank())
+  
+gnet <- ggnet2(net_new_t_list, alpha = 0.75, edge.alpha = 0.5, label = TRUE, label.size = 3,  mode = "kamadakawai")
+  gnet
+```
+
+##enriched POINT complexes plot
+```{r}
+
+strindb_biog_graph1 <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/strindb_biog_graph1.rds")
+Extn_sheltrin <- c("POT1", "TINF2", "TERF1","TCP1", "CCT2", "CCT6A", "SMARCAL1",  "TIMELESS",  "STAG3",  "NBN",  "ERCC1",  "ATR",  "MAP3K4",  "ACD",  "TERF2IP",  "TERF2")
+
+NMDA_AMPA <- c("DLG1", "GRIN2A", "GRIA1", "GRM4", "CAM2KB", "CAM2KD", "GRIK4", "CACNG2", "CACNG4")
+
+Ext12_cmpx <- c("EXT1", "EXT2", "SDC1")
+
+centro_cmpx <- c("CEP63", "CEP72", "HAUS4", "HAUS5", "MZT1", "SSNA1", "CEP57")
+
+pos_TP53 <- c("TP53")
+
+comb_genes <- c(Extn_sheltrin, NMDA_AMPA, Ext12_cmpx, centro_cmpx, pos_TP53)
+
+library(ggnet)
+#library(statnet)
+ISKS_MGRB_2020_rnd3 <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/all_isksmgrb_skatinp_combset2020_clin_C3C4C5_NFE0002_AD_rm_dup_freeze.tsv", sep = "\t", header = T, stringsAsFactors = F)
+plot_graph_cust <- function(cmpx, graph){
+  can_net1 <- igraph::as_data_frame(graph, what = "edges")
+weights_df <- ISKS_MGRB_2020_rnd3[ISKS_MGRB_2020_rnd3$gene %in% cmpx ,]
+prot_np_all <- unique(can_net1[as.character(can_net1$from) %in% weights_df$gene 
+                               & as.character(can_net1$to) %in% weights_df$gene, ])
+cpx_graph <- igraph::graph.data.frame(prot_np_all, directed = F)
+net_mat_t_list <- get.adjacency(cpx_graph, type=c("both"), attr=NULL, names=TRUE, sparse = FALSE)
+net_new_t_list <- network(net_mat_t_list, directed = FALSE)
+network.vertex.names(net_new_t_list) <- V(cpx_graph)$name
+wt_diff_ord <- weights_df[match(V(cpx_graph)$name,weights_df$gene),6]
+wt_diff_ord <- ifelse(wt_diff_ord < 0, 0, wt_diff_ord)
+net_new_t_list %v% "wt_diff" = wt_diff_ord
+pg1 <- ggnet2(net_new_t_list, alpha = 0.75, edge.alpha = 1, size = "wt_diff", 
+       label = TRUE, label.size = 3, node.color = "red", legend.position = "", mode = "kamadakawai")
+return(pg1)
+}
+#fruchtermanreingold
+#"kamadakawai"
+# shelt <- plot_graph_cust(Extn_sheltrin, strindb_biog_graph1) 
+# NMDA <- plot_graph_cust(NMDA_AMPA, strindb_biog_graph1) 
+# ext12 <- plot_graph_cust(Ext12_cmpx, strindb_biog_graph1) 
+# centro <- plot_graph_cust(centro_cmpx, strindb_biog_graph1) 
+
+All_comb <- plot_graph_cust(comb_genes, strindb_biog_graph1) #use this
+#multiplot(shelt, NMDA, ext12, centro, cols = 2)
+All_comb
+```
+
+##community detection
+```{r}
+can_net1 <- igraph::as_data_frame(strindb_biog_graph1, what = "edges")
+weights_df <- ISKS_MGRB_2020_rnd3[ISKS_MGRB_2020_rnd3$gene %in% comb_genes ,]
+prot_np_all <- unique(can_net1[as.character(can_net1$from) %in% weights_df$gene 
+                               & as.character(can_net1$to) %in% weights_df$gene, ])
+cpx_graph <- igraph::graph.data.frame(prot_np_all, directed = F)
+V(cpx_graph)$label.cex <- 0.7
+
+cfg <- cluster_fast_greedy(cpx_graph)
+plot(cfg, cpx_graph)
+
+```
+
+##Gene complex phenotype comparisons
+```{r}
+source("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/git_proj_rvas/Comb_set_round2/ISKS_MGRB_2020/ISKS_AR_AD/Aug31_freeze/gene_cmx_cmp_OR_AR_AD.R")
+
+```
+
+##Validation using LOO approach; output summarised here
+```{r}
+#source("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/git_proj_rvas/Comb_set_round2/ISKS_MGRB_2020/ISKS_AR_AD/Replication/fisher_rep_test.R")
+library(ggpubr)
+library(reshape2)
+cpx_name_all <- c("Shelterin", "Glutamate_NMDA", "ZBTB16_complex", "CEP_HAUS", "CENP_complex", 
+                     "TCP1_complex", "PRPF4_complex", "BRCA_genes", "SARC_genes")
+
+#test_pval <- list()
+plot_val_data <- function(cmpx_name,plot_type = c("box", "dens"), p_val_vec = NULL){
+  dens_plot <- list()
+  box_plots <- list()
+#  test_pval_disc <- list()
+#  test_pval_rep <- list()
+df1_disc <- read.delim(paste0("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Validation/",cmpx_name,"_fisher.disc.tsv"),
+                       sep = "\t", header = T, stringsAsFactors = F )
+df1_rep <- read.delim(paste0("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS/round2/Validation/",cmpx_name,"_fisher.rep.tsv"),
+                      sep = "\t", header = T, stringsAsFactors = F )
+
+disc_melt <- melt(df1_disc[,2:3])
+rep_melt <- melt(df1_rep[,2:3])
+
+if(p_val_vec == 1){
+  test_pval_disc <- wilcox.test(x = df1_disc$Cases, y = df1_disc$Controls, alternative = "greater")$p.value
+  test_pval_rep <- wilcox.test(x = df1_rep$Cases, y = df1_rep$Controls, alternative = "greater")$p.value
+  
+  test_pval <- cbind.data.frame("pval_disc" = test_pval_disc, "pval_rep" = test_pval_rep)
+  return(test_pval)
+}
+
+if(plot_type == "box"){
+ # my_comparisons <- list( c("Cases", "Controls"))
+p <- ggboxplot(disc_melt, x = "variable", y = "value",
+               color = "variable", legend = "none")
+p <- p + stat_compare_means(method = "wilcox.test", method.args = list(alternative = "less"), label = "p.signif") + ggtitle(paste0(cmpx_name, "_disc")) + theme(plot.title = element_text(size = 10, face = "bold")) + xlab("") + ylab("")
+
+p1 <- ggboxplot(rep_melt, x = "variable", y = "value",
+                color = "variable", legend = "none")
+p1 <- p1 + stat_compare_means(method = "wilcox.test", method.args = list(alternative = "less"), label = "p.signif") + ggtitle(paste0(cmpx_name, "_rep")) + theme(plot.title = element_text(size = 10, face = "bold")) + xlab("") + ylab("")
+
+box_plots <- list(p, p1)
+return(box_plots)
+}
+
+else if(plot_type == "dens"){
+p <- ggplot(disc_melt, aes(x=value, fill=variable)) + geom_density(alpha=0.5, position="identity") + 
+  ggtitle(cmpx_name) + theme(plot.title = element_text(size = 10, face = "bold"))
+
+p1 <- ggplot(rep_melt, aes(x=value, fill=variable)) + geom_density(alpha=0.5, position="identity") + 
+  ggtitle(cmpx_name) + theme(plot.title = element_text(size = 10, face = "bold"))
+dens_plots <- list(p, p1)
+return(dens_plots)
+}
+
+}
+
+##multiplot
+#source("~/APCluster_graphs/case_TCGA_new_PRAD_3431/multi_plot.R")
+
+box_plot_all <- list()
+for(i in 1:length(cpx_name_all)){
+  box_plot_all[[i]] <- plot_val_data(cpx_name_all[i], "box", p_val_vec = 0)
+}
+
+l1_disc <- lapply(box_plot_all, function(x)x[[1]])
+multiplot(plotlist = l1_disc, cols = 3)
+l1_rep <- lapply(box_plot_all, function(x)x[[2]])
+multiplot(plotlist = l1_rep, cols = 3)
+
+pval_all <- list()
+for(i in 1:length(cpx_name_all)){
+  pval_all[[i]] <- plot_val_data(cpx_name_all[i], "", p_val_vec = 1)
+}
+
+pval_all_df <- do.call("rbind.data.frame", pval_all)
+pval_all_df$cpx <- cpx_name_all
+rownames(pval_all_df) <- cpx_name_all
+pval_all_df_melt <- melt(pval_all_df)
+library(scales)
+#library(hrbrthemes)
+q <- ggplot(pval_all_df_melt, aes(x = variable,y = cpx, fill = value)) + 
+  geom_tile() + scale_fill_distiller(palette = "PRGn") + theme(legend.position="bottom")
+q
+
+```
+
+
+##Jaccard similarity based filtering and merging of cliques
+```{r}
+##similarity filter (Jaccard similarity)
+library(arrangements)
+make_matrix <- function(cliq_list) {
+  
+  comb <- combinations(names(cliq_list), 2, replace = F)
+ # comb_ind <- apply(comb, 1, function(x) ifelse(x[1] == x[2], 0, 1))
+ # comb <- comb[which(comb_ind == 1),]
+  prct <- list()
+  a_len <- list()
+  b_len <- list()
+  a_len_ov <- list()
+  b_len_ov <- list()
+  for (i in 1:nrow(comb)) {
+  #  a <- unlist(strsplit(as.character(exemp_df_L1[exemp_df_L1$L1 == comb[i, 1],]$mods), ","))
+  #  b <- unlist(strsplit(as.character(exemp_df_L1[exemp_df_L1$L1 == comb[i, 2],]$mods), ","))
+    a <- cliq_list[[comb[i,1]]]
+    b <- cliq_list[[comb[i,2]]]
+    prct[[i]] <- 2 * length(intersect(a, b)) / (length(a) + length(b))
+    a_len[[i]] <- length(a) 
+    b_len[[i]] <- length(b)
+    a_len_ov[[i]] <- length(a[a %in% b])/length(a)
+    b_len_ov[[i]] <- length(b[b %in% a])/length(b)
+    # cat("\nMatching between", comb[i, 1], "and", comb[i, 2], "is", prct)
+  }
+  
+  comb1 <- cbind.data.frame(comb, "perc" = unlist(prct), "c1" = unlist(a_len), "c2" = unlist(b_len),
+                            "c1_perc_ov" = unlist(a_len_ov), "c2_perc_ov" = unlist(b_len_ov),
+                            stringsAsFactors=FALSE)
+  colnames(comb1)[1] <- "m1"
+  colnames(comb1)[2] <- "m2"
+  
+  return(comb1)
+ 
+}
+
+ppi_res_fil_final <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/ppi_res_fil_final_SKATbin.tsv", sep = "\t", header = T)
+top_genes <- as.character(ppi_res_fil_final$gene)
+can_net_graph <- igraph::graph.data.frame(can_net, directed = F)
+can_net_graph1 <- igraph::simplify(can_net_graph, remove.loops=T, remove.multiple = T)
+can_net1 <- igraph::as_data_frame(can_net_graph1, what = "edges")
+prot_np_all <- unique(can_net1[as.character(can_net1$from) %in% top_genes 
+                               & as.character(can_net1$to) %in% top_genes, ])
+
+uniongraph <- igraph::graph.data.frame(prot_np_all, directed = F)
+
+te1 <- cliques(uniongraph, min=4)
+
+te2 <- lapply(te1, function(x)names(x))
+names(te2) <- paste0("cliq_", 1:length(te2))
+
+Jacc_mat <- make_matrix(te2)
+merg_cliq_60 <- Jacc_mat[Jacc_mat$perc >= 0.6,]
+
+merge_cliq <- function(jac_mat){
+  merged_cliq <- list()
+  for(i in 1:dim(jac_mat)[1]){
+    merged_cliq[[i]] <- c(te2[[jac_mat$m1[i]]], te2[[jac_mat$m2[i]]])
+  }
+  merg_cliq_ind <- ifelse(jac_mat$c1 >= jac_mat$c2, jac_mat$m1, jac_mat$m2)
+  names(merged_cliq) <- merg_cliq_ind
+  return(merged_cliq)
+}
+
+te3 <- merge_cliq(merg_cliq_60)
+merged_te3 <- list()
+for(j in 1:length(unique(names(te3)))){
+merged_te3[[j]] <- unique(unlist(te3[names(te3) %in% unique(names(te3))[j]]))
+}
+names(merged_te3) <- unique(names(te3))
+
+g1 <- induced_subgraph(uniongraph, merged_te3[[6]])
+plot(g1)
+
+##round2 merge
+Jacc_mat3 <- make_matrix(merged_te3)
+merg_cliq_100 <- Jacc_mat3[Jacc_mat3$perc == 1,]
+merg_cliq_100_rm <- unique(merg_cliq_100$m2)
+merg_cliq_75 <- Jacc_mat3[Jacc_mat3$perc >= 0.75,]
+merg_cliq_75 <- merg_cliq_75[merg_cliq_75$m1 %nin% merg_cliq_100_rm,]
+merg_cliq_75 <- merg_cliq_75[merg_cliq_75$m2 %nin% merg_cliq_100_rm,]
+
+te4 <- merge_cliq(merg_cliq_75)
+merged_te4 <- list()
+for(j in 1:length(unique(names(te4)))){
+merged_te4[[j]] <- unique(unlist(te4[names(te4) %in% unique(names(te4))[j]]))
+}
+names(merged_te4) <- unique(names(te4))
+
+#https://stackoverflow.com/questions/48997146/r-igraph-find-all-maximal-cliques-without-overlapping
+# tes1 <- maximal.cliques(uniongraph)
+# tes2 <- lapply(tes1, function(x)names(x))
+# cliqueBP <- matrix(c(rep(paste0("cl", seq_along(tes2)), sapply(tes2, length)), names(unlist(tes2))), ncol=2)
+# bp <- graph_from_edgelist(cliqueBP, directed = F)
+# V(bp)$type <- grepl("cl", V(bp)$name)
+# # plot(bp, layout=layout_as_bipartite)
+# 
+# bp.ind <- t(as_incidence_matrix(bp))
+# bp.adj <- bp.ind %*% t(bp.ind)
+# 
+# bp.adj.g <- graph_from_adjacency_matrix(bp.adj, mode = "undirected")
+# # plot(simplify(bp.adj.g))
+# #NP-complete bottlenect met, don't use
+# #bp.adj.mis <- independent.vertex.sets(bp.adj.g)
+# 
+# sets <- lapply(bp.adj.mis, function(x) cliqueBP[cliqueBP[,1] %in% as_ids(x), 2])
+# sets_fin <- sets[which(sapply(sets, length) == max(sapply(sets, length)))]
+# 
+# g1 <- induced_subgraph(uniongraph,sets_fin[[30]])
+# plot(g1)
+# 
+
+
+```
+
+
+##Volcano plot for enriched and protective variants
+
+```{r}
+
+##change input as per requirement
+var_all_45 <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/Sep05_rect_ASP_graph_final_cmaf_new_score_volcano.tsv", sep = "\t", header = T)
+var_all_45$rank_score <-  -log10(var_all_45[,14]) * var_all_45[,6] 
+                                                    
+var_all_45 <- var_all_45[order(var_all_45[,17], decreasing = T),] ##added intra cohort MAF filtered variant positions
+
+results = mutate(var_all_45, sig=ifelse(var_all_45$wt_diff  <= -100 | var_all_45$wt_diff >= 100, "Sig", "Not Sig"))
+
+results$nom <- ifelse(results$pval_SKATbin < 0.1 & results$sig == "Sig", "high", "low")
+
+results$log_wt_diff <- ifelse(results$wt_diff > 0, log(results$wt_diff), -log(abs(results$wt_diff)))
+
+results <- results[!is.infinite(results$log_wt_diff),]
+
+p = ggplot(results, aes(log_wt_diff, -log10(pval_SKATbin))) +
+  geom_point(aes(col=nom)) + scale_color_manual(values=c("red", "black"))
+
+#p1 <- p + geom_text_repel(data=filter(results, nom == "high"), aes(label=gene)) + theme(legend.position = "none")
+
+```
+
+##Weighted gene set enrichment
+##https://cran.r-project.org/web/packages/enrichR/vignettes/enrichR.html
+##install from github
+```{r}
+library(enrichR)
+# dbs <- listEnrichrDbs()
+# if (is.null(dbs)) websiteLive <- FALSE
+# if (websiteLive) head(dbs)
+
+#dbs <- listEnrichrDbs()
+
+dbs <- c("GO_Molecular_Function_2015", "GO_Cellular_Component_2015", "GO_Biological_Process_2015")
+#if (websiteLive) enriched <- enrichr(c("Runx1", "Gfi1", "Gfi1b", "Spi1", "Gata1", "Kdr"), dbs)
+#enriched <- enrichr(c("Runx1", "Gfi1", "Gfi1b", "Spi1", "Gata1", "Kdr"), dbs)
+##loop over the interactors of each protein and report the top pathway and p-value
+
+#gender_PC123_cont_df from line 285
+enrichr_fun <- function(gene_sym, fil_graph){
+  enrichr_df <- list()
+  for(i in 1:length(gene_sym)){
+    print(i)
+  fil_genes <- fil_graph[grep(paste("^", as.character(gene_sym[i]), "$", sep = ""), fil_graph$gene),]
+  if(fil_genes$degree == 0){ 
+    enrichr_df[[i]] <- NULL 
+    }
+  else{
+prot <- c(as.character(gene_sym[i]), unlist(strsplit(fil_genes$int, split = ",")))
+dbs <- c("GO_Molecular_Function_2015", "GO_Cellular_Component_2015", "GO_Biological_Process_2015")
+enriched <- enrichr(prot, dbs)
+print(length(enriched))
+   enrichr_df[[i]] <- cbind.data.frame("gene_hub" =  gene_sym[i], "GO_MF" = enriched[[1]]$Term[1],
+                                       "GO_MF_p_val" = enriched[[1]]$P.value[1],
+                                       "GO_CC" = enriched[[2]]$Term[1],
+                                       "GO_CC_p_val" = enriched[[2]]$P.value[1],
+                                       "GO_BP" = enriched[[3]]$Term[1],
+                                       "GO_BP_p_val" = enriched[[3]]$P.value[1])
+  
+  }
+  
+  }
+  return(enrichr_df)
+}
+
+ppi_res_fil_final <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/ppi_res_fil_final_SKATbin_wt_fisher.tsv", sep = "\t", header = T, stringsAsFactors = F)
+
+ppi_res_fil_final <- ppi_res_fil_final[!is.na(ppi_res_fil_final$gene),]
+goNet_enrich <- enrichr_fun(ppi_res_fil_final$gene, ppi_res_fil_final)
+goNet_enrich_res <- do.call("rbind.data.frame",goNet_enrich)
+saveRDS(goNet_enrich_res, file = "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/goNet_enrich_res_isks_combset2020.rds", compress = T)
+
+#goNet_enrich_res <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS/round2/goNet_enrich_res_isks_combset2020.rds")
+
+
+#ppi_res_fil_final <- ppi_res_fil_final[!is.na(ppi_res_fil_final$gene),]
+fil_graph_final_comb_GO <- ppi_res_fil_final
+
+#fil_graph_final_comb_GO <- cbind.data.frame(fil_graph_final, goNet_enrich_res)
+fil_graph_final_comb_GO[,c(31:36)] <- goNet_enrich_res[match(fil_graph_final_comb_GO$gene, goNet_enrich_res$gene_hub),c(2:7)]
+
+##combine p-values: Fisher's method (basic)
+#comb_fisher <- function(p_val_vec){
+#  c_pval <- pchisq(sum(log(p_val_vec)*-2), df = 2*length(p_val_vec), lower.tail = F)
+#  return(c_pval)
+#}
+
+fil_graph_final_comb_GO <- fil_graph_final_comb_GO[,c(1:10,14,18:25,27,30:36)]
+#inp_pval <- fil_graph_final_comb_GO[,c(13,18)]
+#fil_graph_final_comb_GO$comb_pval <- apply(inp_pval, 1, comb_fisher)
+write.table(fil_graph_final_comb_GO, 
+file = "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/ISKS_combset2020_final_PPI_comb_GO.tsv", sep = "\t", row.names = F, quote = F)
+
+```
+
+##Degrees from Stringdb network
+```{r}
+library(STRINGdb)
+string_db <- STRINGdb$new(version="10", species=9606,
+                          score_threshold=400, input_directory="" )
+full.graph <- string_db$get_graph()
+
+string_proteins <- string_db$get_proteins()
+
+
+
+#gender_PC123_cont_df <- Exome_pc123_srt_SKAT_case_enr_nCH_ranked[[4]]
+gender_PC123_mapped <- string_db$map( ppi_res_fil_final, "gene", removeUnmappedRows = F )
+
+string_ints <- string_db$get_interactions(string_ids = gender_PC123_mapped$STRING_id)
+
+string_pubs <- string_db$get_pubmed(string_ids = gender_PC123_mapped$STRING_id[1:300])
+
+get_stringdb_degree <- function(enr_df){
+  
+gender_PC123_mapped <- string_db$map( enr_df, "gene", removeUnmappedRows = TRUE )
+
+#skat_genes_top100 <- as.character(enr_df[,3])
+
+#can_net <- read.delim("~/VDLab_scripts/BioGrid/biogrid_db_all_subnet.sif", header = T, sep = " ", stringsAsFactor = F)
+
+#can_net_graph <- igraph::graph.data.frame(full.graph, directed = F)
+can_net_graph1 <- igraph::simplify(full.graph, remove.loops=T, remove.multiple = T)
+can_net1 <- igraph::as_data_frame(can_net_graph1, what = "edges")
+prot_np_all <- unique(can_net1[as.character(can_net1$from) %in% gender_PC123_mapped$STRING_id 
+                               & as.character(can_net1$to) %in% gender_PC123_mapped$STRING_id, ])
+prot_np_all$sym_from <- gender_PC123_mapped[match(prot_np_all$from, gender_PC123_mapped$STRING_id), 1]
+prot_np_all$sym_to <- gender_PC123_mapped[match(prot_np_all$to, gender_PC123_mapped$STRING_id), 1]
+prot_np_all <- prot_np_all[,-c(1,2)]
+colnames(prot_np_all) <- c("from", "to")
+
+uniongraph <- igraph::graph.data.frame(prot_np_all, directed = F)
+
+ret_df <- as.data.frame(igraph::degree(uniongraph))
+ret_df$gene <- rownames(ret_df)
+colnames(ret_df)[1] <- c("degree_SDB")
+
+l1 <- lapply(ret_df[,2], function(x)igraph::as_ids(adjacent_vertices(uniongraph, v = x)[[1]]))
+l2 <- lapply(l1, function(x)paste(x, sep=",", collapse=","))
+ret_df$interactors_SDB <- unlist(l2)
+
+return(ret_df)
+}
+
+df_str_degree <- get_stringdb_degree(ppi_res_fil_final)
+ppi_res_fil_final$str_degree <- df_str_degree[match(ppi_res_fil_final$gene, df_str_degree$gene), 1]
+ppi_res_fil_final$str_int <- df_str_degree[match(ppi_res_fil_final$gene, df_str_degree$gene), 3]
+ppi_res_fil_final$str_degree <- ifelse(is.na(ppi_res_fil_final$str_degree), 0, ppi_res_fil_final$str_degree)
+ppi_res_fil_final$rank_str_PPI <- ppi_res_fil_final$rank_score * log(ppi_res_fil_final$str_degree + 2)
+
+######fisher test with string db
+genes_mapped <- string_db$map( ppi_res_fil_final, "gene", removeUnmappedRows = TRUE )
+genes_mapped <- genes_mapped[,c(1,29)]
+fisher_fun_new_str <- function(gene_sym, top_genes, graph){
+  
+#can_net_graph <- igraph::graph.data.frame(graph, directed = F)
+can_net_graph1 <- igraph::simplify(graph, remove.loops=T, remove.multiple = T)
+can_net1 <- igraph::as_data_frame(can_net_graph1, what = "edges")
+mat_id <- genes_mapped[genes_mapped$gene %in% gene_sym, ][,2]
+prot_np_all <- unique(can_net1[as.character(can_net1$from) %in% genes_mapped$STRING_id
+                               & as.character(can_net1$to) %in% genes_mapped$STRING_id, ])
+uniongraph <- igraph::graph.data.frame(prot_np_all, directed = F)
+
+##degree biogrid
+deg_biog <- igraph::degree(can_net_graph1)[which(names(igraph::degree(can_net_graph1)) %in% mat_id)]
+deg_union <- igraph::degree(uniongraph)[which(names(igraph::degree(uniongraph)) %in% mat_id)]
+#tot_biog <- igraph::vcount(can_net_graph1) ##should be edge count not vertex count
+#tot_union <- igraph::vcount(uniongraph)
+tot_biog <- igraph::ecount(can_net_graph1) 
+tot_union <- igraph::ecount(uniongraph)
+
+##test
+inp <- c(deg_union, deg_biog, tot_union, tot_biog)
+   mgrb_tsg <- matrix(inp ,nrow = 2, ncol = 2)
+   colnames(mgrb_tsg) <- c("deg_enr", "deg_bio")
+   rownames(mgrb_tsg) <- c("Enriched", "Biog")
+   #ft <- fisher.test(mgrb_tsg, alternative = "greater")
+   ft <- fisher.test(mgrb_tsg)
+   ft_df <- cbind.data.frame("gene_str" =  gene_sym, "PPI_p_val_wt_str" = ft$p.value,
+                             "CI_lower_str" = ft$conf.int[1],
+                             "CI_upper_str" = ft$conf.int[2],
+                             "OR_str" = ft$estimate)
+  
+   return(ft_df)
+}
+##run fisher test
+test_fis_str <- list()
+#genes_mapped <- string_db$map( ppi_res_fil_final, "gene", removeUnmappedRows = TRUE )
+top_genes_enr <- genes_mapped$gene
+for(i in 1:length(top_genes_enr)){
+test_fis_str[[i]] <- fisher_fun_new_str(top_genes_enr[i], genes_mapped, full.graph)
+}
+fisher_res_str <- do.call("rbind.data.frame",test_fis_str)
+
+#ppi_res_fil_final <- ppi_res_fil_final[ppi_res_fil_final$gene %in% fisher_res_str$gene_str, ]
+#ppi_res_fil_final_str <- cbind.data.frame(ppi_res_fil_final, fisher_res_str)
+
+
+
+```
+
+
+##enrichR with stringdb
+```{r}
+library(enrichR)
+# dbs <- listEnrichrDbs()
+# if (is.null(dbs)) websiteLive <- FALSE
+# if (websiteLive) head(dbs)
+
+#dbs <- listEnrichrDbs()
+
+dbs <- c("GO_Molecular_Function_2015", "GO_Cellular_Component_2015", "GO_Biological_Process_2015")
+#if (websiteLive) enriched <- enrichr(c("Runx1", "Gfi1", "Gfi1b", "Spi1", "Gata1", "Kdr"), dbs)
+#enriched <- enrichr(c("Runx1", "Gfi1", "Gfi1b", "Spi1", "Gata1", "Kdr"), dbs)
+##loop over the interactors of each protein and report the top pathway and p-value
+
+#gender_PC123_cont_df from line 285
+enrichr_fun_str <- function(gene_sym, fil_graph){
+  enrichr_df <- list()
+  for(i in 1:length(gene_sym)){
+    print(i)
+  fil_genes <- fil_graph[grep(paste("^", as.character(gene_sym[i]), "$", sep = ""), fil_graph$gene),]
+  if(fil_genes$degree == 0){ 
+    enrichr_df[[i]] <- NULL 
+    }
+  else{
+prot <- c(as.character(gene_sym[i]), unlist(strsplit(fil_genes$str_int, split = ",")))
+dbs <- c("GO_Molecular_Function_2015", "GO_Cellular_Component_2015", "GO_Biological_Process_2015")
+enriched <- enrichr(prot, dbs)
+print(length(enriched))
+   enrichr_df[[i]] <- cbind.data.frame("gene_hub_str" =  gene_sym[i], "GO_MF_str" = enriched[[1]]$Term[1],
+                                       "GO_MF_p_val_str" = enriched[[1]]$P.value[1],
+                                       "GO_CC_str" = enriched[[2]]$Term[1],
+                                       "GO_CC_p_val_str" = enriched[[2]]$P.value[1],
+                                       "GO_BP_str" = enriched[[3]]$Term[1],
+                                       "GO_BP_p_val_str" = enriched[[3]]$P.value[1])
+  
+  }
+  
+  }
+  return(enrichr_df)
+}
+
+fil_graph_final_comb_GO[,c(26:28)] <- ppi_res_fil_final[,c(26:28)]
+fil_graph_final_comb_GO <- fil_graph_final_comb_GO[!is.na(fil_graph_final_comb_GO$gene),]
+
+goNet_enrich <- enrichr_fun_str(fil_graph_final_comb_GO$gene, fil_graph_final_comb_GO)
+goNet_enrich_res <- do.call("rbind.data.frame",goNet_enrich)
+
+saveRDS(goNet_enrich_res, file = "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/discovery_set/round2/goNet_enrich_res_sep05_rect_ASP_01pval_ns_str_rnd2.rds", compress = T)
+
+#goNet_enrich_res <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/goNet_enrich_res_sep05.rds")
+
+
+#ppi_res_fil_final_str <- ppi_res_fil_final_str[!is.na(ppi_res_fil_final_str$gene),]
+#fil_graph_final_comb_GO_str <- ppi_res_fil_final_str
+
+fil_graph_final_comb_GO$PPI_p_val_wt_str <- fisher_res_str[match(fil_graph_final_comb_GO$gene, fisher_res_str$gene_str),2]
+fil_graph_final_comb_GO$OR_str <- fisher_res_str[match(fil_graph_final_comb_GO$gene, fisher_res_str$gene_str),5]
+
+#fil_graph_final_comb_GO <- fil_graph_final_comb_GO[,-c(31:32)]
+fil_graph_final_comb_GO[,c(31:36)] <- goNet_enrich_res[match(fil_graph_final_comb_GO$gene, goNet_enrich_res$gene_hub),c(2:7)]
+
+##combine p-values: Fisher's method (basic)
+comb_fisher <- function(p_val_vec){
+  c_pval <- pchisq(sum(log(p_val_vec)*-2), df = 2*length(p_val_vec), lower.tail = F)
+  return(c_pval)
+}
+
+##combine p-values of genes interacting with a protein
+get_int_comb_pval <- function(gene_vec){
+     pval_vec <- fil_graph_final_comb_GO[fil_graph_final_comb_GO$gene %in% gene_vec, 12]
+    comb_pval <- comb_fisher(pval_vec)
+ # }
+}
+#fil_graph_final_comb_GO
+##testing
+all_int <- paste(fil_graph_final_comb_GO$gene, fil_graph_final_comb_GO$int, sep = ",")
+all_int <- lapply(all_int, function(x)unlist(strsplit(as.character(x), split = ",")))
+all_int_comb_pval <- lapply(all_int, function(x)get_int_comb_pval(x))
+
+
+#fil_graph_final_comb_GO <- fil_graph_final_comb_GO[,c(1:10,13:14,17:20,22,25:31)]
+inp_pval <- fil_graph_final_comb_GO[,c(12,29)]
+fil_graph_final_comb_GO$comb_pval_str <- apply(inp_pval, 1, comb_fisher)
+fil_graph_final_comb_GO$comb_pval_str_int <- unlist(all_int_comb_pval)
+write.table(fil_graph_final_comb_GO, 
+file = "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/Sep05_rect_ASP_graph_final_PPI_comb_GO_cmaf_new_score_str.tsv", sep = "\t", row.names = F, quote = F)
+
+```
+
+
+##GO meta analysis
+```{r}
+library("tm")
+library("SnowballC")
+library("wordcloud")
+library("RColorBrewer")
+
+CC_terms <- fil_graph_final_comb_GO$GO_CC
+CC_terms <- gsub(" \\(GO*.*$","", CC_terms)
+CC_terms <- CC_terms[!is.na(CC_terms)]
+CC_terms_df <- as.data.frame(table(CC_terms))
+CC_terms_df <- CC_terms_df[order(CC_terms_df$Freq, decreasing = T),]
+CC_terms_df$CC_terms <- gsub(" ", "_", CC_terms_df$CC_terms)
+CC_terms_df_10 <- CC_terms_df[1:10,]
+samp_ord <- CC_terms_df_10$CC_terms
+CC_terms_df_10$CC_terms <- factor(CC_terms_df_10$CC_terms,levels=samp_ord,ordered=TRUE)
+
+#ggplot(CC_terms_df[1:10,], aes(x=as.factor(CC_terms), y = Freq)) + geom_bar(stat="identity") + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + coord_flip() + scale_y_discrete(limits = rev(levels(CC_terms_df$CC_terms)))
+
+ggplot(CC_terms_df_10, aes(x=as.factor(CC_terms), y = Freq)) + geom_bar(stat="identity") + coord_flip() + scale_x_discrete(limits = rev(levels(CC_terms_df_10$CC_terms))) + xlab("")
+
+##combine p-values of top 10 concepts
+# b1 <- fil_graph_final_comb_GO[fil_graph_final_comb_GO$GO_CC %in% "nuclear telomere cap complex",c(3,21:22)]
+# library(metaseqR)
+# b1_combp <- combine.minp(b1[,3])
+
+BP_terms <- fil_graph_final_comb_GO$GO_BP
+BP_terms <- gsub(" \\(GO*.*$","", BP_terms)
+BP_terms <- BP_terms[!is.na(BP_terms)]
+BP_terms_df <- as.data.frame(table(BP_terms))
+BP_terms_df <- BP_terms_df[order(BP_terms_df$Freq, decreasing = T),]
+BP_terms_df$BP_terms <- gsub(" ", "_", BP_terms_df$BP_terms)
+BP_terms_df_10 <- BP_terms_df[1:10,]
+samp_ord <- BP_terms_df_10$BP_terms
+BP_terms_df_10$BP_terms <- factor(BP_terms_df_10$BP_terms,levels=samp_ord,ordered=TRUE)
+
+#ggplot(BP_terms_df[1:10,], aes(x=as.factor(BP_terms), y = Freq)) + geom_bar(stat="identity") + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + coord_flip() + scale_y_discrete(limits = rev(levels(BP_terms_df$BP_terms)))
+
+ggplot(BP_terms_df_10, aes(x=as.factor(BP_terms), y = Freq)) + geom_bar(stat="identity") + coord_flip() + scale_x_discrete(limits = rev(levels(BP_terms_df_10$BP_terms))) + xlab("")
+
+
+MF_terms <- fil_graph_final_comb_GO$GO_MF
+MF_terms <- gsub(" \\(GO*.*$","", MF_terms)
+MF_terms <- MF_terms[!is.na(MF_terms)]
+MF_terms_df <- as.data.frame(table(MF_terms))
+MF_terms_df <- MF_terms_df[order(MF_terms_df$Freq, decreasing = T),]
+MF_terms_df$MF_terms <- gsub(" ", "_", MF_terms_df$MF_terms)
+MF_terms_df_10 <- MF_terms_df[1:10,]
+samp_ord <- MF_terms_df_10$MF_terms
+MF_terms_df_10$MF_terms <- factor(MF_terms_df_10$MF_terms,levels=samp_ord,ordered=TRUE)
+
+#ggplot(MF_terms_df[1:10,], aes(x=as.factor(MF_terms), y = Freq)) + geom_bar(stat="identity") + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + coord_flip() + scale_y_discrete(limits = rev(levels(MF_terms_df$MF_terms)))
+
+ggplot(MF_terms_df_10, aes(x=as.factor(MF_terms), y = Freq)) + geom_bar(stat="identity") + coord_flip() + scale_x_discrete(limits = rev(levels(MF_terms_df_10$MF_terms))) + xlab("")
+
+
+###Venn diagram
+fil_graph_final_comb_GO$GO_BP <- gsub(" \\(GO*.*$","", fil_graph_final_comb_GO$GO_BP)
+fil_graph_final_comb_GO$GO_MF <- gsub(" \\(GO*.*$","", fil_graph_final_comb_GO$GO_MF)
+fil_graph_final_comb_GO$GO_CC <- gsub(" \\(GO*.*$","", fil_graph_final_comb_GO$GO_CC)
+
+b1_cc <- fil_graph_final_comb_GO[fil_graph_final_comb_GO$GO_CC %in% "nuclear telomere cap complex",c(3,19:24)]
+b1_bp <- fil_graph_final_comb_GO[fil_graph_final_comb_GO$GO_BP %in% "regulation of telomere maintenance via telomerase",c(3,19:24)]
+b1_mf <- fil_graph_final_comb_GO[fil_graph_final_comb_GO$GO_MF %in% "telomeric DNA binding",c(3,19:24)]
+
+library(VennDiagram)
+gene_ov <- list(CC=b1_cc[,1] , BP=b1_bp[,1] , MF=b1_mf[,1])
+v0 <- venn.diagram( gene_ov, filename=NULL, 
+                    fill = c("red", "blue", "green"),
+                    alpha = 0.50,
+                    col = "transparent")
+grid.draw(v0)
+overlaps <- calculate.overlap(gene_ov)
+
+# extract indexes of overlaps from list names
+indx <- as.numeric(substr(names(overlaps),2,2))
+
+for (i in 1:length(overlaps)){
+  v0[[6 + indx[i] ]]$label <- paste(overlaps[[i]], collapse = "\n") 
+}
+grid.newpage()
+grid.draw(v0)
+```
+
+
+

@@ -1,0 +1,887 @@
+---
+title: "Manuscript_figures_all"
+author: "Swetansu Pattnaik"
+date: "13/10/2020"
+output: html_document
+---
+```{r setup, include=FALSE}
+.libPaths(c( "/home/shu/R/x86_64-redhat-linux-gnu-library/3.4", .libPaths() ) )
+`%nin%` = Negate(`%in%`)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##gene complex comparisons, please refer master script(gene_cmx_OR_AR_AD.R) at Aug31_freeze
+##generate tables
+```{r echo=FALSE, warning = FALSE}
+Shelterin <- c("POT1", "TINF2", "TERF1", "TERF2", "TERF2IP", "SMARCAL1", "STAG3", "TIMELESS")
+
+Glutamate_NMDA <- c("DLG1", "GRIN2A", "GRIA1", "CAM2KB", "CAM2KD")
+
+ZBTB16_complex <- c("ZBTB16", "ATG7", "ASB10", "ASB8", "FBXO7")
+
+CEP_HAUS_core <- c("CEP63", "CEP72", "HAUS4", "HAUS5", "MZT1", "SSNA1")
+CEP_HAUS_extn1 <- c("CEP63", "CEP72", "HAUS4", "HAUS5", "MZT1", "SSNA1", "CEP57", "PCM1")
+ppi_res_fil_final <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/ppi_res_fil_final_SKATbin_Aug31.tsv", sep = "\t", header = T)
+CEP_interactors <- as.character(ppi_res_fil_final[ppi_res_fil_final$gene %in% CEP_HAUS_core,]$int)
+CEP_interactors1 <- unique(unlist(lapply(CEP_interactors, function(x) strsplit(x, ","))))
+CEP_HAUS_SKATint_complex <- CEP_interactors1
+
+##CEP_HAUS_Biogrid_complex
+
+library(igraph)
+can_net <- read.delim("~/VDLab_scripts/BioGrid/biogrid_db_all_subnet.sif", header = T, sep = " ", stringsAsFactor = F)
+can_net_graph <- igraph::graph.data.frame(can_net, directed = F)
+can_net_graph1 <- igraph::simplify(can_net_graph, remove.loops=T, remove.multiple = T)
+can_net1 <- igraph::as_data_frame(can_net_graph1, what = "edges")
+prot_np_all <- unique(can_net1[as.character(can_net1$from) %in% CEP_HAUS_core
+| as.character(can_net1$to) %in% CEP_HAUS_core, ])
+CEP_HAUS_Biogrid_complex <- unique(c(prot_np_all$from, prot_np_all$to))
+
+CENP_complex <- c("CENPC", "CENPF", "BUB1", "BUB1B", "AURKB", "RANGAP1", "RACGAP1", "MAD2L2")
+
+TCP1_complex <- c("TCP1", "CCT2", "CCT6A")
+
+PRPF4_complex <- c("PRPF4", "DHX9", "DHX16", "SF3A1", "CPSF3", "PPIL3")
+
+Sarcoma_genes <- c("TP53", "SDHA", "SDHB", "SDHD")
+
+TP53_control <- c("TP53") #positive control
+
+MPNST_pos <- c("NF1", "LZTR1", "SDHA", "SDHB", "SDHD")
+
+#Breast_cancer_genes <- c("BRCA1", "BRCA2", "PALB2", "RAD51C", "CDH1")
+Breast_cancer_genes <- c("BRCA1", "BRCA2", "PALB2")
+#"RAD51C", "RAD51D"
+library(readxl)
+Centrosome_genes <- read_excel("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/PID/Centrosome maturation.xlsx",
+                               sheet = 1)
+Centrosome_genes <- as.data.frame(Centrosome_genes)
+Centrosome_genes <- Centrosome_genes[Centrosome_genes$MoleculeType %nin% "Chemical Compounds",]
+
+Centrosome_genes <- Centrosome_genes[,4]
+
+mito_cell_cycle <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/PID/Mitotic_cell_cycle_genes_HSA_69278.txt", header = T, stringsAsFactors = F)
+mito_HSA_69278 <- unique(as.character(mito_cell_cycle$X))
+
+##mitotic check point genes (GO term)
+mito_chk_point = read.table("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/git_proj_rvas/Comb_set_round2/ISKS_MGRB_2020/ISKS_AR_AD/mitotic_checkpoint/mitocheck_point.txt",
+                            sep = "", header = F, skip = 1, stringsAsFactors = F)
+mito_chk_point <- as.character(mito_chk_point$V1)
+
+##mito overlap
+mito_43_overlap <- mito_chk_point[mito_chk_point %in% mito_HSA_69278]
+
+#Centriole replication (GO Term)
+cent_rep <- read_excel("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/PID/centriole_replication_genes_GO.xlsx",
+                       sheet = 1)
+cent_rep <- as.data.frame(cent_rep)
+cent_rep_genes <- toupper(unique(cent_rep$Symbol)) #40 genes
+
+cpx_genes <- unique(c(Shelterin, Glutamate_NMDA, ZBTB16_complex, CEP_HAUS_core, CEP_HAUS_extn1, CEP_HAUS_SKATint_complex, 
+                      CEP_HAUS_Biogrid_complex, CENP_complex, TCP1_complex,PRPF4_complex, Breast_cancer_genes, Sarcoma_genes, 
+                      Centrosome_genes, mito_HSA_69278, mito_chk_point, mito_43_overlap, cent_rep_genes, TP53_control, MPNST_pos))
+
+cpx_list <- list(Shelterin, Glutamate_NMDA, ZBTB16_complex, CEP_HAUS_core, CEP_HAUS_extn1, CEP_HAUS_SKATint_complex, 
+                 CEP_HAUS_Biogrid_complex, CENP_complex, TCP1_complex,PRPF4_complex, Breast_cancer_genes, Sarcoma_genes, 
+                 Centrosome_genes, mito_HSA_69278, mito_chk_point, mito_43_overlap, cent_rep_genes, TP53_control, MPNST_pos)
+names(cpx_list) <- c("Shelterin geneset", "Glutamate_NMDA", "ZBTB16_complex", "Centrosome geneset", "CEP_HAUS_extn1", 
+                     "CEP_HAUS_SKAT", "CEP_HAUS_Biogrid", "CENP_complex", "TCP1_complex", "PRPF4_complex", "BRCA geneset", 
+                     "Sarcoma geneset", "Centrosome_genes", "mito_HSA_69278", "mito_chk_GO", "mito_43", "cent_rep_genes",
+                     "TP53", "NF1 geneset")
+
+
+##Odds ratio using fisher's exact test(use ppi_final_res... file for fisher's test)
+
+isks_mgrb_genes <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/Exome_para_tab_ISKS_MGRB_C345_Aug31.rds")
+isks_mgrb_genes_noC3 <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Exome_para_tab_ISKS_MGRB_minusC3_Aug31.rds")
+
+##Epithelial data
+epit_mgrb_genes <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/EPIT_AR_AD/SKAT/Exome_para_MGRB_EPIT_2020.rds")
+epit_mgrb_genes_noC3 <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/EPIT_AR_AD/SKAT/Exome_para_MGRB_EPIT_2020_minusC3.rds")
+
+##Epithelial data (minus melanoma)
+nmela_epit_mgrb_genes <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/EPIT_AR_AD/SKAT/Exome_para_EPIT_nmela_2020.rds")
+nmela_epit_mgrb_genes_noC3 <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/EPIT_AR_AD/SKAT/Exome_para_EPIT_nmela_2020_noC3.rds")
+
+##Epithelial data (melanoma)
+mela_epit_mgrb_genes <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/EPIT_AR_AD/SKAT/Exome_para_EPIT_mela_2020.rds")
+mela_epit_mgrb_genes_noC3 <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/EPIT_AR_AD/SKAT/Exome_para_EPIT_mela_2020_noC3.rds")
+
+
+##ISKS_complex vs MGRB
+isks_complex_mgrb_genes <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Complex/Exome_para_ISKS_Complex_Aug31.rds")
+isks_complex_mgrb_genes_noC3 <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Complex/Exome_para_ISKS_Complex_minusC3_Aug31.rds")
+
+##ISKS_TAS vs MGRB
+isks_tas_mgrb_genes <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/TAS/Exome_para_ISKS_TAS_Aug31.rds")
+isks_tas_mgrb_genes_noC3 <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/TAS/Exome_para_ISKS_TAS_minusC3_Aug31.rds")
+##ISKS_SIMPLE vs MGRB
+isks_simple_mgrb_genes <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Simple/Exome_para_ISKS_SIMPLE_2020_Aug31.rds")
+isks_simple_mgrb_genes_noC3 <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Simple/Exome_para_ISKS_SIMPLE_2020_minusC3_Aug31.rds")
+
+##ISKS_MPNST vs MGRB
+isks_mpnst_mgrb_genes <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/MPNST/Exome_para_ISKS_MPNST_sep30.rds")
+isks_mpnst_mgrb_genes_noC3 <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/MPNST/Exome_para_ISKS_MPNST_sep30_noC3.rds")
+
+
+##Combined Sarcoma replication set
+sarc_comb_mgrb_genes <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/Comb_TCGA_BERG_NoSarc/Exome_para_CombSarc_Aug31.rds")
+sarc_comb_mgrb_genes_noC3 <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/Comb_TCGA_BERG_NoSarc/Exome_para_CombSarc_minusC3Aug31.rds")
+
+########
+
+cpx_OR_fisher <- function(ppi_res,case_coh_size, cont_coh_size, coh){
+  ft_df <- list()
+  for(i in 1:length(cpx_list)){
+    ppi_res_tab <- ppi_res[ppi_res$gene %in% cpx_list[[i]],]
+   # ppi_res_tab[,2] <- ifelse(ppi_res_tab[,2] == 0, 1, ppi_res_tab[,2])
+    inp <- c(sum(ppi_res_tab[,1]), case_coh_size - sum(ppi_res_tab[,1]) , 
+             sum(ppi_res_tab[,2]), cont_coh_size - sum(ppi_res_tab[,2]))
+    sim_mat <- matrix(inp ,nrow = 2, ncol = 2)
+    colnames(sim_mat) <- c("case", "cont")
+    rownames(sim_mat) <- c("hits", "no_hits")
+    #ft <- fisher.test(sim_mat, alternative = "greater")
+    #ft <- fisher.test(sim_mat)
+    ft <- fisher.test(sim_mat, conf.int = T, conf.level = 0.95)
+    ft_df[[i]] <- cbind.data.frame("gene" = names(cpx_list)[i] ,"Cases" = sum(ppi_res_tab[,1]),
+                                   "Controls" = sum(ppi_res_tab[,2]),
+                                   "Fish_pval" = ft$p.value,"CI_lower" = ft$conf.int[1],
+                                   "CI_upper" = ft$conf.int[2],
+                                   "OR_Fish" = ft$estimate, "case_coh_size" = case_coh_size,
+                                     "Coh" = coh)
+  }
+  return(ft_df)
+}
+##removed 7 oesphageal samples (Sep30)
+cpx_ISKS_OR_df <- do.call("rbind.data.frame", cpx_OR_fisher(isks_mgrb_genes, 1644, 3205, "ISKSvsMGRB"))
+cpx_ISKS_complex_OR_df <- do.call("rbind.data.frame", cpx_OR_fisher(isks_complex_mgrb_genes, 837, 3205, "COMPLEXvsMGRB"))
+cpx_ISKS_tas_OR_df <- do.call("rbind.data.frame", cpx_OR_fisher(isks_tas_mgrb_genes, 362, 3205, "TASvsMGRB"))
+cpx_ISKS_simple_OR_df <- do.call("rbind.data.frame", cpx_OR_fisher(isks_simple_mgrb_genes, 371, 3205, "SIMPLEvsMGRB"))
+cpx_ISKS_mpnst_OR_df <- do.call("rbind.data.frame", cpx_OR_fisher(isks_mpnst_mgrb_genes, 157, 3205, "MPNSTvsMGRB"))
+cpx_EPIT_OR_df <- do.call("rbind.data.frame", cpx_OR_fisher(epit_mgrb_genes, 835, 3205, "EPITvsMGRB"))
+cpx_NMELA_OR_df <- do.call("rbind.data.frame", cpx_OR_fisher(nmela_epit_mgrb_genes, 660, 3205, "NMELAvsMGRB"))
+cpx_MELA_OR_df <- do.call("rbind.data.frame", cpx_OR_fisher(mela_epit_mgrb_genes, 175, 3205, "MELAvsMGRB"))
+#cpx_CAIRN_OR_df <- do.call("rbind.data.frame", cpx_OR_fisher(cairns_mgrb_genes, 413, 3205, "CAIRNvsMGRB"))
+cpx_REPSET_OR_df <- do.call("rbind.data.frame", cpx_OR_fisher(sarc_comb_mgrb_genes, 563, 3205, "REPvsMGRB"))
+df_comb_rnd2 <- rbind.data.frame(cpx_ISKS_OR_df, cpx_ISKS_complex_OR_df, cpx_ISKS_tas_OR_df, 
+                                 cpx_ISKS_simple_OR_df, cpx_ISKS_mpnst_OR_df, 
+                                 cpx_EPIT_OR_df,cpx_NMELA_OR_df,
+                                 cpx_MELA_OR_df, cpx_REPSET_OR_df)
+df_comb_rnd2$Coh <- as.factor(gsub("vsMGRB", "", df_comb_rnd2$Coh))
+df_comb_rnd2_filt <- df_comb_rnd2[df_comb_rnd2$Fish_pval < 0.05, ]
+
+##ISKS_MGRB, EPIT_MGRB and CAIRNS_MGRB without C3.
+##no_C3
+cpx_ISKS_OR_df_noC3 <- do.call("rbind.data.frame", cpx_OR_fisher(isks_mgrb_genes_noC3, 1644, 3205, "ISKSvsMGRB"))
+cpx_ISKS_complex_OR_df_noC3 <- do.call("rbind.data.frame", cpx_OR_fisher(isks_complex_mgrb_genes_noC3, 837, 3205, "COMPLEXvsMGRB"))
+cpx_ISKS_tas_OR_df_noC3 <- do.call("rbind.data.frame", cpx_OR_fisher(isks_tas_mgrb_genes_noC3, 362, 3205, "TASvsMGRB"))
+cpx_ISKS_simple_OR_df_noC3 <- do.call("rbind.data.frame", cpx_OR_fisher(isks_simple_mgrb_genes_noC3, 371, 3205, "SIMPLEvsMGRB"))
+cpx_ISKS_mpnst_OR_df_noC3 <- do.call("rbind.data.frame", cpx_OR_fisher(isks_mpnst_mgrb_genes_noC3, 157, 3205, "MPNSTvsMGRB"))
+cpx_EPIT_OR_df_noC3 <- do.call("rbind.data.frame", cpx_OR_fisher(epit_mgrb_genes_noC3, 835, 3205, "EPITvsMGRB"))
+cpx_NMELA_OR_df_noC3 <- do.call("rbind.data.frame", cpx_OR_fisher(nmela_epit_mgrb_genes_noC3, 660, 3205, "NMELAvsMGRB"))
+cpx_MELA_OR_df_noC3 <- do.call("rbind.data.frame", cpx_OR_fisher(mela_epit_mgrb_genes_noC3, 175, 3205, "MELAvsMGRB"))
+
+cpx_REPSET_OR_df_noC3 <- do.call("rbind.data.frame", cpx_OR_fisher(sarc_comb_mgrb_genes_noC3, 563, 3205, "REPvsMGRB"))
+#cpx_CAIRN_OR_df_noC3 <- do.call("rbind.data.frame", cpx_OR_fisher(Cairns_noC3_fin, 413, 3205, "CAIRNvsMGRB"))
+#noC3_df_comb_rnd2 <- rbind.data.frame(cpx_ISKS_OR_df_noC3, cpx_ISKS_complex_OR_df_noC3, 
+#                                      cpx_ISKS_tas_OR_df_noC3,cpx_ISKS_simple_OR_df_noC3,
+#                                      cpx_EPIT_OR_df_noC3, cpx_CAIRN_OR_df_noC3)
+##without Cairns
+noC3_df_comb_rnd2 <- rbind.data.frame(cpx_ISKS_OR_df_noC3, cpx_ISKS_complex_OR_df_noC3, 
+                                      cpx_ISKS_tas_OR_df_noC3, cpx_ISKS_simple_OR_df_noC3, 
+                                      cpx_ISKS_mpnst_OR_df_noC3, cpx_EPIT_OR_df_noC3, 
+                                      cpx_NMELA_OR_df_noC3, cpx_MELA_OR_df_noC3,
+                                      cpx_REPSET_OR_df_noC3)
+noC3_df_comb_rnd2$pval_adj <- p.adjust(noC3_df_comb_rnd2$Fish_pval, 
+                                       n = length(noC3_df_comb_rnd2$Fish_pval), method = "bonferroni")
+
+noC3_df_comb_rnd2$Coh <- as.factor(gsub("vsMGRB", "", noC3_df_comb_rnd2$Coh))
+
+noC3_df_comb_rnd2$OR_Fish <- ifelse(noC3_df_comb_rnd2$OR_Fish == 0, 1, noC3_df_comb_rnd2$OR_Fish)
+noC3_df_comb_rnd2_filt <- noC3_df_comb_rnd2[noC3_df_comb_rnd2$Fish_pval < 0.05 & noC3_df_comb_rnd2$CI_lower > 1,]
+
+##for heatmap
+##C345 subsetted geneset and cohorts 
+df_comb_rnd2_sub <- df_comb_rnd2[df_comb_rnd2$Coh %nin% c("TAS", "SIMPLE", "EPIT", "REP") &
+                               df_comb_rnd2$gene %in% c("Shelterin geneset", "Centrosome geneset", "BRCA geneset", 
+                                                        "TP53", "NF1 geneset"),]
+df_comb_rnd2_sub$Coh <- droplevels(df_comb_rnd2_sub$Coh)
+df_comb_rnd2_sub$gene <- droplevels(df_comb_rnd2_sub$gene)
+df_comb_rnd2_sub$Coh <- gsub("MPNST", "MPNST+GIST",df_comb_rnd2_sub$Coh)
+df_comb_rnd2_sub$Coh <- gsub("NMELA", "EPIT",df_comb_rnd2_sub$Coh)
+df_comb_rnd2_sub$Coh <- gsub("COMPLEX", "Complex Sarcomas",df_comb_rnd2_sub$Coh)
+#df_comb_rnd2_sub$gene <- gsub("CEP_HAUS_core", "CEP_HAUS",df_comb_rnd2_sub$gene)
+#df_comb_rnd2_sub$gene <- gsub("Shelterin", "SHELTERIN",df_comb_rnd2_sub$gene)
+#df_comb_rnd2_sub$gene <- gsub("SARC_genes", "SARC",df_comb_rnd2_sub$gene)
+#df_comb_rnd2_sub$gene <- gsub("BRCA_genes", "BRCA",df_comb_rnd2_sub$gene)
+#df_comb_rnd2_sub$gene <- gsub("TP53_control", "TP53",df_comb_rnd2_sub$gene)
+write.table(df_comb_rnd2_sub[,-10], "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Aug31/Manuscript_docs/Tables/C345_gene_complex_OR_sub.tsv", sep = "\t", row.names = F, quote = F)
+
+##C45
+noC3_df_comb_rnd2_sub <- noC3_df_comb_rnd2[noC3_df_comb_rnd2$Coh %nin% c("TAS", "SIMPLE", "EPIT", "REP") &
+                                         noC3_df_comb_rnd2$gene %in% c("Shelterin geneset", "Centrosome geneset", "BRCA geneset","TP53", "NF1 geneset"),]
+noC3_df_comb_rnd2_sub$Coh <- droplevels(noC3_df_comb_rnd2_sub$Coh)
+noC3_df_comb_rnd2_sub$gene <- droplevels(noC3_df_comb_rnd2_sub$gene)
+noC3_df_comb_rnd2_sub$Coh <- gsub("MPNST", "MPNST+GIST",noC3_df_comb_rnd2_sub$Coh)
+noC3_df_comb_rnd2_sub$Coh <- gsub("NMELA", "EPIT",noC3_df_comb_rnd2_sub$Coh)
+noC3_df_comb_rnd2_sub$Coh <- gsub("COMPLEX", "Complex Sarcomas",noC3_df_comb_rnd2_sub$Coh)
+# noC3_df_comb_rnd2_sub$gene <- gsub("CEP_HAUS_core", "CEP_HAUS",noC3_df_comb_rnd2_sub$gene)
+# noC3_df_comb_rnd2_sub$gene <- gsub("Shelterin", "SHELTERIN",noC3_df_comb_rnd2_sub$gene)
+# noC3_df_comb_rnd2_sub$gene <- gsub("SARC_genes", "SARC",noC3_df_comb_rnd2_sub$gene)
+# noC3_df_comb_rnd2_sub$gene <- gsub("BRCA_genes", "BRCA",noC3_df_comb_rnd2_sub$gene)
+# noC3_df_comb_rnd2_sub$gene <- gsub("TP53_control", "TP53",noC3_df_comb_rnd2_sub$gene)
+write.table(noC3_df_comb_rnd2_sub[,-10], "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Aug31/Manuscript_docs/Tables/C45_gene_complex_OR_sub.tsv", sep = "\t", row.names = F, quote = F)
+
+```
+
+##Table for intra and intercohort comparisons
+```{r}
+tab_noC3_multi_comp <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Aug31/Manuscript_docs/Tables/C45_gene_complex_OR_sub.tsv", sep = "\t", header = T, stringsAsFactors = F)
+inter_coh_fisher <- function(tab_dat, cpx_name, case_coh, cont_coh){
+  if(case_coh %nin% cont_coh){
+  cohs <- c(case_coh, cont_coh)
+  df_sel <- tab_dat[tab_dat$gene %in% cpx_name & tab_dat$Coh %in% c(case_coh, cont_coh),c(2,8:9)]
+  df_sel <- df_sel[match(cohs, df_sel$Coh),]
+  inp <- c(df_sel[1,1], df_sel[1,2] - df_sel[1,1] , 
+           df_sel[2,1], df_sel[2,2] - df_sel[2,1])
+#  inp[3] <- ifelse(inp[3] == 0, 1, inp[3]) ##not needed, see below
+#  https://stats.stackexchange.com/questions/198571/dealing-with-0-in-cell-count-for-fishers-exact-test
+
+  sim_mat <- matrix(inp ,nrow = 2, ncol = 2)
+  colnames(sim_mat) <- c("case", "cont")
+  rownames(sim_mat) <- c("hits", "no_hits")
+  #ft <- fisher.test(sim_mat, alternative = "greater")
+  #ft <- fisher.test(sim_mat)
+  ft <- fisher.test(sim_mat, conf.int = T, conf.level = 0.95)
+  ft_df <- cbind.data.frame("gene" = cpx_name ,"Cases" = df_sel[1,1],
+                                 "Controls" = df_sel[2,1], "Case_Coh" = df_sel[1,2],
+                                 "Cont_Coh" = df_sel[2,2], "Fish_pval" = ft$p.value,
+                                 "CI_lower" = ft$conf.int[1],
+                                 "CI_upper" = ft$conf.int[2],
+                                 "OR_Fish" = ft$estimate, "Coh" = paste(cohs, collapse = "vs"))
+  return(ft_df)
+  }
+  else {return(NULL)}
+}
+
+##C45
+ISKS_Sheltrin_cmp <- inter_coh_fisher(tab_noC3_multi_comp, cpx_name = "Shelterin geneset", case_coh = "ISKS", cont_coh = "EPIT")
+Complex_EPIT_Sheltrin_cmp <- inter_coh_fisher(tab_noC3_multi_comp, "Shelterin geneset", "Complex Sarcomas", "EPIT")
+Complex_ISKS_Sheltrin_cmp <- inter_coh_fisher(tab_noC3_multi_comp, "Shelterin geneset", "Complex Sarcomas", "ISKS")
+ISKS_Centro_cmp <- inter_coh_fisher(tab_noC3_multi_comp, "Centrosome geneset", "ISKS", "EPIT")
+MPNST_ISKS_Centro_cmp <- inter_coh_fisher(tab_noC3_multi_comp, "Centrosome geneset", "MPNST+GIST", "ISKS")
+MPNST_EPIT_Centro_cmp <- inter_coh_fisher(tab_noC3_multi_comp, "Centrosome geneset", "MPNST+GIST", "EPIT")
+MPNST_EPIT_Centro_cmp <- inter_coh_fisher(tab_noC3_multi_comp, "Centrosome geneset", "MPNST+GIST", "EPIT")
+
+MPNST_EPIT_Centro_cmp <- inter_coh_fisher(tab_noC3_multi_comp, "TP53", "ISKS", "Complex Sarcomas")
+MPNST_EPIT_Centro_cmp <- inter_coh_fisher(tab_noC3_multi_comp, "Centrosome geneset", "MPNST+GIST", "EPIT")
+
+
+fin_comb_tab <- rbind.data.frame(ISKS_Sheltrin_cmp, Complex_EPIT_Sheltrin_cmp, Complex_ISKS_Sheltrin_cmp, ISKS_Centro_cmp, MPNST_ISKS_Centro_cmp, MPNST_EPIT_Centro_cmp)
+fin_comb_tab$sig <- ifelse(fin_comb_tab$Fish_pval > 0.05, "ns", ifelse(fin_comb_tab$Fish_pval > 0.01 & fin_comb_tab$Fish_pval <= 0.05, "*",
+                           ifelse(fin_comb_tab$Fish_pval > 0.001 & fin_comb_tab$Fish_pval <= 0.01, "**",
+                           ifelse(fin_comb_tab$Fish_pval > 0.0001 & fin_comb_tab$Fish_pval <= 0.001, "***", "****"))))
+
+#write.table(fin_comb_tab, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Aug31/Manuscript_docs/Tables/intra_intercoh_C45_gene_complex_OR_sub.tsv", sep = "\t", row.names = F, quote = F)
+
+##All vs All; run only for C4/5
+cont_cohs <- c("ISKS", "Complex Sarcomas", "MPNST+GIST", "EPIT", "MELA")
+case_cohs <- c("ISKS", "Complex Sarcomas", "MPNST+GIST", "EPIT", "MELA")
+
+
+multi_inter_coh <- function(tab, cases, controls, cpx_name){
+all_comp <- list()
+all_comp_sub <- list()
+for(m in 1:length(controls)){
+  print(m)
+  for(n in 1:length(cases)){
+    print(cases[n])
+    all_comp_sub[[n]] <- inter_coh_fisher(tab_dat = tab, cpx_name = cpx_name,  case_coh = cases[n], 
+                                          cont_coh = controls[m])
+  }
+  all_comp[[m]] <- do.call("rbind.data.frame", all_comp_sub)
+}
+all_comp_df <- do.call("rbind.data.frame", all_comp)
+return(all_comp_df)
+#return(all_comp)
+}
+##C45
+Sheltrin_cmp <- multi_inter_coh(tab_noC3_multi_comp, case_cohs, cont_cohs, "Shelterin geneset")
+Centrosome_cmp <- multi_inter_coh(tab_noC3_multi_comp, case_cohs, cont_cohs, "Centrosome geneset")
+NF1_cmp <- multi_inter_coh(tab_noC3_multi_comp, case_cohs, cont_cohs, "NF1 geneset")
+BRCA_cmp <- multi_inter_coh(tab_noC3_multi_comp, case_cohs, cont_cohs, "BRCA geneset")
+TP53_cmp <- multi_inter_coh(tab_noC3_multi_comp, case_cohs, cont_cohs, "TP53")
+fin_comb_tab <- rbind.data.frame(Sheltrin_cmp, Centrosome_cmp, NF1_cmp, BRCA_cmp, TP53_cmp)
+
+fin_comb_tab$sig <- ifelse(fin_comb_tab$Fish_pval > 0.05, "ns", ifelse(fin_comb_tab$Fish_pval > 0.01 & fin_comb_tab$Fish_pval <= 0.05, "*",ifelse(fin_comb_tab$Fish_pval > 0.001 & fin_comb_tab$Fish_pval <= 0.01, "**",ifelse(fin_comb_tab$Fish_pval > 0.0001 & fin_comb_tab$Fish_pval <= 0.001, "***", "****"))))
+
+##Filter out ns and OR < 1
+fin_comb_tab_filt <- fin_comb_tab[fin_comb_tab$sig %nin% "ns" & fin_comb_tab$OR_Fish > 1,]
+fin_comb_tab_filt <- unique(fin_comb_tab_filt)
+write.table(fin_comb_tab_filt, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Aug31/Manuscript_docs/Tables/All_intra_intercoh_C45_gene_complex_OR_sub.tsv", sep = "\t", row.names = F, quote = F)
+
+write.table(fin_comb_tab, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Aug31/Manuscript_docs/Tables/All_unfilt_intra_intercoh_C45_gene_complex_OR_sub.tsv", sep = "\t", row.names = F, quote = F)
+
+```
+
+
+##Heatmaps with C45 variants
+```{r echo=FALSE, warning = FALSE, figure.align = "center", figure.height = 10, figure.width = 12}
+################heatmap (ISKS vs MGRB)
+tab_noC3 <- noC3_df_comb_rnd2_sub
+tab_noC3$Coh <- factor(tab_noC3$Coh, levels = unique(tab_noC3$Coh))
+tab_noC3$sig <- ifelse(tab_noC3$Fish_pval > 0.05, "ns", ifelse(tab_noC3$Fish_pval > 0.01 & tab_noC3$Fish_pval <= 0.05, "*",
+                                                               ifelse(tab_noC3$Fish_pval > 0.001 & tab_noC3$Fish_pval <= 0.01, "**",
+                                                                      ifelse(tab_noC3$Fish_pval > 0.0001 & tab_noC3$Fish_pval <= 0.001, "***", "****"))))
+
+##Add dendrogram to heatmap
+library("ggplot2")
+library("ggdendro")
+library("reshape2")
+library("grid")
+##C45 subset complex and cohorts
+
+tab_noC3$Coh <- droplevels(tab_noC3$Coh)
+#tab_noC3$gene <- droplevels(tab_noC3$gene)
+tab_noC3$Coh <- factor(x = tab_noC3$Coh,
+                           levels =c("ISKS", "Complex Sarcomas", "MPNST+GIST",
+                                     "EPIT", "MELA") , 
+                           ordered = TRUE)
+df_dendro <- tab_noC3[,c(1,9,7)]
+df_dendro$OR_Fish <- ifelse(is.infinite(df_dendro$OR_Fish), 0, df_dendro$OR_Fish) 
+df_dendro.scaled <- df_dendro
+df_dendro.scaled[, 3] <- scale(df_dendro.scaled[, 3])
+df_dendro_mat <- acast(df_dendro.scaled, gene ~ Coh)
+dend_inp <- as.dendrogram(hclust(d = dist(x = df_dendro_mat))) 
+
+# Create dendro
+dendro.plot <- ggdendrogram(data = dend_inp, rotate = TRUE) + 
+  theme(axis.text.y = element_text(face="bold", size=10)) + theme(axis.text.x = element_blank())
+
+# Preview the plot
+print(dendro.plot)
+
+##order heatmap
+dend_inp.order <- order.dendrogram(dend_inp)
+tab_noC3$gene <- factor(x = tab_noC3$gene,
+                            levels = tab_noC3$gene[dend_inp.order], ordered = TRUE)
+##C45
+p1 <- ggplot(tab_noC3, aes(Coh, gene, fill= log2(OR_Fish))) + geom_tile() + theme_minimal()
+p1_order <- p1 + scale_fill_distiller(palette = "RdBu") + 
+  theme(axis.text.x = element_text(angle = 0)) + 
+  theme(axis.text.x = element_text(face="bold", size=10)) +
+  theme(axis.title.x=element_blank()) + 
+  theme(axis.text.x = element_text(margin = margin(t = 5))) + 
+  theme(legend.position="top") + geom_text(aes(label = sig)) + 
+  theme(axis.text.y = element_blank()) + theme(axis.title.y=element_blank())
+grid.newpage()
+print(p1_order, vp = viewport(x = 0.4, y = 0.5, width = 0.8, height = 1.0))
+print(dendro.plot, vp = viewport(x = 0.85, y = 0.44, width = 0.15, height = 0.81))
+
+##Heatmap without dendrogram
+
+tab_noC3$gene <- factor(x = tab_noC3$gene,
+                            levels = c("Centrosome geneset","NF1 geneset", "Shelterin geneset", "BRCA geneset","TP53"), ordered = TRUE)
+p2 <- ggplot(tab_noC3, aes(Coh, gene, fill= log2(OR_Fish))) + geom_tile() + theme_minimal()
+p2_order <- p2 + scale_fill_distiller(palette = "RdBu") + 
+  theme(axis.text.x = element_text(angle = 0)) + 
+  theme(axis.text.x = element_text(face="bold", size=10)) +
+  theme(axis.title.x=element_blank()) + 
+  theme(axis.text.x = element_text(margin = margin(t = 5))) +
+  theme(axis.text.y = element_text(face="bold", size=10)) + 
+  theme(legend.position="right", legend.title=element_text(size=8)) + 
+  geom_text(aes(label = sig)) + 
+  theme(axis.title.y=element_blank())
+
+#p2_order <- p2_order + guides(fill=guide_legend(title="Log2(OR)"))
+p2_order
+
+```
+
+##Heatmap C345 variants
+```{r echo=FALSE, warning = FALSE, figure.align = "center", figure.height = 10, figure.width = 12}
+tab_C345 <- df_comb_rnd2_sub
+tab_C345$Coh <- factor(tab_C345$Coh, levels = unique(tab_C345$Coh))
+tab_C345$sig <- ifelse(tab_C345$Fish_pval > 0.05, "ns", ifelse(tab_C345$Fish_pval > 0.01 & tab_C345$Fish_pval <= 0.05, "*",
+                                                               ifelse(tab_C345$Fish_pval > 0.001 & tab_C345$Fish_pval <= 0.01, "**",
+                                                                      ifelse(tab_C345$Fish_pval > 0.0001 & tab_C345$Fish_pval <= 0.001, "***", "****"))))
+
+##Add dendrogram to heatmap
+library("ggplot2")
+library("ggdendro")
+library("reshape2")
+library("grid")
+##C45 subset complex and cohorts
+tab_C345$OR_Fish <- ifelse(is.infinite(tab_C345$OR_Fish), 0, tab_C345$OR_Fish) 
+tab_C345$Coh <- droplevels(tab_C345$Coh)
+#tab_C345$gene <- droplevels(tab_C345$gene)
+#tab_C345$gene <- as.factor(tab_C345$gene)
+tab_C345$Coh <- factor(x = tab_C345$Coh,
+                       levels =c("ISKS", "Complex Sarcomas", "MPNST+GIST",
+                                 "EPIT", "MELA") , 
+                       ordered = TRUE)
+df_dendro <- tab_C345[,c(1,9,7)]
+df_dendro$OR_Fish <- ifelse(is.infinite(df_dendro$OR_Fish), 0, df_dendro$OR_Fish) 
+df_dendro.scaled <- df_dendro
+df_dendro.scaled[, 3] <- scale(df_dendro.scaled[, 3])
+df_dendro_mat <- acast(df_dendro.scaled, gene ~ Coh)
+dend_inp <- as.dendrogram(hclust(d = dist(x = df_dendro_mat))) 
+
+# Create dendro
+dendro.plot <- ggdendrogram(data = dend_inp, rotate = TRUE) + 
+  theme(axis.text.y = element_text(face="bold", size=10))
+
+# Preview the plot
+print(dendro.plot)
+
+##order heatmap
+dend_inp.order <- order.dendrogram(dend_inp)
+tab_C345$gene <- factor(x = tab_C345$gene,
+                        levels = tab_C345$gene[dend_inp.order], 
+                        ordered = TRUE)
+##C345
+p1 <- ggplot(tab_C345, aes(Coh, gene, fill= log2(OR_Fish))) + geom_tile() + theme_minimal()
+p1_order <- p1 + scale_fill_distiller(palette = "RdBu") + 
+  theme(axis.text.x = element_text(angle = 0)) + 
+  theme(axis.text.x = element_text(face="bold", size=10)) +
+  theme(axis.title.x=element_blank()) + 
+  theme(axis.text.x = element_text(margin = margin(t = 5))) + 
+  theme(legend.position="top") + geom_text(aes(label = sig)) + 
+  theme(axis.text.y = element_blank()) + theme(axis.title.y=element_blank())
+grid.newpage()
+print(p1_order, vp = viewport(x = 0.4, y = 0.5, width = 0.8, height = 1.0))
+print(dendro.plot, vp = viewport(x = 0.85, y = 0.44, width = 0.15, height = 0.81))
+
+##Heatmap without dendrogram
+
+tab_C345$gene <- factor(x = tab_C345$gene,
+                            levels = c("Centrosome geneset","NF1 geneset", "Shelterin geneset", "BRCA geneset","TP53"), ordered = TRUE)
+p2_C345 <- ggplot(tab_C345, aes(Coh, gene, fill= log2(OR_Fish))) + geom_tile() + theme_minimal()
+p2_order_C345 <- p2 + scale_fill_distiller(palette = "RdBu") + 
+  theme(axis.text.x = element_text(angle = 0)) + 
+  theme(axis.text.x = element_text(face="bold", size=10)) +
+  theme(axis.title.x=element_blank()) + 
+  theme(axis.text.x = element_text(margin = margin(t = 5))) +
+  theme(axis.text.y = element_text(face="bold", size=10)) + 
+  #theme(legend.position="top") +
+  theme(legend.position="right", legend.title=element_text(size=8)) + 
+  geom_text(aes(label = sig)) + 
+  theme(axis.title.y=element_blank())
+
+#p2_order <- p2_order + guides(fill=guide_legend(title="Log2(OR)"))
+p2_order_C345
+
+```
+
+##Validation stage 1 :C45 and C345
+##2-fold Cross validation(Master script Aug31_freeze/Replication/fisher_rep_test_permute.R)
+
+```{r echo=FALSE, warning = FALSE, figure.align = "center", figure.height = 10, figure.width = 12}
+
+##rename complexes
+
+names(cpx_list) <- c("Shelterin", "Glutamate_NMDA", "ZBTB16_complex", "CEP_HAUS_core", "CEP_HAUS_extn1", 
+                     "CEP_HAUS_SKAT", "CEP_HAUS_Biogrid", "CENP_complex", "TCP1_complex", "PRPF4_complex", "BRCA_genes", "SARC_genes", "Centrosome_genes", "mito_HSA_69278", "mito_chk_GO", "mito_43", "cent_rep_genes",
+                     "TP53_control", "MPNST_pos")
+############C45
+##Mantel-Haenszel method (more Robust)
+CI_meta_MH_data <- function(cmpx_name){
+  library(meta)
+  library(metafor)
+  df1_disc <- read.delim(paste0("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Aug31/Validation_new_cpx/",cmpx_name,"_fisher.disc_null.tsv"),
+                         sep = "\t", header = T, stringsAsFactors = F )
+  df1_rep <- read.delim(paste0("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Aug31/Validation_new_cpx/",cmpx_name,"_fisher.rep_null.tsv"),
+                        sep = "\t", header = T, stringsAsFactors = F )
+  comb_Mant_fun <- function(df){
+    fixed_mod <- metabin(Cases, Cases_comp, Controls, Controls_comp, data = df,  
+                         studlab = gene,
+                         method.tau = "SJ",
+                         comb.fixed = FALSE,
+                         comb.random = TRUE,
+                         hakn = TRUE,
+                         prediction = TRUE,
+                         incr = 0.1,
+                         sm = "OR")
+    summ <- summary(fixed_mod)
+    
+ #   ret_df <- cbind.data.frame("cmpx_name" = cmpx_name, "Fish_OR_meta" = exp(summ$fixed$TE), 
+ #                              "lower.CI" = exp(summ$fixed$lower), "upper.CI" = exp(summ$fixed$upper))
+  ##use prediction interval for the forest plot
+    #https://www.erim.eur.nl/research-support/meta-essentials/interpret-results/the-forest-plot/prediction-interval/
+    #https://bmjopen.bmj.com/content/6/7/e010247
+     ret_df <- cbind.data.frame("cmpx_name" = cmpx_name, "Fish_OR_meta" = exp(summ$random$TE), 
+                               "lower.CI" = exp(summ$predict$lower), "upper.CI" = exp(summ$predict$upper))
+    
+  }
+  
+  
+  return(list(comb_Mant_fun(df1_disc), comb_Mant_fun(df1_rep)))
+  
+}
+
+CI_MH_meta <- list()
+for(i in 1:length(cpx_list)){
+  CI_MH_meta[[i]] <- CI_meta_MH_data(names(cpx_list)[i])
+}
+
+library(ggplot2)
+CI_disc_MH_meta <- lapply(CI_MH_meta, function(x)x[[1]])
+CI_disc_MH_meta_df <- do.call("rbind.data.frame", CI_disc_MH_meta)
+CI_disc_MH_meta_df$set <- "Disc"
+CI_rep_MH_meta <- lapply(CI_MH_meta, function(x)x[[2]])
+CI_rep_MH_meta_df <- do.call("rbind.data.frame", CI_rep_MH_meta)
+CI_rep_MH_meta_df$set <- "Rep"
+
+CI_comb_MH_meta_df <- rbind.data.frame(CI_disc_MH_meta_df, CI_rep_MH_meta_df)
+CI_comb_MH_meta_df$Index <- rownames(CI_comb_MH_meta_df)
+
+xname <- expression(paste(italic("Log"), "OR"))
+#setting up the basic plot
+p_meta <- ggplot(data=CI_comb_MH_meta_df, aes(y=cmpx_name, x=log2(Fish_OR_meta), xmin=log2(lower.CI), xmax=log2(upper.CI))) + 
+  geom_point() + geom_point(data=subset(CI_comb_MH_meta_df, set=="Disc"), color="Black", size=2) + 
+  geom_errorbarh(height=.1) + scale_x_continuous(limits=c(-2,5), breaks = c(-2:5), name=xname) +
+  geom_vline(xintercept=0, color="black", linetype="dashed", alpha=.5) + 
+  facet_grid(set~., scales= "free", space="free") + ggtitle("PPI cliques")+
+  theme_minimal() + theme(text=element_text(family="Times",size=18, color="black"))+
+  theme(panel.spacing = unit(1, "lines"))
+
+#p_meta
+
+# ##For supp figure
+CI_comb_MH_meta_df_sub <- CI_comb_MH_meta_df[CI_comb_MH_meta_df$cmpx_name %in% c("SARC_genes","TP53_control", "Shelterin","CEP_HAUS_core"),]
+CI_comb_MH_meta_df_sub$cmpx_name <- gsub("CEP_HAUS_core", "Centrosome geneset",CI_comb_MH_meta_df_sub$cmpx_name)
+CI_comb_MH_meta_df_sub$cmpx_name <- gsub("Shelterin", "Shelterin geneset",CI_comb_MH_meta_df_sub$cmpx_name)
+CI_comb_MH_meta_df_sub$cmpx_name <- gsub("SARC_genes", "Sarcoma geneset",CI_comb_MH_meta_df_sub$cmpx_name)
+CI_comb_MH_meta_df_sub$cmpx_name <- gsub("TP53_control", "TP53",CI_comb_MH_meta_df_sub$cmpx_name)
+#CI_comb_MH_meta_df_sub$cmpx_name <- gsub("MPNST_pos", "NF1 geneset",CI_comb_MH_meta_df_sub$cmpx_name)
+write.table(CI_comb_MH_meta_df_sub, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Aug31/Manuscript_docs/Tables/CV_2fold_disc_rep.tsv", sep = "\t", quote = F, row.names = F)
+
+p_sub <- ggplot(data=CI_comb_MH_meta_df_sub, aes(y=cmpx_name, x=log2(Fish_OR_meta), xmin=log2(lower.CI), xmax=log2(upper.CI))) +
+  geom_point() + geom_point(data=subset(CI_comb_MH_meta_df_sub, set=="Disc"), color="Black", size=2) +
+  geom_errorbarh(height=.1) + scale_x_continuous(limits=c(-2,4), breaks = c(-2:4), name=xname) +
+  geom_vline(xintercept=0, color="black", linetype="dashed", alpha=.5) +
+  facet_grid(set~., scales= "free", space="free") + ggtitle("PPI cliques")+
+  theme_minimal() + theme(text=element_text(family="Times",size=18, color="black"))+
+  theme(panel.spacing = unit(1, "lines"))
+
+#p_sub
+
+##Alternate plotting##use this
+
+library(ggplot2)
+forest_custplot <- function(df){
+  dotCOLS = c("#030000", "#030000")
+  barCOLS = c("#030000", "#030000")
+  p <- ggplot(df, aes(x=cmpx_name, y=log2(Fish_OR_meta), ymin=log2(lower.CI), ymax=log2(upper.CI),col=Coh,fill=Coh)) + 
+    #specify position here
+    geom_linerange(size=1,position=position_dodge(width = 0.6)) +
+    geom_hline(yintercept=0, lty=2) +
+    #specify position here too
+    geom_point(size=4, aes(shape = Coh, color = Coh), position=position_dodge(width = 0.6)) +
+#    geom_point(aes(size=5, shape=21, colour="white", stroke = 0.5,position=position_dodge(width = #0.5)) +
+    scale_fill_manual(values=barCOLS)+
+    scale_color_manual(values=dotCOLS)+
+    scale_x_discrete(name="") + 
+    scale_y_continuous(name="Enrichment in ISKS compared to controls [Log2 Odds ratio]") +
+    coord_flip() +
+    theme_minimal() + theme(legend.position="bottom") + theme(legend.title = element_blank()) +
+    theme(legend.text = element_text(size=8))
+  return(p)
+}
+
+colnames(CI_comb_MH_meta_df_sub)[5] <- "Coh"
+CI_comb_MH_meta_df_sub$Coh <- as.factor(CI_comb_MH_meta_df_sub$Coh)
+CI_comb_MH_meta_df_sub$cmpx_name <- factor(x = CI_comb_MH_meta_df_sub$cmpx_name,
+                            levels = c("Centrosome geneset","Shelterin geneset", "Sarcoma geneset","TP53"), ordered = TRUE)
+#TP53, Sarcoma geneset, Shelterin geneset, Centrosome geneset
+CI_comb_MH_meta_df_sub$Coh <- factor(CI_comb_MH_meta_df_sub$Coh, levels = c("Rep", "Disc"))
+#CI_comb_MH_meta_df_sub$shape <- ifelse(CI_comb_MH_meta_df_sub$Coh %in% "Disc", 18, 21)
+p_forest <- forest_custplot(CI_comb_MH_meta_df_sub) + ggtitle("Cross validation C45") + guides(fill=guide_legend(nrow=1,byrow=TRUE)) + scale_shape_manual(values = c(15,21)) + theme(axis.text.y = element_text(face="bold", size=14)) + theme(axis.text.x = element_text(face="bold", size=14)) + theme(axis.title.x = element_text(face = "italic")) + theme(axis.line.x = element_line(color="black", size = 1)) + theme(legend.position = "top") + theme(axis.title.y = element_blank()) 
+
+p_forest
+
+############C345
+##Mantel-Haenszel method (more Robust)
+CI_meta_MH_data_C345 <- function(cmpx_name){
+  library(meta)
+  library(metafor)
+  df1_disc <- read.delim(paste0("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Aug31/Validation_new_cpx/",cmpx_name,"_C345_fisher.disc_null.tsv"),
+                         sep = "\t", header = T, stringsAsFactors = F )
+  df1_rep <- read.delim(paste0("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Aug31/Validation_new_cpx/",cmpx_name,"_C345_fisher.rep_null.tsv"),
+                        sep = "\t", header = T, stringsAsFactors = F )
+  comb_Mant_fun <- function(df){
+    fixed_mod <- metabin(Cases, Cases_comp, Controls, Controls_comp, data = df,  
+                         studlab = gene,
+                         method.tau = "SJ",
+                         comb.fixed = FALSE,
+                         comb.random = TRUE,
+                         hakn = TRUE,
+                         prediction = TRUE,
+                         incr = 0.1,
+                         sm = "OR")
+    summ <- summary(fixed_mod)
+    
+ #   ret_df <- cbind.data.frame("cmpx_name" = cmpx_name, "Fish_OR_meta" = exp(summ$fixed$TE), 
+ #                              "lower.CI" = exp(summ$fixed$lower), "upper.CI" = exp(summ$fixed$upper))
+  ##use prediction interval for the forest plot
+    #https://www.erim.eur.nl/research-support/meta-essentials/interpret-results/the-forest-plot/prediction-interval/
+    #https://bmjopen.bmj.com/content/6/7/e010247
+     ret_df <- cbind.data.frame("cmpx_name" = cmpx_name, "Fish_OR_meta" = exp(summ$random$TE), 
+                               "lower.CI" = exp(summ$predict$lower), "upper.CI" = exp(summ$predict$upper))
+    
+  }
+  
+  
+  return(list(comb_Mant_fun(df1_disc), comb_Mant_fun(df1_rep)))
+  
+}
+
+CI_MH_meta <- list()
+for(i in 1:length(cpx_list)){
+  CI_MH_meta[[i]] <- CI_meta_MH_data_C345(names(cpx_list)[i])
+}
+
+library(ggplot2)
+CI_disc_MH_meta_345 <- lapply(CI_MH_meta, function(x)x[[1]])
+CI_disc_MH_meta_345_df <- do.call("rbind.data.frame", CI_disc_MH_meta_345)
+CI_disc_MH_meta_345_df$set <- "Disc"
+CI_rep_MH_meta_345 <- lapply(CI_MH_meta, function(x)x[[2]])
+CI_rep_MH_meta_345_df <- do.call("rbind.data.frame", CI_rep_MH_meta_345)
+CI_rep_MH_meta_345_df$set <- "Rep"
+
+CI_comb_MH_meta_C345_df <- rbind.data.frame(CI_disc_MH_meta_345_df, CI_rep_MH_meta_345_df)
+
+# ##For supp figure
+CI_comb_MH_meta_C345_df_sub <- CI_comb_MH_meta_C345_df[CI_comb_MH_meta_C345_df$cmpx_name %in% c("SARC_genes","TP53_control", "Shelterin","CEP_HAUS_core"),]
+CI_comb_MH_meta_C345_df_sub$cmpx_name <- gsub("CEP_HAUS_core", "Centrosome geneset",CI_comb_MH_meta_C345_df_sub$cmpx_name)
+CI_comb_MH_meta_C345_df_sub$cmpx_name <- gsub("Shelterin", "Shelterin geneset",CI_comb_MH_meta_C345_df_sub$cmpx_name)
+CI_comb_MH_meta_C345_df_sub$cmpx_name <- gsub("SARC_genes", "Sarcoma geneset",CI_comb_MH_meta_C345_df_sub$cmpx_name)
+CI_comb_MH_meta_C345_df_sub$cmpx_name <- gsub("TP53_control", "TP53",CI_comb_MH_meta_C345_df_sub$cmpx_name)
+#CI_comb_MH_meta_df_sub$cmpx_name <- gsub("MPNST_pos", "NF1 geneset",CI_comb_MH_meta_df_sub$cmpx_name)
+write.table(CI_comb_MH_meta_C345_df_sub, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Aug31/Manuscript_docs/Tables/CV_2fold_disc_rep_C345.tsv", sep = "\t", quote = F, row.names = F)
+
+##Alternate plotting##use this
+
+library(ggplot2)
+forest_custplot <- function(df){
+  dotCOLS = c("#030000", "#030000")
+  barCOLS = c("#030000", "#030000")
+  p <- ggplot(df, aes(x=cmpx_name, y=log2(Fish_OR_meta), ymin=log2(lower.CI), ymax=log2(upper.CI),col=Coh,fill=Coh)) + 
+    #specify position here
+    geom_linerange(size=1,position=position_dodge(width = 0.6)) +
+    geom_hline(yintercept=0, lty=2) +
+    #specify position here too
+    geom_point(size=4, aes(shape = Coh, color = Coh), position=position_dodge(width = 0.6)) +
+#    geom_point(aes(size=5, shape=21, colour="white", stroke = 0.5,position=position_dodge(width = #0.5)) +
+    scale_fill_manual(values=barCOLS)+
+    scale_color_manual(values=dotCOLS)+
+    scale_x_discrete(name="") + 
+    scale_y_continuous(name="Enrichment in ISKS compared to controls [Log2 Odds ratio]") +
+    coord_flip() +
+    theme_minimal() + theme(legend.position="bottom") + theme(legend.title = element_blank()) +
+    theme(legend.text = element_text(size=8))
+  return(p)
+}
+
+colnames(CI_comb_MH_meta_C345_df_sub)[5] <- "Coh"
+CI_comb_MH_meta_C345_df_sub$Coh <- as.factor(CI_comb_MH_meta_C345_df_sub$Coh)
+CI_comb_MH_meta_C345_df_sub$cmpx_name <- factor(x = CI_comb_MH_meta_C345_df_sub$cmpx_name,
+                            levels = c("Centrosome geneset","Shelterin geneset", "Sarcoma geneset","TP53"), ordered = TRUE)
+#TP53, Sarcoma geneset, Shelterin geneset, Centrosome geneset
+CI_comb_MH_meta_C345_df_sub$Coh <- factor(CI_comb_MH_meta_C345_df_sub$Coh, levels = c("Rep", "Disc"))
+#CI_comb_MH_meta_df_sub$shape <- ifelse(CI_comb_MH_meta_df_sub$Coh %in% "Disc", 18, 21)
+p_forest_CV_345 <- forest_custplot(CI_comb_MH_meta_C345_df_sub) + ggtitle("Cross validation C345") + guides(fill=guide_legend(nrow=1,byrow=TRUE)) + scale_shape_manual(values = c(15,21)) + theme(axis.text.y = element_text(face="bold", size=14)) + theme(axis.text.x = element_text(face="bold", size=14)) + theme(axis.title.x = element_text(face = "italic")) + theme(axis.line.x = element_line(color="black", size = 1)) + theme(legend.position = "top") + theme(axis.title.y = element_blank()) 
+
+p_forest_CV_345
+
+
+```
+
+
+##Validation stage 2 : C45, C345
+##replication set(Augmented replication set; Master script Aug31_freeze/Replication/gene_cmx_cmp_repset.R)
+```{r echo=FALSE, warning = FALSE}
+##inherits object cpx_list from chunk1
+##rename complexes
+
+names(cpx_list) <- c("Shelterin", "Glutamate_NMDA", "ZBTB16_complex", "CEP_HAUS_core", "CEP_HAUS_extn1", 
+                     "CEP_HAUS_SKAT", "CEP_HAUS_Biogrid", "CENP_complex", "TCP1_complex", "PRPF4_complex", "BRCA_genes", "SARC_genes", "Centrosome_genes", "mito_HSA_69278", "mito_chk_GO", "mito_43", "cent_rep_genes",
+                     "TP53_control", "MPNST_pos")
+##Augmented replication sets (the variants here have been trimmed based on the BED coordinates of exome kit)
+#CEP_HAUS_core_rep <- c("CEP63", "CEP72", "HAUS4", "HAUS5")
+#cpx_list[[20]] <- CEP_HAUS_core_rep
+#names(cpx_list)[20] <- c("CEP_HAUS_core_rep")
+
+isks_mgrb_genes <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/Comb_TCGA_BERG_NoSarc/augmented_sarc/isks_mgrb_all.rds")
+isks_mgrb_genes_noC3 <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/Comb_TCGA_BERG_NoSarc/augmented_sarc/isks_mgrb_all_noC3.rds")
+
+
+## (subsetted with PID genes)
+repset_563 <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/Comb_TCGA_BERG_NoSarc/augmented_sarc/repset_563.rds")
+repset_563_noC3 <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/Comb_TCGA_BERG_NoSarc/augmented_sarc/repset_563_noC3.rds")
+
+repset_663 <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/Comb_TCGA_BERG_NoSarc/augmented_sarc/repset_663.rds")
+repset_663_noC3 <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/Comb_TCGA_BERG_NoSarc/augmented_sarc/repset_663_noC3.rds")
+
+repset_763 <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/Comb_TCGA_BERG_NoSarc/augmented_sarc/repset_763.rds")
+repset_763_noC3 <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/Comb_TCGA_BERG_NoSarc/augmented_sarc/repset_763_noC3.rds")
+
+repset_963 <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/Comb_TCGA_BERG_NoSarc/augmented_sarc/repset_963.rds")
+repset_963_noC3 <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/Comb_TCGA_BERG_NoSarc/augmented_sarc/repset_963_noC3.rds")
+
+##ISKS complemented have the exome coordinates of discovery set NOT replication set
+##ISKS noC3 complemented
+isks_min100_noC3 <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/Comb_TCGA_BERG_NoSarc/augmented_sarc/isks_min100_noC3.rds")
+isks_min200_noC3 <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/Comb_TCGA_BERG_NoSarc/augmented_sarc/isks_min200_noC3.rds")
+isks_min400_noC3 <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/Comb_TCGA_BERG_NoSarc/augmented_sarc/isks_min400_noC3.rds")
+
+##ISKS C345 complemented
+isks_min100 <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/Comb_TCGA_BERG_NoSarc/augmented_sarc/isks_min100.rds")
+isks_min200 <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/Comb_TCGA_BERG_NoSarc/augmented_sarc/isks_min200.rds")
+isks_min400 <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/Comb_TCGA_BERG_NoSarc/augmented_sarc/isks_min400.rds")
+
+########
+
+cpx_OR_fisher <- function(ppi_res,case_coh_size, cont_coh_size, coh){
+  ft_df <- list()
+  for(i in 1:length(cpx_list)){
+    ppi_res_tab <- ppi_res[as.character(ppi_res$gene) %in% cpx_list[[i]],]
+   # ppi_res_tab[,2] <- ifelse(ppi_res_tab[,2] == 0, 1, ppi_res_tab[,2])
+    inp <- c(sum(ppi_res_tab[,1]), case_coh_size - sum(ppi_res_tab[,1]) , 
+             sum(ppi_res_tab[,2]), cont_coh_size - sum(ppi_res_tab[,2]))
+    sim_mat <- matrix(inp ,nrow = 2, ncol = 2)
+    colnames(sim_mat) <- c("case", "cont")
+    rownames(sim_mat) <- c("hits", "no_hits")
+    #ft <- fisher.test(sim_mat, alternative = "greater")
+    ft <- fisher.test(sim_mat)
+    ft <- fisher.test(sim_mat, conf.int = T, conf.level = 0.95)
+    ft_df[[i]] <- cbind.data.frame("gene" = names(cpx_list)[i] ,"Cases" = sum(ppi_res_tab[,1]),
+                                   "Controls" = sum(ppi_res_tab[,2]),
+                                   "Fish_pval" = ft$p.value,"CI_lower" = ft$conf.int[1],
+                                   "CI_upper" = ft$conf.int[2],
+                                   "OR_Fish" = ft$estimate, "Coh" = coh)
+  }
+  return(ft_df)
+}
+
+
+cpx_ISKS_OR_df <- do.call("rbind.data.frame", cpx_OR_fisher(isks_mgrb_genes, 1644, 3205, "ISKSvsMGRB"))
+cpx_isks_min100 <- do.call("rbind.data.frame", cpx_OR_fisher(isks_min100, 1544, 3205, "ISKS100vsMGRB"))
+cpx_isks_min200 <- do.call("rbind.data.frame", cpx_OR_fisher(isks_min200, 1444, 3205, "ISKS200vsMGRB"))
+cpx_isks_min400 <- do.call("rbind.data.frame", cpx_OR_fisher(isks_min400, 1244, 3205, "ISKS400vsMGRB"))
+
+cpx_repset_563 <- do.call("rbind.data.frame", cpx_OR_fisher(repset_563, 563, 3205, "rep563vsMGRB"))
+cpx_repset_663 <- do.call("rbind.data.frame", cpx_OR_fisher(repset_663, 663, 3205, "rep663vsMGRB"))
+cpx_repset_763 <- do.call("rbind.data.frame", cpx_OR_fisher(repset_763, 763, 3205, "rep763vsMGRB"))
+cpx_repset_963 <- do.call("rbind.data.frame", cpx_OR_fisher(repset_963, 963, 3205, "rep963vsMGRB"))
+
+df_comb_rnd2 <- rbind.data.frame(cpx_ISKS_OR_df, cpx_isks_min100, cpx_isks_min200, cpx_isks_min400,
+                                 cpx_repset_563, cpx_repset_663, cpx_repset_763, cpx_repset_963)
+df_comb_rnd2$Coh <- as.factor(gsub("vsMGRB", "", df_comb_rnd2$Coh))
+df_comb_rnd2_filt <- df_comb_rnd2[df_comb_rnd2$Fish_pval < 0.05, ]
+
+##ISKS_MGRB, EPIT_MGRB and CAIRNS_MGRB without C3.
+##no_C3
+cpx_ISKS_OR_df_noC3 <- do.call("rbind.data.frame", cpx_OR_fisher(isks_mgrb_genes_noC3, 1644, 3205, "ISKSvsMGRB"))
+cpx_isks_min100_noC3 <- do.call("rbind.data.frame", cpx_OR_fisher(isks_min100_noC3, 1544, 3205, "ISKS100vsMGRB"))
+cpx_isks_min200_noC3 <- do.call("rbind.data.frame", cpx_OR_fisher(isks_min200_noC3, 1444, 3205, "ISKS200vsMGRB"))
+cpx_isks_min400_noC3 <- do.call("rbind.data.frame", cpx_OR_fisher(isks_min400_noC3, 1244, 3205, "ISKS400vsMGRB"))
+
+cpx_repset_563_noC3 <- do.call("rbind.data.frame", cpx_OR_fisher(repset_563_noC3, 563, 3205, "rep563vsMGRB"))
+cpx_repset_663_noC3 <- do.call("rbind.data.frame", cpx_OR_fisher(repset_663_noC3, 663, 3205, "rep663vsMGRB"))
+cpx_repset_763_noC3 <- do.call("rbind.data.frame", cpx_OR_fisher(repset_763_noC3, 763, 3205, "rep763vsMGRB"))
+cpx_repset_963_noC3 <- do.call("rbind.data.frame", cpx_OR_fisher(repset_963_noC3, 963, 3205, "rep963vsMGRB"))
+
+noC3_df_comb_rnd2 <- rbind.data.frame(cpx_ISKS_OR_df_noC3, cpx_isks_min100_noC3, 
+                                      cpx_isks_min200_noC3,cpx_isks_min400_noC3,
+                                      cpx_repset_563_noC3, cpx_repset_663_noC3,
+                                      cpx_repset_763_noC3, cpx_repset_963_noC3)
+noC3_df_comb_rnd2$pval_adj <- p.adjust(noC3_df_comb_rnd2$Fish_pval, 
+                                       n = length(noC3_df_comb_rnd2$Fish_pval), method = "bonferroni")
+
+noC3_df_comb_rnd2$Coh <- as.factor(gsub("vsMGRB", "", noC3_df_comb_rnd2$Coh))
+
+noC3_df_comb_rnd2$OR_Fish <- ifelse(noC3_df_comb_rnd2$OR_Fish == 0, 1, noC3_df_comb_rnd2$OR_Fish)
+noC3_df_comb_rnd2_filt <- noC3_df_comb_rnd2[noC3_df_comb_rnd2$Fish_pval < 0.05 & noC3_df_comb_rnd2$CI_lower > 1,]
+
+##C45
+noC3_df_comb_rnd2_sub <- noC3_df_comb_rnd2[noC3_df_comb_rnd2$Coh %in% c("ISKS200", "rep763") &
+                                         noC3_df_comb_rnd2$gene %in% c("Shelterin", "CEP_HAUS_core", 
+                                                                       "SARC_genes", "TP53_control"),]
+noC3_df_comb_rnd2_sub$Coh <- droplevels(noC3_df_comb_rnd2_sub$Coh)
+noC3_df_comb_rnd2_sub$gene <- droplevels(noC3_df_comb_rnd2_sub$gene)
+noC3_df_comb_rnd2_sub$gene <- gsub("CEP_HAUS_core","Centrosome geneset",noC3_df_comb_rnd2_sub$gene)
+noC3_df_comb_rnd2_sub$gene <- gsub("Shelterin", "Shelterin geneset",noC3_df_comb_rnd2_sub$gene)
+noC3_df_comb_rnd2_sub$gene <- gsub("SARC_genes", "Sarcoma geneset",noC3_df_comb_rnd2_sub$gene)
+noC3_df_comb_rnd2_sub$gene <- gsub("TP53_control", "TP53",noC3_df_comb_rnd2_sub$gene)
+
+
+write.table(noC3_df_comb_rnd2_sub[,-9], "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Aug31/Manuscript_docs/Tables/C45_aug_repset_complex_OR_sub.tsv", sep = "\t", row.names = F, quote = F)
+
+noC3_df_comb_rnd2_sub$Coh <- gsub("ISKS200", "Test (n=1444)",noC3_df_comb_rnd2_sub$Coh)
+noC3_df_comb_rnd2_sub$Coh <- gsub("rep763", "Replication (n=763)",noC3_df_comb_rnd2_sub$Coh)
+
+noC3_df_comb_rnd2_sub$gene <- factor(x = noC3_df_comb_rnd2_sub$gene,
+                            levels = c("Centrosome geneset","Shelterin geneset", "Sarcoma geneset","TP53"), ordered = TRUE)
+
+library(ggplot2)
+forest_custplot <- function(df){
+  dotCOLS = c("#030000", "#030000")
+  barCOLS = c("#030000", "#030000")
+  xname <- expression(paste(italic("Log"), "OR"))
+  p <- ggplot(df, aes(x=gene, y=log(OR_Fish), ymin=log(CI_lower), ymax=log(CI_upper),col=Coh,fill=Coh)) + 
+    #specify position here
+    geom_linerange(size=1,position=position_dodge(width = 0.6)) +
+    geom_hline(yintercept=0, lty=2) +
+  #  geom_hline(yintercept=1, lty=2) +
+    #specify position here too
+    geom_point(size=4, aes(shape = Coh, color = Coh), position=position_dodge(width = 0.6)) +
+#    geom_point(aes(size=5, shape=21, colour="white", stroke = 0.5,position=position_dodge(width = #0.5)) +
+    scale_fill_manual(values=barCOLS)+
+    scale_color_manual(values=dotCOLS)+
+    scale_x_discrete(name="") + 
+    scale_y_continuous(name="Enrichment in ISKS compared to controls [Log2 Odds ratio]") +
+    coord_flip() +
+    theme_minimal() + theme(legend.position="bottom") + theme(legend.title = element_blank()) +
+    theme(legend.text = element_text(size=8))
+  return(p)
+}
+
+
+noC3_df_comb_rnd2_sub$Coh <- as.factor(noC3_df_comb_rnd2_sub$Coh)
+p_forest_rep <- forest_custplot(noC3_df_comb_rnd2_sub) + ggtitle("Replication set C45") + guides(fill=guide_legend(nrow=1,byrow=TRUE)) + scale_shape_manual(values = c(15,21)) + theme(axis.text.y = element_text(face="bold", size=14)) + theme(axis.text.x = element_text(face="bold", size=14)) + theme(axis.title.x = element_text(face = "italic")) + theme(legend.position = "top") + theme(axis.line.x = element_line(color="black", size = 1))
+  
+p_forest_rep
+
+##################
+##C345 subsetted geneset and cohorts 
+df_comb_rnd2_sub <- df_comb_rnd2[df_comb_rnd2$Coh %in% c("ISKS200", "rep763") &
+                               df_comb_rnd2$gene %in% c("Shelterin", "CEP_HAUS_core", 
+                                                        "SARC_genes", "TP53_control"),]
+df_comb_rnd2_sub$Coh <- droplevels(df_comb_rnd2_sub$Coh)
+df_comb_rnd2_sub$gene <- droplevels(df_comb_rnd2_sub$gene)
+df_comb_rnd2_sub$gene <- gsub("CEP_HAUS_core","Centrosome geneset",df_comb_rnd2_sub$gene)
+df_comb_rnd2_sub$gene <- gsub("Shelterin", "Shelterin geneset",df_comb_rnd2_sub$gene)
+df_comb_rnd2_sub$gene <- gsub("SARC_genes", "Sarcoma geneset",df_comb_rnd2_sub$gene)
+df_comb_rnd2_sub$gene <- gsub("TP53_control", "TP53",df_comb_rnd2_sub$gene)
+write.table(df_comb_rnd2_sub, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Aug31/Manuscript_docs/Tables/C345_aug_repset_complex_OR_sub.tsv", sep = "\t", row.names = F, quote = F)
+
+df_comb_rnd2_sub$Coh <- gsub("ISKS200", "Test (n=1444)",df_comb_rnd2_sub$Coh)
+df_comb_rnd2_sub$Coh <- gsub("rep763", "Replication (n=763)",df_comb_rnd2_sub$Coh)
+
+df_comb_rnd2_sub$gene <- factor(x = df_comb_rnd2_sub$gene,
+                            levels = c("Centrosome geneset","Shelterin geneset", "Sarcoma geneset","TP53"), ordered = TRUE)
+df_comb_rnd2_sub$Coh <- as.factor(df_comb_rnd2_sub$Coh)
+p_forest_C345 <- forest_custplot(df_comb_rnd2_sub) + ggtitle("Replication set C345") + guides(fill=guide_legend(nrow=1,byrow=TRUE)) + scale_shape_manual(values = c(15,21)) + theme(axis.text.y = element_text(face="bold", size=14)) + theme(axis.text.x = element_text(face="bold", size=14)) + theme(axis.title.x = element_text(face = "italic")) + theme(legend.position = "top") + theme(axis.line.x = element_line(color="black", size = 1))
+  
+p_forest_C345
+
+```
+
+##multiplot forestplots
+
+```{r echo=FALSE, warning = FALSE, figure.align = "center", figure.height = 10, figure.width = 12}
+source("~/APCluster_graphs/case_TCGA_new_PRAD_3431/multi_plot.R")
+multiplot(p_forest, p_forest_CV_345, p_forest_rep, p_forest_C345, cols = 2)
+```
+
