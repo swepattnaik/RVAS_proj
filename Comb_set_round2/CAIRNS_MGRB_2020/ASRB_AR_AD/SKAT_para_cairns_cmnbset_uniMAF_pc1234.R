@@ -68,6 +68,11 @@ p_Data_noCH$sample_ren <- gsub("-H.*$", "",p_Data_noCH$sample)
 p_Data_noCH <- p_Data_noCH[!duplicated(p_Data_noCH$sample_ren),]
 
 p_Data_noCH$gender <- ifelse(is.na(p_Data_noCH$gender), Cairns_pheno[match(p_Data_noCH$sample_ren, Cairns_pheno$Sample), 4],p_Data_noCH$gender)
+p_Data_noCH$AgeYears <- Cairns_pheno[match(p_Data_noCH$sample_ren, Cairns_pheno$Sample), 5]
+Cairns_age_gender <- p_Data_noCH[!is.na(p_Data_noCH$AgeYears),c(1,53:55)]
+Cairns_age_gender$telomere_length <- Cairns_pheno[match(Cairns_age_gender$sample_ren, Cairns_pheno$Sample),3]
+write.table(Cairns_age_gender, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/CAIRNS/ASRB_final_age_gender_telo.tsv", 
+                        sep = "\t", row.names = F, quote = F)
 ##remove cases with no gender (24 Cairns lost)
 p_Data_noCH <- p_Data_noCH[!is.na(p_Data_noCH$gender),]
 Ex_samp_id <- Ex_samp_id[match(p_Data_noCH$sample, Ex_samp_id)]

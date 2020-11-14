@@ -1,5 +1,8 @@
 ##copied from ~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_EPIT/isks_epit_cmp.R
 ##ISKSvMGRB, EPIvsMGRB(no familial breast), CAIRNSvsMGRB(QC1 pass) combine
+.libPaths(c( "/home/shu/R/x86_64-redhat-linux-gnu-library/3.4", .libPaths() ) )
+`%nin%` = Negate(`%in%`)
+
 Exome_skat <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/Exome_skat_para_result_isks_combset2020_uni_MAF_PC1234_ver4_clinrect_Aug31.rds")
 
 df_skat <- lapply(Exome_skat, function(x)do.call("rbind.data.frame", x))
@@ -21,7 +24,9 @@ isks_mgrb_genes[,17:47] <- NA
 
 #PPI_col <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/scrambled_null_ppi_fisher_res_fil_final_Aug31.tsv", 
  #                     sep = "\t", header = T, stringsAsFactors = F)
-PPI_col <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/scrambled_cyto_null_ppi_fisher_res_fil_final_Aug31_09102020.tsv", 
+#PPI_col <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/scrambled_cyto_null_ppi_fisher_res_fil_final_Aug31_09102020.tsv", 
+#                      sep = "\t", header = T, stringsAsFactors = F)
+PPI_col <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/scrambled_cyto_null_ppi_fisher_res_fil_final_Aug31_sep19.tsv", 
                       sep = "\t", header = T, stringsAsFactors = F)
 #PPI_col$PPI_p_val_wt <- ifelse(PPI_col$degree == 0, 1, PPI_col$PPI_p_val_wt)
 #isks_mgrb_genes[,17:23] <- PPI_col[match(isks_mgrb_genes$gene, PPI_col$gene), c(15,17:22)]
@@ -76,7 +81,9 @@ isks_cairns_mgrb_genes_top <- isks_cairns_mgrb_genes_top[isks_cairns_mgrb_genes_
 isks_cairns_mgrb_genes_top <- isks_cairns_mgrb_genes_top[,-c(13,15:16,57:58,60,62:63)]
 
 
-write.table(isks_cairns_mgrb_genes_top, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/isks_cyto_ppifisher_ASRB_comb_genes_top_new_rand_comp_score_Aug31.tsv",
+write.table(isks_cairns_mgrb_genes_top, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/isks_cyto_ppifisher_ASRB_comb_genes_top_new_rand_comp_score_Aug31_sep19.tsv",
             sep = "\t", row.names = F, quote = F)
+#write.table(isks_cairns_mgrb_genes_top, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/isks_cyto_ppifisher_ASRB_comb_genes_top_new_rand_comp_score_Aug31.tsv",
+#            sep = "\t", row.names = F, quote = F)
 #write.table(isks_cairns_mgrb_genes_top, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/isks_ppifisher_ASRB_comb_genes_top_new_rand_comp_score_Aug31.tsv",
 #            sep = "\t", row.names = F, quote = F)

@@ -29,7 +29,8 @@ get_coh_dist_para <- function(gene_sym, fil_db){
     for(m in 1:length(ftemp_tab_var_id)){
       sam_gene_gt <- fil_db_genes[fil_db_genes$VARIANT %in% ftemp_tab_var_id[m],][,c(1:3,9,11,127:128)]
       sam_gene_gt <- unique(sam_gene_gt)
-      maf_vec_cont <- sum(ifelse(is.na(as.numeric(sam_gene_gt$SAMPLE)), 1, 0))/((1444 + 3205)*2)
+     # maf_vec_cont <- sum(ifelse(is.na(as.numeric(sam_gene_gt$SAMPLE)), 1, 0))/((1444 + 3205)*2)
+      maf_vec_cont <- length(grep("^[ABZ]", sam_gene_gt$SAMPLE))/((1444 + 3205)*2)
       maf_vec_case <- sum(ifelse(!is.na(as.numeric(sam_gene_gt$SAMPLE)) | 
                                    grepl("^CR|^LK", as.character(sam_gene_gt$SAMPLE)), 1, 0))/((1444 + 3205)*2)
       ##MAF filter = 5/(1661*2); change to 3/(1661*2)

@@ -142,7 +142,8 @@ make_geno_mat <- function(ftemp_file, p_vec, samp_id){
       ##compute cohort specific MAF
       cont_wt <- sum(sam_gene_gt[grepl("^[ABZ]",sam_gene_gt$SAMPLE),]$comb_score)
       case_wt <- sum(sam_gene_gt[!grepl("^[ABZ]",sam_gene_gt$SAMPLE),]$comb_score)
-      maf_vec_cont <- round(sum(ifelse(is.na(as.numeric(sam_gene_gt$SAMPLE)), 1, 0))/(2*length(p_vec)), 10)
+      #maf_vec_cont <- round(sum(ifelse(is.na(as.numeric(sam_gene_gt$SAMPLE)), 1, 0))/(2*length(p_vec)), 10)
+      maf_vec_cont <- round(length(grep("^[ABZ]", sam_gene_gt$SAMPLE))/(2*length(p_vec)), 10)
       maf_vec_case <- round(sum(ifelse(!is.na(as.numeric(sam_gene_gt$SAMPLE)) | 
                                          grepl("^CR|^LK", as.character(sam_gene_gt$SAMPLE)), 1, 0))/(2*length(p_vec)),10)
       #maf_vec <- (maf_vec_cont + maf_vec_case)/(2*(1572 + 1110))
@@ -570,82 +571,85 @@ for(k in 1:length(cpx_list)){
 # 
 # p1
 
+
+
+
 ##modifications for metanalysis of ORs
 ##Mantel-Haenszel method (more Robust)
-CI_meta_MH_data <- function(cmpx_name){
-  library(meta)
-  library(metafor)
-  df1_disc <- read.delim(paste0("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Aug31/Validation_new_cpx/",cmpx_name,"_fisher.disc_null.tsv"),
-                         sep = "\t", header = T, stringsAsFactors = F )
-  df1_rep <- read.delim(paste0("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Aug31/Validation_new_cpx/",cmpx_name,"_fisher.rep_null.tsv"),
-                        sep = "\t", header = T, stringsAsFactors = F )
-  comb_Mant_fun <- function(df){
-    fixed_mod <- metabin(Cases, Cases_comp, Controls, Controls_comp, data = df,  
-                         studlab = gene,
-                         method.tau = "SJ",
-                         comb.fixed = FALSE,
-                         comb.random = TRUE,
-                         hakn = TRUE,
-                         prediction = TRUE,
-                         incr = 0.1,
-                         sm = "OR")
-    summ <- summary(fixed_mod)
-    
- #   ret_df <- cbind.data.frame("cmpx_name" = cmpx_name, "Fish_OR_meta" = exp(summ$fixed$TE), 
- #                              "lower.CI" = exp(summ$fixed$lower), "upper.CI" = exp(summ$fixed$upper))
-  ##use prediction interval for the forest plot
-    #https://www.erim.eur.nl/research-support/meta-essentials/interpret-results/the-forest-plot/prediction-interval/
-    #https://bmjopen.bmj.com/content/6/7/e010247
-     ret_df <- cbind.data.frame("cmpx_name" = cmpx_name, "Fish_OR_meta" = exp(summ$random$TE), 
-                               "lower.CI" = exp(summ$predict$lower), "upper.CI" = exp(summ$predict$upper))
-    
-  }
-  
-  
-  return(list(comb_Mant_fun(df1_disc), comb_Mant_fun(df1_rep)))
-  
-}
-
-CI_MH_meta <- list()
-for(i in 1:length(cpx_list)){
-  CI_MH_meta[[i]] <- CI_meta_MH_data(names(cpx_list)[i])
-}
-
-library(ggplot2)
-CI_disc_MH_meta <- lapply(CI_MH_meta, function(x)x[[1]])
-CI_disc_MH_meta_df <- do.call("rbind.data.frame", CI_disc_MH_meta)
-CI_disc_MH_meta_df$set <- "Disc"
-CI_rep_MH_meta <- lapply(CI_MH_meta, function(x)x[[2]])
-CI_rep_MH_meta_df <- do.call("rbind.data.frame", CI_rep_MH_meta)
-CI_rep_MH_meta_df$set <- "Rep"
-
-CI_comb_MH_meta_df <- rbind.data.frame(CI_disc_MH_meta_df, CI_rep_MH_meta_df)
-CI_comb_MH_meta_df$Index <- rownames(CI_comb_MH_meta_df)
-
-xname <- expression(paste(italic("Log"), "OR"))
-#setting up the basic plot
-p_meta <- ggplot(data=CI_comb_MH_meta_df, aes(y=cmpx_name, x=log(Fish_OR_meta), xmin=log(lower.CI), xmax=log(upper.CI))) + 
-  geom_point() + geom_point(data=subset(CI_comb_MH_meta_df, set=="Disc"), color="Black", size=2) + 
-  geom_errorbarh(height=.1) + scale_x_continuous(limits=c(-2,5), breaks = c(-2:5), name=xname) +
-  geom_vline(xintercept=0, color="black", linetype="dashed", alpha=.5) + 
-  facet_grid(set~., scales= "free", space="free") + ggtitle("PPI cliques")+
-  theme_minimal() + theme(text=element_text(family="Times",size=18, color="black"))+
-  theme(panel.spacing = unit(1, "lines"))
-
-p_meta
-
-# ##For supp figure
-CI_comb_MH_meta_df_sub <- CI_comb_MH_meta_df[CI_comb_MH_meta_df$cmpx_name %in% c("SARC_genes", "BRCA_genes",
-                                                                        "TP53_control", "Shelterin",
-                                                                        "CEP_HAUS_core", "MPNST_pos"),]
-
-p_sub <- ggplot(data=CI_comb_MH_meta_df_sub, aes(y=cmpx_name, x=log(Fish_OR_meta), xmin=log(lower.CI), xmax=log(upper.CI))) +
-  geom_point() + geom_point(data=subset(CI_comb_MH_meta_df_sub, set=="Disc"), color="Black", size=2) +
-  geom_errorbarh(height=.1) + scale_x_continuous(limits=c(-2,4), breaks = c(-2:4), name=xname) +
-  geom_vline(xintercept=0, color="black", linetype="dashed", alpha=.5) +
-  facet_grid(set~., scales= "free", space="free") + ggtitle("PPI cliques")+
-  theme_minimal() + theme(text=element_text(family="Times",size=18, color="black"))+
-  theme(panel.spacing = unit(1, "lines"))
-
-p_sub
+# CI_meta_MH_data <- function(cmpx_name){
+#   library(meta)
+#   library(metafor)
+#   df1_disc <- read.delim(paste0("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Aug31/Validation_new_cpx/",cmpx_name,"_fisher.disc_null.tsv"),
+#                          sep = "\t", header = T, stringsAsFactors = F )
+#   df1_rep <- read.delim(paste0("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Aug31/Validation_new_cpx/",cmpx_name,"_fisher.rep_null.tsv"),
+#                         sep = "\t", header = T, stringsAsFactors = F )
+#   comb_Mant_fun <- function(df){
+#     fixed_mod <- metabin(Cases, Cases_comp, Controls, Controls_comp, data = df,  
+#                          studlab = gene,
+#                          method.tau = "SJ",
+#                          comb.fixed = FALSE,
+#                          comb.random = TRUE,
+#                          hakn = TRUE,
+#                          prediction = TRUE,
+#                          incr = 0.1,
+#                          sm = "OR")
+#     summ <- summary(fixed_mod)
+#     
+#  #   ret_df <- cbind.data.frame("cmpx_name" = cmpx_name, "Fish_OR_meta" = exp(summ$fixed$TE), 
+#  #                              "lower.CI" = exp(summ$fixed$lower), "upper.CI" = exp(summ$fixed$upper))
+#   ##use prediction interval for the forest plot
+#     #https://www.erim.eur.nl/research-support/meta-essentials/interpret-results/the-forest-plot/prediction-interval/
+#     #https://bmjopen.bmj.com/content/6/7/e010247
+#      ret_df <- cbind.data.frame("cmpx_name" = cmpx_name, "Fish_OR_meta" = exp(summ$random$TE), 
+#                                "lower.CI" = exp(summ$predict$lower), "upper.CI" = exp(summ$predict$upper))
+#     
+#   }
+#   
+#   
+#   return(list(comb_Mant_fun(df1_disc), comb_Mant_fun(df1_rep)))
+#   
+# }
+# 
+# CI_MH_meta <- list()
+# for(i in 1:length(cpx_list)){
+#   CI_MH_meta[[i]] <- CI_meta_MH_data(names(cpx_list)[i])
+# }
+# 
+# library(ggplot2)
+# CI_disc_MH_meta <- lapply(CI_MH_meta, function(x)x[[1]])
+# CI_disc_MH_meta_df <- do.call("rbind.data.frame", CI_disc_MH_meta)
+# CI_disc_MH_meta_df$set <- "Disc"
+# CI_rep_MH_meta <- lapply(CI_MH_meta, function(x)x[[2]])
+# CI_rep_MH_meta_df <- do.call("rbind.data.frame", CI_rep_MH_meta)
+# CI_rep_MH_meta_df$set <- "Rep"
+# 
+# CI_comb_MH_meta_df <- rbind.data.frame(CI_disc_MH_meta_df, CI_rep_MH_meta_df)
+# CI_comb_MH_meta_df$Index <- rownames(CI_comb_MH_meta_df)
+# 
+# xname <- expression(paste(italic("Log"), "OR"))
+# #setting up the basic plot
+# p_meta <- ggplot(data=CI_comb_MH_meta_df, aes(y=cmpx_name, x=log(Fish_OR_meta), xmin=log(lower.CI), xmax=log(upper.CI))) + 
+#   geom_point() + geom_point(data=subset(CI_comb_MH_meta_df, set=="Disc"), color="Black", size=2) + 
+#   geom_errorbarh(height=.1) + scale_x_continuous(limits=c(-2,5), breaks = c(-2:5), name=xname) +
+#   geom_vline(xintercept=0, color="black", linetype="dashed", alpha=.5) + 
+#   facet_grid(set~., scales= "free", space="free") + ggtitle("PPI cliques")+
+#   theme_minimal() + theme(text=element_text(family="Times",size=18, color="black"))+
+#   theme(panel.spacing = unit(1, "lines"))
+# 
+# p_meta
+# 
+# # ##For supp figure
+# CI_comb_MH_meta_df_sub <- CI_comb_MH_meta_df[CI_comb_MH_meta_df$cmpx_name %in% c("SARC_genes", "BRCA_genes",
+#                                                                         "TP53_control", "Shelterin",
+#                                                                         "CEP_HAUS_core", "MPNST_pos"),]
+# 
+# p_sub <- ggplot(data=CI_comb_MH_meta_df_sub, aes(y=cmpx_name, x=log(Fish_OR_meta), xmin=log(lower.CI), xmax=log(upper.CI))) +
+#   geom_point() + geom_point(data=subset(CI_comb_MH_meta_df_sub, set=="Disc"), color="Black", size=2) +
+#   geom_errorbarh(height=.1) + scale_x_continuous(limits=c(-2,4), breaks = c(-2:4), name=xname) +
+#   geom_vline(xintercept=0, color="black", linetype="dashed", alpha=.5) +
+#   facet_grid(set~., scales= "free", space="free") + ggtitle("PPI cliques")+
+#   theme_minimal() + theme(text=element_text(family="Times",size=18, color="black"))+
+#   theme(panel.spacing = unit(1, "lines"))
+# 
+# p_sub
 

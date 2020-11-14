@@ -1,6 +1,7 @@
 ##Separate Melanoma table; Melanoma may harbour Shelterin complex related variants and hence need to be 
 ## dealt separately; improve relative gain of Shelterin complex in ISKS
 .libPaths(c( "/home/shu/R/x86_64-redhat-linux-gnu-library/3.4", .libPaths() ) )
+`%nin%` = Negate(`%in%`)
 
 fil_tab <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/EPIT_AR_AD/all_epitmgrb_skatinp_combset2020_clin_C3C4C5_NFE0002_AD_all_fields_rnd3.tsv",
                       sep = "\t", stringsAsFactors = F, header = T)
@@ -12,7 +13,7 @@ Ex_samp_id <- unique(fil_tab$SAMPLE)
 #remove duplicates
 dup_samp <- read.delim("~/RVAS/comb_set_2020/PC_relate/ldpruned/fin_samp_dup_drop.txt", sep = "", header = T,
                        stringsAsFactors = F)
-`%nin%` = Negate(`%in%`)
+
 Ex_samp_id <- Ex_samp_id[Ex_samp_id %nin% dup_samp$x]
 
 #Ex_var_id <- unique(fil_tab$VARIANT)
@@ -64,7 +65,6 @@ p_Data_noCH$study <- epit_pheno[match(p_Data_noCH$sample, epit_pheno$Sample_Id),
 p_Data_noCH$study <- ifelse(is.na(p_Data_noCH$study), "MGRB", p_Data_noCH$study)
 
 ##remove 78 Familial breast cases
-`%nin%` = Negate(`%in%`)
 p_Data_noCH <- p_Data_noCH[p_Data_noCH$study %nin% "Familial breast",]
 ##Exlude 7 oesophageal cancer cases (withdrawn consent)
 exclude_oeso <- epit_pheno[epit_pheno$EXCLUDE %in% "yes",1]
@@ -77,17 +77,25 @@ write.table(fil_tab,"~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_s
             sep = "\t", row.names = F, quote = F)
 
 ##melanoma table(does not include mucosal melanoma)
-p_Data_mela <- p_Data_noCH[p_Data_noCH$study %in% c("Melanoma","MGRB"),]
+#p_Data_mela <- p_Data_noCH[p_Data_noCH$study %in% c("Melanoma","MGRB"),]
+##melanoma table(include mucosal melanoma)Nov.2.2020
+p_Data_mela <- p_Data_noCH[p_Data_noCH$study %in% c("Melanoma","Mucosal melanoma", "MGRB"),]
 mela_samp_id <- Ex_samp_id[match(p_Data_mela$sample, Ex_samp_id)]
 ##filter out QC fail and 78 Familial breast cases
 fil_tab_mela <- fil_tab[fil_tab$SAMPLE %in% mela_samp_id,]
 write.table(fil_tab_mela,"~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/EPIT_AR_AD/Tabs/EPIT_melanoma_skat_inp_tab.tsv",
             sep = "\t", row.names = F, quote = F)
 
-##non-melanoma table(includes mucosal melanoma)
-p_Data_nmela <- p_Data_noCH[p_Data_noCH$study %nin% "Melanoma",]
+##non-melanoma table(excludes melanoma and mucosal melanoma) Nov.2.2020
+p_Data_nmela <- p_Data_noCH[p_Data_noCH$study %nin% c("Melanoma", "Mucosal melanoma"),]
 nmela_samp_id <- Ex_samp_id[match(p_Data_nmela$sample, Ex_samp_id)]
 ##filter out QC fail and 78 Familial breast cases
 fil_tab_nmela <- fil_tab[fil_tab$SAMPLE %in% nmela_samp_id,]
 write.table(fil_tab_nmela,"~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/EPIT_AR_AD/Tabs/EPIT_non_melanoma_skat_inp_tab.tsv",
+            sep = "\t", row.names = F, quote = F)
+epit_pheno_mod_age <- epit_pheno[epit_pheno$Sample_Id %in% p_Data_nmela$sample, ]
+epit_pheno_mod_age$gender <- p_Data_nmela[match(epit_pheno_mod_age$Sample_Id, p_Data_nmela$sample),53]
+epit_pheno_mod_age_gender <- epit_pheno_mod_age[,c(1,19,21,24,27)]
+
+write.table(epit_pheno_mod_age_gender,"~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/EPIT_AR_AD/Tabs/EPIT_age_gender_telo_non_melanoma.tsv",
             sep = "\t", row.names = F, quote = F)

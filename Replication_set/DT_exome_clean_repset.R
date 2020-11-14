@@ -248,7 +248,7 @@ for(j in 1:dim(t3_mis)[1]){
 }
 
 rm_ms <- do.call("rbind.data.frame", Ex_tab_noCH_filt3_ms)
-rm_ms$filt_tab <- paste(rm_ms$SAMPLE, rm_ms$VARIANT, sep = "_")
+#rm_ms$filt_tab <- paste(rm_ms$SAMPLE, rm_ms$VARIANT, sep = "_")
 
 ##combine the sets to remove from 
 

@@ -254,8 +254,9 @@ system.time(para_fish <- parApply(cl, gender_PC123_cont_df, 1, para_fisher_fun_n
 stopCluster(cl)
 fisher_res <- do.call("rbind.data.frame",para_fish)
 ppi_res_fil_final <- cbind.data.frame(gender_PC123_cont_df, fisher_res)
-write.table(ppi_res_fil_final, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/ppi_res_fil_final_SKATbin_Aug31.tsv", sep = "\t", row.names = F, quote = F)
-#write.table(ppi_res_fil_final, #"~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS/ppi_res_fil_final.tsv#", sep = "\t", row.names = F, quote = F)
+#write.table(ppi_res_fil_final, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/ppi_res_fil_final_SKATbin_Aug31.tsv", sep = "\t", row.names = F, quote = F)
+write.table(ppi_res_fil_final, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/ppi_res_fil_final_SKATbin_Aug31_sep19.tsv", sep = "\t", row.names = F, quote = F)
+
 
 ```
 
@@ -354,7 +355,8 @@ theme(legend.position = "bottom")
 ```{r}
 ##combine biogrid and stringdb
 
-ppi_res_fil_final <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/ppi_res_fil_final_SKATbin_Aug31.tsv", sep = "\t", header = T, stringsAsFactors = F)
+#ppi_res_fil_final <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/ppi_res_fil_final_SKATbin_Aug31.tsv", sep = "\t", header = T, stringsAsFactors = F)
+ppi_res_fil_final <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/ppi_res_fil_final_SKATbin_Aug31_sep19.tsv", sep = "\t", header = T, stringsAsFactors = F)
 
 top_genes_enr <- as.character(ppi_res_fil_final$gene)
 

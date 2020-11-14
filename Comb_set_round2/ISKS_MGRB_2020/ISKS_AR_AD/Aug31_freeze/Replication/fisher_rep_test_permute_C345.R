@@ -143,7 +143,8 @@ make_geno_mat <- function(ftemp_file, p_vec, samp_id){
       ##compute cohort specific MAF
       cont_wt <- sum(sam_gene_gt[grepl("^[ABZ]",sam_gene_gt$SAMPLE),]$comb_score)
       case_wt <- sum(sam_gene_gt[!grepl("^[ABZ]",sam_gene_gt$SAMPLE),]$comb_score)
-      maf_vec_cont <- round(sum(ifelse(is.na(as.numeric(sam_gene_gt$SAMPLE)), 1, 0))/(2*length(p_vec)), 10)
+     # maf_vec_cont <- round(sum(ifelse(is.na(as.numeric(sam_gene_gt$SAMPLE)), 1, 0))/(2*length(p_vec)), 10)
+      maf_vec_cont <- round(length(grep("^[ABZ]", sam_gene_gt$SAMPLE))/(2*length(p_vec)), 10)
       maf_vec_case <- round(sum(ifelse(!is.na(as.numeric(sam_gene_gt$SAMPLE)) | 
                                          grepl("^CR|^LK", as.character(sam_gene_gt$SAMPLE)), 1, 0))/(2*length(p_vec)),10)
       #maf_vec <- (maf_vec_cont + maf_vec_case)/(2*(1572 + 1110))

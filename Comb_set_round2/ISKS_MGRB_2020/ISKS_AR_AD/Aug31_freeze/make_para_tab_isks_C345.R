@@ -33,7 +33,9 @@ get_coh_dist_para <- function(gene_sym, fil_db){
     for(m in 1:length(ftemp_tab_var_id)){
       sam_gene_gt <- fil_db_genes[fil_db_genes$VARIANT %in% ftemp_tab_var_id[m],][,c(1:3,9,11,127:128)]
       sam_gene_gt <- unique(sam_gene_gt)
-      maf_vec_cont <- sum(ifelse(is.na(as.numeric(sam_gene_gt$SAMPLE)), 1, 0))/((1644 + 3205)*2)
+      #maf_vec_cont <- sum(ifelse(is.na(as.numeric(sam_gene_gt$SAMPLE)), 1, 0))/((1644 + 3205)*2)
+      ##it should be for MGRB and to not penalise CR's and LK's:Sep18-2020
+      maf_vec_cont <- length(grep("^[ABZ]", sam_gene_gt$SAMPLE))/((1644 + 3205)*2)
       maf_vec_case <- sum(ifelse(!is.na(as.numeric(sam_gene_gt$SAMPLE)) | 
                                    grepl("^CR|^LK", as.character(sam_gene_gt$SAMPLE)), 1, 0))/((1644 + 3205)*2)
       ##MAF filter = 5/(1661*2); change to 3/(1661*2)
@@ -94,6 +96,4 @@ system.time(res_list <- foreach(i=1:length(genes), .errorhandling = 'remove') %d
 {get_coh_dist_para(genes[i], fil_tab_noCH)})
 res20 <- do.call("rbind.data.frame", res_list)
 
-#saveRDS(Exome_pc123_srt_SKAT_case_enr_nCH, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS/Exome_pc123_SKAT_Enriched_combset2020.rds", compress = T)
-#saveRDS(res20, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/Exome_para_pc1234_SKAT_Enriched_ISKS_2020.rds", compress = T)
 saveRDS(res20, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/Exome_para_tab_ISKS_MGRB_C345_Aug31.rds", compress = T)

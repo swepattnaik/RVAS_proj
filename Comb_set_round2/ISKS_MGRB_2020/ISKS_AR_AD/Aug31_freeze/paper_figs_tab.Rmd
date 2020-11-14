@@ -125,8 +125,8 @@ isks_mpnst_mgrb_genes_noC3 <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isk
 
 
 ##Combined Sarcoma replication set
-sarc_comb_mgrb_genes <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/Comb_TCGA_BERG_NoSarc/Exome_para_CombSarc_Aug31.rds")
-sarc_comb_mgrb_genes_noC3 <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/Comb_TCGA_BERG_NoSarc/Exome_para_CombSarc_minusC3Aug31.rds")
+sarc_comb_mgrb_genes <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/Comb_TCGA_BERG_NoSarc/Exome_para_CombSarc_Aug31_sep19.rds")
+sarc_comb_mgrb_genes_noC3 <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/Comb_TCGA_BERG_NoSarc/Exome_para_CombSarc_minusC3Aug31_sep19.rds")
 
 ########
 
@@ -159,8 +159,11 @@ cpx_ISKS_tas_OR_df <- do.call("rbind.data.frame", cpx_OR_fisher(isks_tas_mgrb_ge
 cpx_ISKS_simple_OR_df <- do.call("rbind.data.frame", cpx_OR_fisher(isks_simple_mgrb_genes, 371, 3205, "SIMPLEvsMGRB"))
 cpx_ISKS_mpnst_OR_df <- do.call("rbind.data.frame", cpx_OR_fisher(isks_mpnst_mgrb_genes, 157, 3205, "MPNSTvsMGRB"))
 cpx_EPIT_OR_df <- do.call("rbind.data.frame", cpx_OR_fisher(epit_mgrb_genes, 835, 3205, "EPITvsMGRB"))
-cpx_NMELA_OR_df <- do.call("rbind.data.frame", cpx_OR_fisher(nmela_epit_mgrb_genes, 660, 3205, "NMELAvsMGRB"))
-cpx_MELA_OR_df <- do.call("rbind.data.frame", cpx_OR_fisher(mela_epit_mgrb_genes, 175, 3205, "MELAvsMGRB"))
+#cpx_NMELA_OR_df <- do.call("rbind.data.frame", cpx_OR_fisher(nmela_epit_mgrb_genes, 660, 3205, "NMELAvsMGRB"))
+#cpx_MELA_OR_df <- do.call("rbind.data.frame", cpx_OR_fisher(mela_epit_mgrb_genes, 175, 3205, "MELAvsMGRB"))
+#Nov2.2020
+cpx_NMELA_OR_df <- do.call("rbind.data.frame", cpx_OR_fisher(nmela_epit_mgrb_genes, 632, 3205, "NMELAvsMGRB"))
+cpx_MELA_OR_df <- do.call("rbind.data.frame", cpx_OR_fisher(mela_epit_mgrb_genes, 203, 3205, "MELAvsMGRB"))
 #cpx_CAIRN_OR_df <- do.call("rbind.data.frame", cpx_OR_fisher(cairns_mgrb_genes, 413, 3205, "CAIRNvsMGRB"))
 cpx_REPSET_OR_df <- do.call("rbind.data.frame", cpx_OR_fisher(sarc_comb_mgrb_genes, 563, 3205, "REPvsMGRB"))
 df_comb_rnd2 <- rbind.data.frame(cpx_ISKS_OR_df, cpx_ISKS_complex_OR_df, cpx_ISKS_tas_OR_df, 
@@ -170,6 +173,20 @@ df_comb_rnd2 <- rbind.data.frame(cpx_ISKS_OR_df, cpx_ISKS_complex_OR_df, cpx_ISK
 df_comb_rnd2$Coh <- as.factor(gsub("vsMGRB", "", df_comb_rnd2$Coh))
 df_comb_rnd2_filt <- df_comb_rnd2[df_comb_rnd2$Fish_pval < 0.05, ]
 
+##for heatmap
+##C345 subsetted geneset and cohorts 
+df_comb_rnd2_sub <- df_comb_rnd2[df_comb_rnd2$Coh %nin% c("TAS", "SIMPLE", "EPIT", "REP") &
+                               df_comb_rnd2$gene %in% c("Shelterin geneset", "Centrosome geneset", "BRCA geneset", 
+                                                        "TP53", "NF1 geneset"),]
+df_comb_rnd2_sub$Coh <- droplevels(df_comb_rnd2_sub$Coh)
+df_comb_rnd2_sub$gene <- droplevels(df_comb_rnd2_sub$gene)
+df_comb_rnd2_sub$Coh <- gsub("MPNST", "MPNST+GIST",df_comb_rnd2_sub$Coh)
+df_comb_rnd2_sub$Coh <- gsub("NMELA", "EPIT",df_comb_rnd2_sub$Coh)
+df_comb_rnd2_sub$Coh <- gsub("COMPLEX", "Complex Sarcomas",df_comb_rnd2_sub$Coh)
+write.table(df_comb_rnd2_sub[,-10], "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Aug31/Manuscript_docs/Tables/C345_gene_complex_OR_sub.tsv", sep = "\t", row.names = F, quote = F)
+
+
+
 ##ISKS_MGRB, EPIT_MGRB and CAIRNS_MGRB without C3.
 ##no_C3
 cpx_ISKS_OR_df_noC3 <- do.call("rbind.data.frame", cpx_OR_fisher(isks_mgrb_genes_noC3, 1644, 3205, "ISKSvsMGRB"))
@@ -178,8 +195,11 @@ cpx_ISKS_tas_OR_df_noC3 <- do.call("rbind.data.frame", cpx_OR_fisher(isks_tas_mg
 cpx_ISKS_simple_OR_df_noC3 <- do.call("rbind.data.frame", cpx_OR_fisher(isks_simple_mgrb_genes_noC3, 371, 3205, "SIMPLEvsMGRB"))
 cpx_ISKS_mpnst_OR_df_noC3 <- do.call("rbind.data.frame", cpx_OR_fisher(isks_mpnst_mgrb_genes_noC3, 157, 3205, "MPNSTvsMGRB"))
 cpx_EPIT_OR_df_noC3 <- do.call("rbind.data.frame", cpx_OR_fisher(epit_mgrb_genes_noC3, 835, 3205, "EPITvsMGRB"))
-cpx_NMELA_OR_df_noC3 <- do.call("rbind.data.frame", cpx_OR_fisher(nmela_epit_mgrb_genes_noC3, 660, 3205, "NMELAvsMGRB"))
-cpx_MELA_OR_df_noC3 <- do.call("rbind.data.frame", cpx_OR_fisher(mela_epit_mgrb_genes_noC3, 175, 3205, "MELAvsMGRB"))
+
+#cpx_NMELA_OR_df_noC3 <- do.call("rbind.data.frame", cpx_OR_fisher(nmela_epit_mgrb_genes_noC3, 660, 3205, "NMELAvsMGRB"))
+#cpx_MELA_OR_df_noC3 <- do.call("rbind.data.frame", cpx_OR_fisher(mela_epit_mgrb_genes_noC3, 175, 3205, "MELAvsMGRB"))
+cpx_NMELA_OR_df_noC3 <- do.call("rbind.data.frame", cpx_OR_fisher(nmela_epit_mgrb_genes_noC3, 632, 3205, "NMELAvsMGRB"))
+cpx_MELA_OR_df_noC3 <- do.call("rbind.data.frame", cpx_OR_fisher(mela_epit_mgrb_genes_noC3, 203, 3205, "MELAvsMGRB"))
 
 cpx_REPSET_OR_df_noC3 <- do.call("rbind.data.frame", cpx_OR_fisher(sarc_comb_mgrb_genes_noC3, 563, 3205, "REPvsMGRB"))
 #cpx_CAIRN_OR_df_noC3 <- do.call("rbind.data.frame", cpx_OR_fisher(Cairns_noC3_fin, 413, 3205, "CAIRNvsMGRB"))
@@ -201,22 +221,6 @@ noC3_df_comb_rnd2$OR_Fish <- ifelse(noC3_df_comb_rnd2$OR_Fish == 0, 1, noC3_df_c
 noC3_df_comb_rnd2_filt <- noC3_df_comb_rnd2[noC3_df_comb_rnd2$Fish_pval < 0.05 & noC3_df_comb_rnd2$CI_lower > 1,]
 
 ##for heatmap
-##C345 subsetted geneset and cohorts 
-df_comb_rnd2_sub <- df_comb_rnd2[df_comb_rnd2$Coh %nin% c("TAS", "SIMPLE", "EPIT", "REP") &
-                               df_comb_rnd2$gene %in% c("Shelterin geneset", "Centrosome geneset", "BRCA geneset", 
-                                                        "TP53", "NF1 geneset"),]
-df_comb_rnd2_sub$Coh <- droplevels(df_comb_rnd2_sub$Coh)
-df_comb_rnd2_sub$gene <- droplevels(df_comb_rnd2_sub$gene)
-df_comb_rnd2_sub$Coh <- gsub("MPNST", "MPNST+GIST",df_comb_rnd2_sub$Coh)
-df_comb_rnd2_sub$Coh <- gsub("NMELA", "EPIT",df_comb_rnd2_sub$Coh)
-df_comb_rnd2_sub$Coh <- gsub("COMPLEX", "Complex Sarcomas",df_comb_rnd2_sub$Coh)
-#df_comb_rnd2_sub$gene <- gsub("CEP_HAUS_core", "CEP_HAUS",df_comb_rnd2_sub$gene)
-#df_comb_rnd2_sub$gene <- gsub("Shelterin", "SHELTERIN",df_comb_rnd2_sub$gene)
-#df_comb_rnd2_sub$gene <- gsub("SARC_genes", "SARC",df_comb_rnd2_sub$gene)
-#df_comb_rnd2_sub$gene <- gsub("BRCA_genes", "BRCA",df_comb_rnd2_sub$gene)
-#df_comb_rnd2_sub$gene <- gsub("TP53_control", "TP53",df_comb_rnd2_sub$gene)
-write.table(df_comb_rnd2_sub[,-10], "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Aug31/Manuscript_docs/Tables/C345_gene_complex_OR_sub.tsv", sep = "\t", row.names = F, quote = F)
-
 ##C45
 noC3_df_comb_rnd2_sub <- noC3_df_comb_rnd2[noC3_df_comb_rnd2$Coh %nin% c("TAS", "SIMPLE", "EPIT", "REP") &
                                          noC3_df_comb_rnd2$gene %in% c("Shelterin geneset", "Centrosome geneset", "BRCA geneset","TP53", "NF1 geneset"),]
@@ -225,16 +229,13 @@ noC3_df_comb_rnd2_sub$gene <- droplevels(noC3_df_comb_rnd2_sub$gene)
 noC3_df_comb_rnd2_sub$Coh <- gsub("MPNST", "MPNST+GIST",noC3_df_comb_rnd2_sub$Coh)
 noC3_df_comb_rnd2_sub$Coh <- gsub("NMELA", "EPIT",noC3_df_comb_rnd2_sub$Coh)
 noC3_df_comb_rnd2_sub$Coh <- gsub("COMPLEX", "Complex Sarcomas",noC3_df_comb_rnd2_sub$Coh)
-# noC3_df_comb_rnd2_sub$gene <- gsub("CEP_HAUS_core", "CEP_HAUS",noC3_df_comb_rnd2_sub$gene)
-# noC3_df_comb_rnd2_sub$gene <- gsub("Shelterin", "SHELTERIN",noC3_df_comb_rnd2_sub$gene)
-# noC3_df_comb_rnd2_sub$gene <- gsub("SARC_genes", "SARC",noC3_df_comb_rnd2_sub$gene)
-# noC3_df_comb_rnd2_sub$gene <- gsub("BRCA_genes", "BRCA",noC3_df_comb_rnd2_sub$gene)
-# noC3_df_comb_rnd2_sub$gene <- gsub("TP53_control", "TP53",noC3_df_comb_rnd2_sub$gene)
+
 write.table(noC3_df_comb_rnd2_sub[,-10], "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Aug31/Manuscript_docs/Tables/C45_gene_complex_OR_sub.tsv", sep = "\t", row.names = F, quote = F)
+
 
 ```
 
-##Table for intra and intercohort comparisons
+##Table for intra and intercohort comparisons:C45
 ```{r}
 tab_noC3_multi_comp <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Aug31/Manuscript_docs/Tables/C45_gene_complex_OR_sub.tsv", sep = "\t", header = T, stringsAsFactors = F)
 inter_coh_fisher <- function(tab_dat, cpx_name, case_coh, cont_coh){
@@ -265,22 +266,22 @@ inter_coh_fisher <- function(tab_dat, cpx_name, case_coh, cont_coh){
 }
 
 ##C45
-ISKS_Sheltrin_cmp <- inter_coh_fisher(tab_noC3_multi_comp, cpx_name = "Shelterin geneset", case_coh = "ISKS", cont_coh = "EPIT")
-Complex_EPIT_Sheltrin_cmp <- inter_coh_fisher(tab_noC3_multi_comp, "Shelterin geneset", "Complex Sarcomas", "EPIT")
-Complex_ISKS_Sheltrin_cmp <- inter_coh_fisher(tab_noC3_multi_comp, "Shelterin geneset", "Complex Sarcomas", "ISKS")
-ISKS_Centro_cmp <- inter_coh_fisher(tab_noC3_multi_comp, "Centrosome geneset", "ISKS", "EPIT")
-MPNST_ISKS_Centro_cmp <- inter_coh_fisher(tab_noC3_multi_comp, "Centrosome geneset", "MPNST+GIST", "ISKS")
-MPNST_EPIT_Centro_cmp <- inter_coh_fisher(tab_noC3_multi_comp, "Centrosome geneset", "MPNST+GIST", "EPIT")
-MPNST_EPIT_Centro_cmp <- inter_coh_fisher(tab_noC3_multi_comp, "Centrosome geneset", "MPNST+GIST", "EPIT")
-
-MPNST_EPIT_Centro_cmp <- inter_coh_fisher(tab_noC3_multi_comp, "TP53", "ISKS", "Complex Sarcomas")
-MPNST_EPIT_Centro_cmp <- inter_coh_fisher(tab_noC3_multi_comp, "Centrosome geneset", "MPNST+GIST", "EPIT")
-
-
-fin_comb_tab <- rbind.data.frame(ISKS_Sheltrin_cmp, Complex_EPIT_Sheltrin_cmp, Complex_ISKS_Sheltrin_cmp, ISKS_Centro_cmp, MPNST_ISKS_Centro_cmp, MPNST_EPIT_Centro_cmp)
-fin_comb_tab$sig <- ifelse(fin_comb_tab$Fish_pval > 0.05, "ns", ifelse(fin_comb_tab$Fish_pval > 0.01 & fin_comb_tab$Fish_pval <= 0.05, "*",
-                           ifelse(fin_comb_tab$Fish_pval > 0.001 & fin_comb_tab$Fish_pval <= 0.01, "**",
-                           ifelse(fin_comb_tab$Fish_pval > 0.0001 & fin_comb_tab$Fish_pval <= 0.001, "***", "****"))))
+# ISKS_Sheltrin_cmp <- inter_coh_fisher(tab_noC3_multi_comp, cpx_name = "Shelterin geneset", case_coh = "ISKS", cont_coh = "EPIT")
+# Complex_EPIT_Sheltrin_cmp <- inter_coh_fisher(tab_noC3_multi_comp, "Shelterin geneset", "Complex Sarcomas", "EPIT")
+# Complex_ISKS_Sheltrin_cmp <- inter_coh_fisher(tab_noC3_multi_comp, "Shelterin geneset", "Complex Sarcomas", "ISKS")
+# ISKS_Centro_cmp <- inter_coh_fisher(tab_noC3_multi_comp, "Centrosome geneset", "ISKS", "EPIT")
+# MPNST_ISKS_Centro_cmp <- inter_coh_fisher(tab_noC3_multi_comp, "Centrosome geneset", "MPNST+GIST", "ISKS")
+# MPNST_EPIT_Centro_cmp <- inter_coh_fisher(tab_noC3_multi_comp, "Centrosome geneset", "MPNST+GIST", "EPIT")
+# MPNST_EPIT_Centro_cmp <- inter_coh_fisher(tab_noC3_multi_comp, "Centrosome geneset", "MPNST+GIST", "EPIT")
+# 
+# MPNST_EPIT_Centro_cmp <- inter_coh_fisher(tab_noC3_multi_comp, "TP53", "ISKS", "Complex Sarcomas")
+# MPNST_EPIT_Centro_cmp <- inter_coh_fisher(tab_noC3_multi_comp, "Centrosome geneset", "MPNST+GIST", "EPIT")
+# 
+# 
+# fin_comb_tab <- rbind.data.frame(ISKS_Sheltrin_cmp, Complex_EPIT_Sheltrin_cmp, Complex_ISKS_Sheltrin_cmp, ISKS_Centro_cmp, MPNST_ISKS_Centro_cmp, MPNST_EPIT_Centro_cmp)
+# fin_comb_tab$sig <- ifelse(fin_comb_tab$Fish_pval > 0.05, "ns", ifelse(fin_comb_tab$Fish_pval > 0.01 & fin_comb_tab$Fish_pval <= 0.05, "*",
+#                            ifelse(fin_comb_tab$Fish_pval > 0.001 & fin_comb_tab$Fish_pval <= 0.01, "**",
+#                            ifelse(fin_comb_tab$Fish_pval > 0.0001 & fin_comb_tab$Fish_pval <= 0.001, "***", "****"))))
 
 #write.table(fin_comb_tab, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Aug31/Manuscript_docs/Tables/intra_intercoh_C45_gene_complex_OR_sub.tsv", sep = "\t", row.names = F, quote = F)
 
@@ -293,9 +294,9 @@ multi_inter_coh <- function(tab, cases, controls, cpx_name){
 all_comp <- list()
 all_comp_sub <- list()
 for(m in 1:length(controls)){
-  print(m)
+ # print(m)
   for(n in 1:length(cases)){
-    print(cases[n])
+ #   print(cases[n])
     all_comp_sub[[n]] <- inter_coh_fisher(tab_dat = tab, cpx_name = cpx_name,  case_coh = cases[n], 
                                           cont_coh = controls[m])
   }
@@ -510,7 +511,8 @@ CI_meta_MH_data <- function(cmpx_name){
     #https://www.erim.eur.nl/research-support/meta-essentials/interpret-results/the-forest-plot/prediction-interval/
     #https://bmjopen.bmj.com/content/6/7/e010247
      ret_df <- cbind.data.frame("cmpx_name" = cmpx_name, "Fish_OR_meta" = exp(summ$random$TE), 
-                               "lower.CI" = exp(summ$predict$lower), "upper.CI" = exp(summ$predict$upper))
+                               "lower.CI" = exp(summ$predict$lower), "upper.CI" = exp(summ$predict$upper),
+                               "comb_pval" = summ$random$p)
     
   }
   
@@ -533,73 +535,128 @@ CI_rep_MH_meta_df <- do.call("rbind.data.frame", CI_rep_MH_meta)
 CI_rep_MH_meta_df$set <- "Rep"
 
 CI_comb_MH_meta_df <- rbind.data.frame(CI_disc_MH_meta_df, CI_rep_MH_meta_df)
-CI_comb_MH_meta_df$Index <- rownames(CI_comb_MH_meta_df)
+#CI_comb_MH_meta_df$Index <- rownames(CI_comb_MH_meta_df)
 
-xname <- expression(paste(italic("Log"), "OR"))
+# xname <- expression(paste(italic("Log"), "OR"))
 #setting up the basic plot
-p_meta <- ggplot(data=CI_comb_MH_meta_df, aes(y=cmpx_name, x=log2(Fish_OR_meta), xmin=log2(lower.CI), xmax=log2(upper.CI))) + 
-  geom_point() + geom_point(data=subset(CI_comb_MH_meta_df, set=="Disc"), color="Black", size=2) + 
-  geom_errorbarh(height=.1) + scale_x_continuous(limits=c(-2,5), breaks = c(-2:5), name=xname) +
-  geom_vline(xintercept=0, color="black", linetype="dashed", alpha=.5) + 
-  facet_grid(set~., scales= "free", space="free") + ggtitle("PPI cliques")+
-  theme_minimal() + theme(text=element_text(family="Times",size=18, color="black"))+
-  theme(panel.spacing = unit(1, "lines"))
+# p_meta <- ggplot(data=CI_comb_MH_meta_df, aes(y=cmpx_name, x=log2(Fish_OR_meta), xmin=log2(lower.CI), xmax=log2(upper.CI))) + 
+#   geom_point() + geom_point(data=subset(CI_comb_MH_meta_df, set=="Disc"), color="Black", size=2) + 
+#   geom_errorbarh(height=.1) + scale_x_continuous(limits=c(-2,5), breaks = c(-2:5), name=xname) +
+#   geom_vline(xintercept=0, color="black", linetype="dashed", alpha=.5) + 
+#   facet_grid(set~., scales= "free", space="free") + ggtitle("PPI cliques")+
+#   theme_minimal() + theme(text=element_text(family="Times",size=18, color="black"))+
+#   theme(panel.spacing = unit(1, "lines"))
 
 #p_meta
 
 # ##For supp figure
-CI_comb_MH_meta_df_sub <- CI_comb_MH_meta_df[CI_comb_MH_meta_df$cmpx_name %in% c("SARC_genes","TP53_control", "Shelterin","CEP_HAUS_core"),]
+#CI_comb_MH_meta_df_sub <- CI_comb_MH_meta_df[CI_comb_MH_meta_df$cmpx_name %in% c("SARC_genes","TP53_control", "Shelterin","CEP_HAUS_core"),]
+##remove SARC_genes (Oct.17.2020)
+CI_comb_MH_meta_df_sub <- CI_comb_MH_meta_df[CI_comb_MH_meta_df$cmpx_name %in% c("TP53_control", "Shelterin","CEP_HAUS_core"),]
 CI_comb_MH_meta_df_sub$cmpx_name <- gsub("CEP_HAUS_core", "Centrosome geneset",CI_comb_MH_meta_df_sub$cmpx_name)
 CI_comb_MH_meta_df_sub$cmpx_name <- gsub("Shelterin", "Shelterin geneset",CI_comb_MH_meta_df_sub$cmpx_name)
-CI_comb_MH_meta_df_sub$cmpx_name <- gsub("SARC_genes", "Sarcoma geneset",CI_comb_MH_meta_df_sub$cmpx_name)
+#CI_comb_MH_meta_df_sub$cmpx_name <- gsub("SARC_genes", "Sarcoma geneset",CI_comb_MH_meta_df_sub$cmpx_name)
 CI_comb_MH_meta_df_sub$cmpx_name <- gsub("TP53_control", "TP53",CI_comb_MH_meta_df_sub$cmpx_name)
 #CI_comb_MH_meta_df_sub$cmpx_name <- gsub("MPNST_pos", "NF1 geneset",CI_comb_MH_meta_df_sub$cmpx_name)
 write.table(CI_comb_MH_meta_df_sub, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Aug31/Manuscript_docs/Tables/CV_2fold_disc_rep.tsv", sep = "\t", quote = F, row.names = F)
 
-p_sub <- ggplot(data=CI_comb_MH_meta_df_sub, aes(y=cmpx_name, x=log2(Fish_OR_meta), xmin=log2(lower.CI), xmax=log2(upper.CI))) +
-  geom_point() + geom_point(data=subset(CI_comb_MH_meta_df_sub, set=="Disc"), color="Black", size=2) +
-  geom_errorbarh(height=.1) + scale_x_continuous(limits=c(-2,4), breaks = c(-2:4), name=xname) +
-  geom_vline(xintercept=0, color="black", linetype="dashed", alpha=.5) +
-  facet_grid(set~., scales= "free", space="free") + ggtitle("PPI cliques")+
-  theme_minimal() + theme(text=element_text(family="Times",size=18, color="black"))+
-  theme(panel.spacing = unit(1, "lines"))
+colnames(CI_comb_MH_meta_df_sub)[6] <- "Coh"
+CI_comb_MH_meta_df_sub$Coh <- gsub("Disc", "2/3 split", CI_comb_MH_meta_df_sub$Coh)
+CI_comb_MH_meta_df_sub$Coh <- gsub("Rep", "1/3 split", CI_comb_MH_meta_df_sub$Coh)
+CI_comb_MH_meta_df_sub$Coh <- as.factor(CI_comb_MH_meta_df_sub$Coh)
+CI_comb_MH_meta_df_sub$cmpx_name <- factor(x = CI_comb_MH_meta_df_sub$cmpx_name,
+                            levels = c("Centrosome geneset","Shelterin geneset", "TP53"), ordered = TRUE)
+
+
+# p_sub <- ggplot(data=CI_comb_MH_meta_df_sub, aes(y=cmpx_name, x=log2(Fish_OR_meta), xmin=log2(lower.CI), xmax=log2(upper.CI))) +
+#   geom_point() + geom_point(data=subset(CI_comb_MH_meta_df_sub, set=="Disc"), color="Black", size=2) +
+#   geom_errorbarh(height=.1) + scale_x_continuous(limits=c(-2,4), breaks = c(-2:4), name=xname) +
+#   geom_vline(xintercept=0, color="black", linetype="dashed", alpha=.5) +
+#   facet_grid(set~., scales= "free", space="free") + ggtitle("PPI cliques")+
+#   theme_minimal() + theme(text=element_text(family="Times",size=18, color="black"))+
+#   theme(panel.spacing = unit(1, "lines"))
 
 #p_sub
 
 ##Alternate plotting##use this
+#https://aosmith.rbind.io/2018/01/19/reversing-the-order-of-a-ggplot2-legend/
+# library(ggplot2)
+# forest_custplot <- function(df){
+#   dotCOLS = c("#030000", "#030000")
+#   barCOLS = c("#030000", "#030000")
+#   p <- ggplot(df, aes(x=cmpx_name, y=log2(Fish_OR_meta), ymin=log2(lower.CI), ymax=log2(upper.CI),col=Coh,fill=Coh)) + 
+#     #specify position here
+#     geom_linerange(size=1,position=position_dodge(width = 0.6)) +
+#     geom_hline(yintercept=0, lty=2) +
+#     #specify position here too
+#     geom_point(size=4, aes(shape = Coh, color = Coh), position=position_dodge(width = 0.6)) +
+#   #  geom_point(size=4, aes(color = Coh), position=position_dodge(width = 0.6)) +
+# #    geom_point(aes(size=5, shape=21, colour="white", stroke = 0.5,position=position_dodge(width = #0.5)) +
+#     scale_fill_manual(values=barCOLS)+
+#     scale_color_manual(values=dotCOLS)+
+#     scale_x_discrete(name="") + 
+#     scale_y_continuous(name="Enrichment in ISKS compared to controls [Log2 Odds ratio]",seq(0, 7, by = 1)) +
+#     coord_flip() #+
+#   #  theme_minimal() + theme(legend.position="bottom") + theme(legend.title = element_blank()) +
+#   #  theme(legend.text = element_text(size=8))
+#   return(p)
+# }
 
+
+#TP53, Shelterin geneset, Centrosome geneset
+#CI_comb_MH_meta_df_sub$Coh <- factor(CI_comb_MH_meta_df_sub$Coh, levels = c("Rep", "Disc"), ordered = TRUE)
+# p_forest <- forest_custplot(CI_comb_MH_meta_df_sub) + ggtitle("Cross validation C45") + guides(fill=guide_legend(nrow=2,byrow=TRUE)) + scale_shape_manual(values = c(15,19)) + theme(axis.text.y = element_text(face="bold", size=14)) + theme(axis.text.x = element_text(face="bold", size=14)) + theme(axis.title.x = element_text(face = "italic")) + theme(axis.line.x = element_line(color="black", size = 1)) + theme(legend.position = "right") + theme(axis.title.y = element_blank()) 
+# 
+# p_forest 
+##new approach to reverse legend
 library(ggplot2)
 forest_custplot <- function(df){
-  dotCOLS = c("#030000", "#030000")
-  barCOLS = c("#030000", "#030000")
-  p <- ggplot(df, aes(x=cmpx_name, y=log2(Fish_OR_meta), ymin=log2(lower.CI), ymax=log2(upper.CI),col=Coh,fill=Coh)) + 
-    #specify position here
-    geom_linerange(size=1,position=position_dodge(width = 0.6)) +
-    geom_hline(yintercept=0, lty=2) +
-    #specify position here too
-    geom_point(size=4, aes(shape = Coh, color = Coh), position=position_dodge(width = 0.6)) +
-#    geom_point(aes(size=5, shape=21, colour="white", stroke = 0.5,position=position_dodge(width = #0.5)) +
-    scale_fill_manual(values=barCOLS)+
-    scale_color_manual(values=dotCOLS)+
-    scale_x_discrete(name="") + 
-    scale_y_continuous(name="Enrichment in ISKS compared to controls [Log2 Odds ratio]") +
-    coord_flip() +
-    theme_minimal() + theme(legend.position="bottom") + theme(legend.title = element_blank()) +
-    theme(legend.text = element_text(size=8))
-  return(p)
+  g1 = ggplot(df, aes(x = cmpx_name, y = log2(Fish_OR_meta), group = Coh) ) +
+  #  geom_point(position = position_dodge(width = .75) ) +
+    geom_point(size=4, aes(shape = Coh), position=position_dodge(width = 0.6)) + 
+    geom_errorbar( aes(ymin = log2(lower.CI), ymax = log2(upper.CI),
+                       linetype = Coh,
+                       width = c(.1, .1, .1, .1, .1, 0.1) ),
+                   position = position_dodge(width = .6) ) +
+      theme_bw() + 
+      labs(y = "Enrichment in ISKS compared to controls [Log2 Odds ratio]",
+           x = "") +
+     # geom_rect(xmin = -Inf, xmax = Inf, ymin = -.25, ymax = .25, 
+      #      fill = "grey54", alpha = .05) +
+      scale_y_continuous(breaks = seq(0, 7, by = 1) ) + 
+      coord_flip() +
+      scale_linetype_manual(values = c("solid", "solid"),
+                            name = element_blank(),
+                            labels = c("1/3 split", "2/3 split") ) + 
+     scale_shape_manual(values = c(15,19),
+                            name = element_blank(),
+                            labels = c("1/3 split", "2/3 split") ) 
+return(g1)
 }
+CI_comb_MH_meta_df_sub$Coh = factor(CI_comb_MH_meta_df_sub$Coh, levels = c("1/3 split", "2/3 split") )
 
-colnames(CI_comb_MH_meta_df_sub)[5] <- "Coh"
-CI_comb_MH_meta_df_sub$Coh <- as.factor(CI_comb_MH_meta_df_sub$Coh)
-CI_comb_MH_meta_df_sub$cmpx_name <- factor(x = CI_comb_MH_meta_df_sub$cmpx_name,
-                            levels = c("Centrosome geneset","Shelterin geneset", "Sarcoma geneset","TP53"), ordered = TRUE)
-#TP53, Sarcoma geneset, Shelterin geneset, Centrosome geneset
-CI_comb_MH_meta_df_sub$Coh <- factor(CI_comb_MH_meta_df_sub$Coh, levels = c("Rep", "Disc"))
-#CI_comb_MH_meta_df_sub$shape <- ifelse(CI_comb_MH_meta_df_sub$Coh %in% "Disc", 18, 21)
-p_forest <- forest_custplot(CI_comb_MH_meta_df_sub) + ggtitle("Cross validation C45") + guides(fill=guide_legend(nrow=1,byrow=TRUE)) + scale_shape_manual(values = c(15,21)) + theme(axis.text.y = element_text(face="bold", size=14)) + theme(axis.text.x = element_text(face="bold", size=14)) + theme(axis.title.x = element_text(face = "italic")) + theme(axis.line.x = element_line(color="black", size = 1)) + theme(legend.position = "top") + theme(axis.title.y = element_blank()) 
+g1 <- forest_custplot(CI_comb_MH_meta_df_sub)
+
+g2 <- g1 %+% 
+     CI_comb_MH_meta_df_sub +
+     scale_linetype_manual(values = c("solid", "solid"),
+                           name = element_blank(),
+                           labels = c("1/3 split", "2/3 split"),
+                           guide = guide_legend(reverse = TRUE) ) + scale_shape_manual(values = c(15,19),
+                            name = element_blank(),
+                            labels = c("1/3 split", "2/3 split"), guide = guide_legend(reverse = TRUE) )
+
+p_forest <- g2 + theme_bw() +
+  theme(axis.line = element_line(colour = "black"),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.border = element_blank(),
+    panel.background = element_blank())
+
+p_forest <- p_forest + ggtitle("Cross validation C45") + guides(fill=guide_legend(nrow=2,byrow=TRUE)) +  theme(axis.text.y = element_text(face="bold", size=14)) + theme(axis.text.x = element_text(face="bold", size=14)) + theme(axis.title.x = element_text(face = "italic")) + theme(axis.line.x = element_line(color="black", size = 1)) + theme(legend.position = "right") +
+  geom_hline(yintercept = 0, lty = 2)
 
 p_forest
-
 ############C345
 ##Mantel-Haenszel method (more Robust)
 CI_meta_MH_data_C345 <- function(cmpx_name){
@@ -626,9 +683,9 @@ CI_meta_MH_data_C345 <- function(cmpx_name){
   ##use prediction interval for the forest plot
     #https://www.erim.eur.nl/research-support/meta-essentials/interpret-results/the-forest-plot/prediction-interval/
     #https://bmjopen.bmj.com/content/6/7/e010247
-     ret_df <- cbind.data.frame("cmpx_name" = cmpx_name, "Fish_OR_meta" = exp(summ$random$TE), 
-                               "lower.CI" = exp(summ$predict$lower), "upper.CI" = exp(summ$predict$upper))
-    
+    ret_df <- cbind.data.frame("cmpx_name" = cmpx_name, "Fish_OR_meta" = exp(summ$random$TE), 
+                               "lower.CI" = exp(summ$predict$lower), "upper.CI" = exp(summ$predict$upper),
+                               "comb_pval" = summ$random$p)
   }
   
   
@@ -652,48 +709,94 @@ CI_rep_MH_meta_345_df$set <- "Rep"
 CI_comb_MH_meta_C345_df <- rbind.data.frame(CI_disc_MH_meta_345_df, CI_rep_MH_meta_345_df)
 
 # ##For supp figure
-CI_comb_MH_meta_C345_df_sub <- CI_comb_MH_meta_C345_df[CI_comb_MH_meta_C345_df$cmpx_name %in% c("SARC_genes","TP53_control", "Shelterin","CEP_HAUS_core"),]
+CI_comb_MH_meta_C345_df_sub <- CI_comb_MH_meta_C345_df[CI_comb_MH_meta_C345_df$cmpx_name %in% c("TP53_control", "Shelterin","CEP_HAUS_core"),]
 CI_comb_MH_meta_C345_df_sub$cmpx_name <- gsub("CEP_HAUS_core", "Centrosome geneset",CI_comb_MH_meta_C345_df_sub$cmpx_name)
 CI_comb_MH_meta_C345_df_sub$cmpx_name <- gsub("Shelterin", "Shelterin geneset",CI_comb_MH_meta_C345_df_sub$cmpx_name)
-CI_comb_MH_meta_C345_df_sub$cmpx_name <- gsub("SARC_genes", "Sarcoma geneset",CI_comb_MH_meta_C345_df_sub$cmpx_name)
+#CI_comb_MH_meta_C345_df_sub$cmpx_name <- gsub("SARC_genes", "Sarcoma geneset",CI_comb_MH_meta_C345_df_sub$cmpx_name)
 CI_comb_MH_meta_C345_df_sub$cmpx_name <- gsub("TP53_control", "TP53",CI_comb_MH_meta_C345_df_sub$cmpx_name)
 #CI_comb_MH_meta_df_sub$cmpx_name <- gsub("MPNST_pos", "NF1 geneset",CI_comb_MH_meta_df_sub$cmpx_name)
 write.table(CI_comb_MH_meta_C345_df_sub, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Aug31/Manuscript_docs/Tables/CV_2fold_disc_rep_C345.tsv", sep = "\t", quote = F, row.names = F)
 
-##Alternate plotting##use this
-
-library(ggplot2)
-forest_custplot <- function(df){
-  dotCOLS = c("#030000", "#030000")
-  barCOLS = c("#030000", "#030000")
-  p <- ggplot(df, aes(x=cmpx_name, y=log2(Fish_OR_meta), ymin=log2(lower.CI), ymax=log2(upper.CI),col=Coh,fill=Coh)) + 
-    #specify position here
-    geom_linerange(size=1,position=position_dodge(width = 0.6)) +
-    geom_hline(yintercept=0, lty=2) +
-    #specify position here too
-    geom_point(size=4, aes(shape = Coh, color = Coh), position=position_dodge(width = 0.6)) +
-#    geom_point(aes(size=5, shape=21, colour="white", stroke = 0.5,position=position_dodge(width = #0.5)) +
-    scale_fill_manual(values=barCOLS)+
-    scale_color_manual(values=dotCOLS)+
-    scale_x_discrete(name="") + 
-    scale_y_continuous(name="Enrichment in ISKS compared to controls [Log2 Odds ratio]") +
-    coord_flip() +
-    theme_minimal() + theme(legend.position="bottom") + theme(legend.title = element_blank()) +
-    theme(legend.text = element_text(size=8))
-  return(p)
-}
-
-colnames(CI_comb_MH_meta_C345_df_sub)[5] <- "Coh"
+colnames(CI_comb_MH_meta_C345_df_sub)[6] <- "Coh"
+CI_comb_MH_meta_C345_df_sub$Coh <- gsub("Disc", "2/3 split", CI_comb_MH_meta_C345_df_sub$Coh)
+CI_comb_MH_meta_C345_df_sub$Coh <- gsub("Rep", "1/3 split", CI_comb_MH_meta_C345_df_sub$Coh)
 CI_comb_MH_meta_C345_df_sub$Coh <- as.factor(CI_comb_MH_meta_C345_df_sub$Coh)
 CI_comb_MH_meta_C345_df_sub$cmpx_name <- factor(x = CI_comb_MH_meta_C345_df_sub$cmpx_name,
-                            levels = c("Centrosome geneset","Shelterin geneset", "Sarcoma geneset","TP53"), ordered = TRUE)
-#TP53, Sarcoma geneset, Shelterin geneset, Centrosome geneset
-CI_comb_MH_meta_C345_df_sub$Coh <- factor(CI_comb_MH_meta_C345_df_sub$Coh, levels = c("Rep", "Disc"))
-#CI_comb_MH_meta_df_sub$shape <- ifelse(CI_comb_MH_meta_df_sub$Coh %in% "Disc", 18, 21)
-p_forest_CV_345 <- forest_custplot(CI_comb_MH_meta_C345_df_sub) + ggtitle("Cross validation C345") + guides(fill=guide_legend(nrow=1,byrow=TRUE)) + scale_shape_manual(values = c(15,21)) + theme(axis.text.y = element_text(face="bold", size=14)) + theme(axis.text.x = element_text(face="bold", size=14)) + theme(axis.title.x = element_text(face = "italic")) + theme(axis.line.x = element_line(color="black", size = 1)) + theme(legend.position = "top") + theme(axis.title.y = element_blank()) 
+                            levels = c("Centrosome geneset","Shelterin geneset", "TP53"), ordered = TRUE)
+##Alternate plotting##use this
+
+g1_C345 <- forest_custplot(CI_comb_MH_meta_C345_df_sub)
+
+CI_comb_MH_meta_C345_df_sub$Coh = factor(CI_comb_MH_meta_C345_df_sub$Coh, levels = c("1/3 split", "2/3 split") )
+
+g2_C345 <- g1_C345 %+% 
+     CI_comb_MH_meta_C345_df_sub +
+     scale_linetype_manual(values = c("solid", "solid"),
+                           name = element_blank(),
+                           labels = c("1/3 split", "2/3 split"),
+                           guide = guide_legend(reverse = TRUE) ) + scale_shape_manual(values = c(15,19),
+                            name = element_blank(),
+                            labels = c("1/3 split", "2/3 split"), guide = guide_legend(reverse = TRUE) )
+
+#c("1/3 split", "2/3 split")
+
+p_forest_CV_345 <- g2_C345 + theme_bw() +
+  theme(axis.line = element_line(colour = "black"),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.border = element_blank(),
+    panel.background = element_blank())
+
+p_forest_CV_345 <- p_forest_CV_345 + ggtitle("Cross validation C345") + guides(fill=guide_legend(nrow=2,byrow=TRUE)) +  theme(axis.text.y = element_text(face="bold", size=14)) + theme(axis.text.x = element_text(face="bold", size=14)) + theme(axis.title.x = element_text(face = "italic")) + theme(axis.line.x = element_line(color="black", size = 1)) +
+  geom_hline(yintercept = 0, lty = 2)
 
 p_forest_CV_345
 
+
+```
+
+
+##flexible foresplot(used above; ignore chunk)
+```{r echo=FALSE}
+( g1 = ggplot(CI_comb_MH_meta_df_sub, aes(x = cmpx_name, y = log2(Fish_OR_meta), group = Coh) ) +
+  #  geom_point(position = position_dodge(width = .75) ) +
+    geom_point(size=4, aes(shape = Coh), position=position_dodge(width = 0.6)) + 
+    geom_errorbar( aes(ymin = log2(lower.CI), ymax = log2(upper.CI),
+                       linetype = Coh,
+                       width = c(.2, .2, .2, .2, .2, 0.2) ),
+                   position = position_dodge(width = .6) ) +
+      theme_bw() + 
+      labs(y = "Enrichment in ISKS compared to controls [Log2 Odds ratio]",
+           x = "") +
+     # geom_rect(xmin = -Inf, xmax = Inf, ymin = -.25, ymax = .25, 
+      #      fill = "grey54", alpha = .05) +
+      scale_y_continuous(breaks = seq(0, 7, by = 1) ) + 
+      coord_flip() +
+      scale_linetype_manual(values = c("solid", "solid"),
+                            name = element_blank(),
+                            labels = c("Rep", "Disc") ) + 
+     scale_shape_manual(values = c(15,19),
+                            name = element_blank(),
+                            labels = c("Rep", "Disc") ) )
+
+CI_comb_MH_meta_df_sub$Coh = factor(CI_comb_MH_meta_df_sub$Coh, levels = c("Rep", "Disc") )
+
+
+g2 <- g1 %+% 
+     CI_comb_MH_meta_df_sub +
+     scale_linetype_manual(values = c("solid", "solid"),
+                           name = element_blank(),
+                           labels = c("Rep", "Disc"),
+                           guide = guide_legend(reverse = TRUE) ) + scale_shape_manual(values = c(15,19),
+                            name = element_blank(),
+                            labels = c("Rep", "Disc"), guide = guide_legend(reverse = TRUE) )
+
+g3 <- g2 + theme_bw() +
+  theme(axis.line = element_line(colour = "black"),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.border = element_blank(),
+    panel.background = element_blank())
 
 ```
 
@@ -805,83 +908,188 @@ noC3_df_comb_rnd2$OR_Fish <- ifelse(noC3_df_comb_rnd2$OR_Fish == 0, 1, noC3_df_c
 noC3_df_comb_rnd2_filt <- noC3_df_comb_rnd2[noC3_df_comb_rnd2$Fish_pval < 0.05 & noC3_df_comb_rnd2$CI_lower > 1,]
 
 ##C45
+##removed Sarcoma geneset; Oct17-2020
 noC3_df_comb_rnd2_sub <- noC3_df_comb_rnd2[noC3_df_comb_rnd2$Coh %in% c("ISKS200", "rep763") &
-                                         noC3_df_comb_rnd2$gene %in% c("Shelterin", "CEP_HAUS_core", 
-                                                                       "SARC_genes", "TP53_control"),]
+                                         noC3_df_comb_rnd2$gene %in% c("Shelterin", "CEP_HAUS_core",
+                                                                       "TP53_control"),]
 noC3_df_comb_rnd2_sub$Coh <- droplevels(noC3_df_comb_rnd2_sub$Coh)
 noC3_df_comb_rnd2_sub$gene <- droplevels(noC3_df_comb_rnd2_sub$gene)
 noC3_df_comb_rnd2_sub$gene <- gsub("CEP_HAUS_core","Centrosome geneset",noC3_df_comb_rnd2_sub$gene)
 noC3_df_comb_rnd2_sub$gene <- gsub("Shelterin", "Shelterin geneset",noC3_df_comb_rnd2_sub$gene)
-noC3_df_comb_rnd2_sub$gene <- gsub("SARC_genes", "Sarcoma geneset",noC3_df_comb_rnd2_sub$gene)
+#noC3_df_comb_rnd2_sub$gene <- gsub("SARC_genes", "Sarcoma geneset",noC3_df_comb_rnd2_sub$gene)
 noC3_df_comb_rnd2_sub$gene <- gsub("TP53_control", "TP53",noC3_df_comb_rnd2_sub$gene)
 
 
 write.table(noC3_df_comb_rnd2_sub[,-9], "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Aug31/Manuscript_docs/Tables/C45_aug_repset_complex_OR_sub.tsv", sep = "\t", row.names = F, quote = F)
 
-noC3_df_comb_rnd2_sub$Coh <- gsub("ISKS200", "Test (n=1444)",noC3_df_comb_rnd2_sub$Coh)
-noC3_df_comb_rnd2_sub$Coh <- gsub("rep763", "Replication (n=763)",noC3_df_comb_rnd2_sub$Coh)
+noC3_df_comb_rnd2_sub$Coh <- gsub("ISKS200", "Discovery",noC3_df_comb_rnd2_sub$Coh)
+noC3_df_comb_rnd2_sub$Coh <- gsub("rep763", "Replication",noC3_df_comb_rnd2_sub$Coh)
 
+##removed Sarcoma geneset; Oct17-2020
 noC3_df_comb_rnd2_sub$gene <- factor(x = noC3_df_comb_rnd2_sub$gene,
-                            levels = c("Centrosome geneset","Shelterin geneset", "Sarcoma geneset","TP53"), ordered = TRUE)
+                            levels = c("Centrosome geneset","Shelterin geneset","TP53"), ordered = TRUE)
 
 library(ggplot2)
-forest_custplot <- function(df){
-  dotCOLS = c("#030000", "#030000")
-  barCOLS = c("#030000", "#030000")
-  xname <- expression(paste(italic("Log"), "OR"))
-  p <- ggplot(df, aes(x=gene, y=log(OR_Fish), ymin=log(CI_lower), ymax=log(CI_upper),col=Coh,fill=Coh)) + 
-    #specify position here
-    geom_linerange(size=1,position=position_dodge(width = 0.6)) +
-    geom_hline(yintercept=0, lty=2) +
-  #  geom_hline(yintercept=1, lty=2) +
-    #specify position here too
-    geom_point(size=4, aes(shape = Coh, color = Coh), position=position_dodge(width = 0.6)) +
-#    geom_point(aes(size=5, shape=21, colour="white", stroke = 0.5,position=position_dodge(width = #0.5)) +
-    scale_fill_manual(values=barCOLS)+
-    scale_color_manual(values=dotCOLS)+
-    scale_x_discrete(name="") + 
-    scale_y_continuous(name="Enrichment in ISKS compared to controls [Log2 Odds ratio]") +
-    coord_flip() +
-    theme_minimal() + theme(legend.position="bottom") + theme(legend.title = element_blank()) +
-    theme(legend.text = element_text(size=8))
-  return(p)
-}
+# forest_custplot <- function(df){
+#   dotCOLS = c("#030000", "#030000")
+#   barCOLS = c("#030000", "#030000")
+#   xname <- expression(paste(italic("Log"), "OR"))
+#   p <- ggplot(df, aes(x=gene, y=log(OR_Fish), ymin=log(CI_lower), ymax=log(CI_upper),col=Coh,fill=Coh)) + 
+#     #specify position here
+#     geom_linerange(size=1,position=position_dodge(width = 0.6)) +
+#     geom_hline(yintercept=0, lty=2) +
+#   #  geom_hline(yintercept=1, lty=2) +
+#     #specify position here too
+#     geom_point(size=4, aes(shape = Coh, color = Coh), position=position_dodge(width = 0.6)) +
+# #    geom_point(aes(size=5, shape=21, colour="white", stroke = 0.5,position=position_dodge(width = #0.5)) +
+#     scale_fill_manual(values=barCOLS)+
+#     scale_color_manual(values=dotCOLS)+
+#     scale_x_discrete(name="") + 
+#     scale_y_continuous(name="Enrichment in ISKS compared to controls [Log2 Odds ratio]") +
+#     coord_flip() +
+#     theme_minimal() + theme(legend.position="bottom") + theme(legend.title = element_blank()) +
+#     theme(legend.text = element_text(size=8))
+#   return(p)
+# }
 
 
 noC3_df_comb_rnd2_sub$Coh <- as.factor(noC3_df_comb_rnd2_sub$Coh)
-p_forest_rep <- forest_custplot(noC3_df_comb_rnd2_sub) + ggtitle("Replication set C45") + guides(fill=guide_legend(nrow=1,byrow=TRUE)) + scale_shape_manual(values = c(15,21)) + theme(axis.text.y = element_text(face="bold", size=14)) + theme(axis.text.x = element_text(face="bold", size=14)) + theme(axis.title.x = element_text(face = "italic")) + theme(legend.position = "top") + theme(axis.line.x = element_line(color="black", size = 1))
-  
+noC3_df_comb_rnd2_sub$Coh = factor(noC3_df_comb_rnd2_sub$Coh, levels = c("Replication", "Discovery") )
+
+
+forest_custplot_rep <- function(df){
+  g1 = ggplot(df, aes(x = gene, y = log2(OR_Fish), group = Coh) ) +
+  #  geom_point(position = position_dodge(width = .75) ) +
+    geom_point(size=4, aes(shape = Coh), position=position_dodge(width = 0.6)) + 
+    geom_errorbar( aes(ymin = log2(CI_lower), ymax = log2(CI_upper),
+                       linetype = Coh,
+                       width = c(.1, .1, .1, .1, .1, 0.1) ),
+                   position = position_dodge(width = .6) ) +
+      theme_bw() + 
+      labs(y = "Enrichment in ISKS compared to controls [Log2 Odds ratio]",
+           x = "") +
+     # geom_rect(xmin = -Inf, xmax = Inf, ymin = -.25, ymax = .25, 
+      #      fill = "grey54", alpha = .05) +
+      scale_y_continuous(breaks = seq(0, 11, by = 2) ) + 
+      coord_flip() +
+      scale_linetype_manual(values = c("solid", "solid"),
+                            name = element_blank(),
+                            labels = c("Replication", "Discovery") ) + 
+     scale_shape_manual(values = c(15,19),
+                            name = element_blank(),
+                            labels = c("Replication", "Discovery") ) 
+return(g1)
+}
+
+noC3_df_comb_rnd2_sub$Coh = factor(noC3_df_comb_rnd2_sub$Coh, levels = c("Replication", "Discovery") )
+
+g1_rep <- forest_custplot_rep(noC3_df_comb_rnd2_sub)
+
+g2_rep <- g1_rep %+% 
+     noC3_df_comb_rnd2_sub +
+     scale_linetype_manual(values = c("solid", "solid"),
+                           name = element_blank(),
+                           labels = c("Replication", "Discovery"),
+                           guide = guide_legend(reverse = TRUE) ) + scale_shape_manual(values = c(15,19),
+                            name = element_blank(),
+                            labels = c("Replication", "Discovery"), guide = guide_legend(reverse = TRUE) )
+
+p_forest_rep <- g2_rep + theme_bw() +
+  theme(axis.line = element_line(colour = "black"),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.border = element_blank(),
+    panel.background = element_blank())
+
+p_forest_rep <- p_forest_rep + ggtitle("Replication set C45") + guides(fill=guide_legend(nrow=2,byrow=TRUE)) +  theme(axis.text.y = element_text(face="bold", size=14)) + theme(axis.text.x = element_text(face="bold", size=14)) + theme(axis.title.x = element_text(face = "italic")) + theme(axis.line.x = element_line(color="black", size = 1)) + theme(legend.position = "right") +
+  geom_hline(yintercept = 0, lty = 2)
+
 p_forest_rep
+#p_forest_rep <- forest_custplot(noC3_df_comb_rnd2_sub) + ggtitle("Replication set C45") + guides(fill=guide_legend(nrow=1,byrow=TRUE)) + scale_shape_manual(values = c(15,21)) + theme(axis.text.y = element_text(face="bold", size=14)) + theme(axis.text.x = element_text(face="bold", size=14)) + theme(axis.title.x = element_text(face = "italic")) + theme(legend.position = "top") + theme(axis.line.x = element_line(color="black", size = 1))
+  
+#p_forest_rep
+
 
 ##################
 ##C345 subsetted geneset and cohorts 
+##removed Sarcoma geneset; Oct17-2020
 df_comb_rnd2_sub <- df_comb_rnd2[df_comb_rnd2$Coh %in% c("ISKS200", "rep763") &
-                               df_comb_rnd2$gene %in% c("Shelterin", "CEP_HAUS_core", 
-                                                        "SARC_genes", "TP53_control"),]
+                               df_comb_rnd2$gene %in% c("Shelterin", "CEP_HAUS_core",
+                                                        "TP53_control"),]
 df_comb_rnd2_sub$Coh <- droplevels(df_comb_rnd2_sub$Coh)
 df_comb_rnd2_sub$gene <- droplevels(df_comb_rnd2_sub$gene)
 df_comb_rnd2_sub$gene <- gsub("CEP_HAUS_core","Centrosome geneset",df_comb_rnd2_sub$gene)
 df_comb_rnd2_sub$gene <- gsub("Shelterin", "Shelterin geneset",df_comb_rnd2_sub$gene)
-df_comb_rnd2_sub$gene <- gsub("SARC_genes", "Sarcoma geneset",df_comb_rnd2_sub$gene)
+#df_comb_rnd2_sub$gene <- gsub("SARC_genes", "Sarcoma geneset",df_comb_rnd2_sub$gene)
 df_comb_rnd2_sub$gene <- gsub("TP53_control", "TP53",df_comb_rnd2_sub$gene)
 write.table(df_comb_rnd2_sub, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Aug31/Manuscript_docs/Tables/C345_aug_repset_complex_OR_sub.tsv", sep = "\t", row.names = F, quote = F)
 
-df_comb_rnd2_sub$Coh <- gsub("ISKS200", "Test (n=1444)",df_comb_rnd2_sub$Coh)
-df_comb_rnd2_sub$Coh <- gsub("rep763", "Replication (n=763)",df_comb_rnd2_sub$Coh)
+df_comb_rnd2_sub$Coh <- gsub("ISKS200", "Discovery",df_comb_rnd2_sub$Coh)
+df_comb_rnd2_sub$Coh <- gsub("rep763", "Replication",df_comb_rnd2_sub$Coh)
 
 df_comb_rnd2_sub$gene <- factor(x = df_comb_rnd2_sub$gene,
-                            levels = c("Centrosome geneset","Shelterin geneset", "Sarcoma geneset","TP53"), ordered = TRUE)
-df_comb_rnd2_sub$Coh <- as.factor(df_comb_rnd2_sub$Coh)
-p_forest_C345 <- forest_custplot(df_comb_rnd2_sub) + ggtitle("Replication set C345") + guides(fill=guide_legend(nrow=1,byrow=TRUE)) + scale_shape_manual(values = c(15,21)) + theme(axis.text.y = element_text(face="bold", size=14)) + theme(axis.text.x = element_text(face="bold", size=14)) + theme(axis.title.x = element_text(face = "italic")) + theme(legend.position = "top") + theme(axis.line.x = element_line(color="black", size = 1))
-  
+                            levels = c("Centrosome geneset","Shelterin geneset", "TP53"), ordered = TRUE)
+
+
+
+g1_C345_rep <- forest_custplot_rep(df_comb_rnd2_sub)
+
+df_comb_rnd2_sub$Coh = factor(df_comb_rnd2_sub$Coh, levels = c("Replication", "Discovery") )
+
+g2_C345_rep <- g1_C345_rep %+% 
+     df_comb_rnd2_sub +
+     scale_linetype_manual(values = c("solid", "solid"),
+                           name = element_blank(),
+                           labels = c("Replication", "Discovery"),
+                           guide = guide_legend(reverse = TRUE) ) + scale_shape_manual(values = c(15,19),
+                            name = element_blank(),
+                            labels = c("Replication", "Discovery"), guide = guide_legend(reverse = TRUE) )
+
+p_forest_C345 <- g2_C345_rep + theme_bw() +
+  theme(axis.line = element_line(colour = "black"),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.border = element_blank(),
+    panel.background = element_blank())
+
+p_forest_C345 <- p_forest_C345 + ggtitle("Replication set C345") + guides(fill=guide_legend(nrow=2,byrow=TRUE)) +  theme(axis.text.y = element_text(face="bold", size=14)) + theme(axis.text.x = element_text(face="bold", size=14)) + theme(axis.title.x = element_text(face = "italic")) + theme(axis.line.x = element_line(color="black", size = 1)) + theme(legend.position = "right") +
+  geom_hline(yintercept = 0, lty = 2)
+
 p_forest_C345
+
+#df_comb_rnd2_sub$Coh <- as.factor(df_comb_rnd2_sub$Coh)
+#p_forest_C345 <- forest_custplot(df_comb_rnd2_sub) + ggtitle("Replication set C345") + guides(fill=guide_legend(nrow=1,byrow=TRUE)) + scale_shape_manual(values = c(15,21)) + theme(axis.text.y = element_text(face="bold", size=14)) + theme(axis.text.x = element_text(face="bold", size=14)) + theme(axis.title.x = element_text(face = "italic")) + theme(legend.position = "top") + theme(axis.line.x = element_line(color="black", size = 1))
+  
+# p_forest_C345
 
 ```
 
-##multiplot forestplots
 
+##multiplot forestplots
 ```{r echo=FALSE, warning = FALSE, figure.align = "center", figure.height = 10, figure.width = 12}
 source("~/APCluster_graphs/case_TCGA_new_PRAD_3431/multi_plot.R")
 multiplot(p_forest, p_forest_CV_345, p_forest_rep, p_forest_C345, cols = 2)
+p1 <- p_forest_C345 + ggtitle("") + theme(legend.position = c(0.7,0.5))
+p2 <- p_forest_CV_345 + ggtitle("") + theme(legend.position = c(0.7,0.5))
+multiplot(p1, p2, cols = 1)
 ```
 
+##for photoshop manipulation; axis aligned
+```{r}
+#https://divingintogeneticsandgenomics.rbind.io/post/align-multiple-ggplot2-plots-by-axis/
+
+library(cowplot)
+p1 <- p_forest_C345 + ggtitle("") 
+p2 <- p_forest_CV_345 + ggtitle("")
+pp <- list(p1, p2)
+tiff("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Aug31/Manuscript_docs/aligned_forestplots_300dpi.tiff", units="in", width=5, height=5, res=300)
+plot_grid(plotlist=pp, ncol=1, align='v')
+dev.off()
+
+
+
+```
+
+
+##AR AD flowchart(variant selection for PID and SKAT)
+##C3 variant filter(revisit)

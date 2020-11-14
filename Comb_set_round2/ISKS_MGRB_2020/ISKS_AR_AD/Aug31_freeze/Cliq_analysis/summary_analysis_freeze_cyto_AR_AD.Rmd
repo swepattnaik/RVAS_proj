@@ -254,8 +254,8 @@ system.time(para_fish <- parApply(cl, gender_PC123_cont_df, 1, para_fisher_fun_n
 stopCluster(cl)
 fisher_res <- do.call("rbind.data.frame",para_fish)
 ppi_res_fil_final <- cbind.data.frame(gender_PC123_cont_df, fisher_res)
-write.table(ppi_res_fil_final, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/ppi_res_fil_final_SKATbin_Aug31.tsv", sep = "\t", row.names = F, quote = F)
-#write.table(ppi_res_fil_final, #"~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS/ppi_res_fil_final.tsv#", sep = "\t", row.names = F, quote = F)
+#write.table(ppi_res_fil_final, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/ppi_res_fil_final_SKATbin_Aug31.tsv", sep = "\t", row.names = F, quote = F)
+write.table(ppi_res_fil_final, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/ppi_res_fil_final_SKATbin_Aug31_sep19.tsv", sep = "\t", row.names = F, quote = F)
 
 ```
 
@@ -263,7 +263,8 @@ write.table(ppi_res_fil_final, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/
 ##Cliques in the enriched set of genes
 ```{r, out.width='\\textwidth', fig.height = 7, fig.align='center', echo=FALSE}
 ######Cliques in uniongraph (enriched cliques from SKAT)
-ppi_res_fil_final <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/ppi_res_fil_final_SKATbin_Aug31.tsv", sep = "\t", header = T)
+#ppi_res_fil_final <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/ppi_res_fil_final_SKATbin_Aug31.tsv", sep = "\t", header = T)
+ppi_res_fil_final <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/ppi_res_fil_final_SKATbin_Aug31_sep19.tsv", sep = "\t", header = T)
 top_genes <- as.character(ppi_res_fil_final$gene)
 can_net_graph <- igraph::graph.data.frame(can_net, directed = F)
 can_net_graph1 <- igraph::simplify(can_net_graph, remove.loops=T, remove.multiple = T)
@@ -295,7 +296,7 @@ gnet <- ggnet2(net_new_t_list, alpha = 0.75, edge.alpha = 0.5, label = TRUE, lab
 #plot(cfg, cpx_graph)
   
   ##customised modules visualisation
-  ppi_res_fil_final <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/ppi_res_fil_final_SKATbin_Aug31.tsv", sep = "\t", header = T)
+  ppi_res_fil_final <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/ppi_res_fil_final_SKATbin_Aug31_sep19.tsv", sep = "\t", header = T)
 
 Extn_sheltrin <- c("POT1", "TINF2", "TERF1","TCP1", "CCT2", "CCT6A", "SMARCAL1",  "TIMELESS",  "STAG3",  "NBN",  "ERCC1",  "ATR",  "MAP3K4",  "ACD",  "TERF2IP",  "TERF2")
 
@@ -356,7 +357,8 @@ theme(legend.position = "bottom")
 ```{r}
 ##combine biogrid and stringdb
 
-ppi_res_fil_final <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/ppi_res_fil_final_SKATbin_Aug31.tsv", sep = "\t", header = T, stringsAsFactors = F)
+#ppi_res_fil_final <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/ppi_res_fil_final_SKATbin_Aug31.tsv", sep = "\t", header = T, stringsAsFactors = F)
+ppi_res_fil_final <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/ppi_res_fil_final_SKATbin_Aug31_sep19.tsv", sep = "\t", header = T, stringsAsFactors = F)
 
 top_genes_enr <- as.character(ppi_res_fil_final$gene)
 
@@ -384,11 +386,7 @@ can_net <- read.delim("~/VDLab_scripts/BioGrid/biogrid_db_all_subnet.sif", heade
 
 strindb_graph_cyto <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/strindb_cyto_graph.rds")
 
-# strindb_graph_cyto_df <- igraph::as_data_frame(strindb_graph_cyto, what = "edges")
-# strindb_graph_cyto_df <- strindb_graph_cyto_df[!grepl("^OR", strindb_graph_cyto_df$from),]
-# strindb_graph_cyto_df <- strindb_graph_cyto_df[!grepl("^OR", strindb_graph_cyto_df$to),]
-# strindb_graph_rect_cyto <- igraph::graph.data.frame(strindb_graph_cyto_df, directed = F)
-# strindb_graph_rect_cyto1 <- igraph::simplify(strindb_graph_rect_cyto, remove.loops=T, remove.multiple = T)
+ # strindb_graph_cyto_df <- igraph::as_data_frame(strindb_graph_cyto, what = "edges")
 
 # ##combine biogrid and stringdb
 # colnames(strindb_graph_cyto_df) <- c("node1", "node2")
@@ -472,9 +470,9 @@ fisher_res_str_bio <- do.call("rbind.data.frame",para_fish_str_bio)
 ppi_res_fil_final_comb <- cbind.data.frame(ppi_res_fil_final,fisher_res_str, fisher_res_str_bio)
 colnames(ppi_res_fil_final_comb)[32:37] <- paste0(colnames(ppi_res_fil_final_comb)[32:37], "_biog")
 
-#write.table(ppi_res_fil_final_comb, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/ppi_res_fil_final_SKATbin_comb_str_biog_Aug31.tsv", sep = "\t", row.names = F, quote = F)
-#write.table(ppi_res_fil_final_comb, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/ppi_res_fil_final_SKATbin_comb_str_biog_Aug31_noOlfac.tsv", sep = "\t", row.names = F, quote = F)
-write.table(ppi_res_fil_final_comb, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/ppi_res_fil_final_SKATbin_comb_str_biog_Aug31_cyto.tsv", sep = "\t", row.names = F, quote = F)
+
+#write.table(ppi_res_fil_final_comb, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/ppi_res_fil_final_SKATbin_comb_str_biog_Aug31_cyto.tsv", sep = "\t", row.names = F, quote = F)
+write.table(ppi_res_fil_final_comb, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/ppi_res_fil_final_SKATbin_comb_str_biog_Aug31_sep19_cyto.tsv", sep = "\t", row.names = F, quote = F)
 
 ```
 
@@ -525,12 +523,7 @@ eigen_wt_nodes_biog <- graph_centrality(can_net_graph1)
 eigen_wt_nodes_biog_vec <- as.data.frame(eigen_wt_nodes_biog[[1]])
 eigen_wt_nodes_biog_vec$gene <- rownames(eigen_wt_nodes_biog_vec)
 #stringdb
-#Delete olfactory receptor genes(do this in next round for methods paper)
-# strindb_graph_rmOR <- igraph::as_data_frame(strindb_graph, what = "edges")
-# strindb_graph_rmOR <- strindb_graph_rmOR[!grepl("^OR", strindb_graph_rmOR$from),]
-# strindb_graph_rmOR <- strindb_graph_rmOR[!grepl("^OR", strindb_graph_rmOR$to),]
-# strindb_graph_rect <- igraph::graph.data.frame(strindb_graph_rmOR, directed = F)
-# eigen_wt_nodes_str <- graph_centrality(strindb_graph_rect)
+
 eigen_wt_nodes_str <- graph_centrality(strindb_graph_cyto)
 eigen_wt_nodes_str_vec <- as.data.frame(eigen_wt_nodes_str[[1]])
 eigen_wt_nodes_str_vec$gene <- rownames(eigen_wt_nodes_str_vec)
@@ -551,15 +544,23 @@ ppi_res_fil_final_comb$eigen_wt_str <- eigen_wt_nodes_str_vec[match(ppi_res_fil_
 ppi_res_fil_final_comb$eigen_wt_str_biog <- eigen_wt_nodes_str_biog_vec[match(ppi_res_fil_final_comb$gene,
                                                           eigen_wt_nodes_str_biog_vec$gene),1]
 set.seed(23334556)
-ppi_res_fil_final_comb[ppi_res_fil_final_comb$degree == 0,]$eigen_wt_biog <- sample(seq(0.00001, 0.0001, 0.001), size = 572, replace = T)
-set.seed(233345561)
-ppi_res_fil_final_comb[ppi_res_fil_final_comb$degree_str == 0,]$eigen_wt_str <- sample(seq(0.00001, 0.0001, 0.001), size = 672, replace = T)
-set.seed(233345563)
-ppi_res_fil_final_comb[ppi_res_fil_final_comb$degree_str_biog == 0,]$eigen_wt_str_biog <- sample(seq(0.00001, 0.0001, 0.001), size = 419, replace = T)
+#ppi_res_fil_final_comb[ppi_res_fil_final_comb$degree == 0,]$eigen_wt_biog <- sample(seq(0.00001, 0.0001, 0.001), size = 572, replace = T)
+ppi_res_fil_final_comb[is.na(ppi_res_fil_final_comb$eigen_wt_biog) | ppi_res_fil_final_comb$eigen_wt_biog == 0,]$eigen_wt_biog <- sample(seq(0.00001, 0.0001, 0.001), size = dim(ppi_res_fil_final_comb[is.na(ppi_res_fil_final_comb$eigen_wt_biog) | ppi_res_fil_final_comb$eigen_wt_biog == 0,])[1], replace = T)
 
-ppi_res_fil_final_comb[ppi_res_fil_final_comb$eigen_wt_biog == 0,]$eigen_wt_biog <- sample(seq(0.00001, 0.0001, 0.001), size = 36, replace = T)
-#ppi_res_fil_final_comb[ppi_res_fil_final_comb$eigen_wt_str == 0,]$eigen_wt_str <- sample(seq(0.00001, 0.0001, 0.001), size = 28, replace = T)
-#ppi_res_fil_final_comb[ppi_res_fil_final_comb$eigen_wt_str_biog == 0,]$eigen_wt_str_biog <- sample(seq(0.00001, 0.0001, 0.001), size = 27, replace = T)
+set.seed(233345561)
+#ppi_res_fil_final_comb[ppi_res_fil_final_comb$degree_str == 0,]$eigen_wt_str <- sample(seq(0.00001, 0.0001, 0.001), size = 672, replace = T)
+ppi_res_fil_final_comb[is.na(ppi_res_fil_final_comb$eigen_wt_str) | ppi_res_fil_final_comb$eigen_wt_str == 0,]$eigen_wt_str <- sample(seq(0.00001, 0.0001, 0.001), size = dim(ppi_res_fil_final_comb[is.na(ppi_res_fil_final_comb$eigen_wt_str) | ppi_res_fil_final_comb$eigen_wt_str == 0,])[1], replace = T)
+
+set.seed(233345563)
+#ppi_res_fil_final_comb[ppi_res_fil_final_comb$degree_str_biog == 0,]$eigen_wt_str_biog <- sample(seq(0.00001, 0.0001, 0.001), size = 419, replace = T)
+ppi_res_fil_final_comb[is.na(ppi_res_fil_final_comb$eigen_wt_str_biog) | ppi_res_fil_final_comb$eigen_wt_str_biog == 0,]$eigen_wt_str_biog <- sample(seq(0.00001, 0.0001, 0.001), size = dim(ppi_res_fil_final_comb[is.na(ppi_res_fil_final_comb$eigen_wt_str_biog) | ppi_res_fil_final_comb$eigen_wt_str_biog == 0,])[1], replace = T)
+
+# set.seed(23334556)
+# ppi_res_fil_final_comb[ppi_res_fil_final_comb$eigen_wt_biog == 0,]$eigen_wt_biog <- sample(seq(0.00001, 0.0001, 0.001), size = 6, replace = T)
+# set.seed(233345561)
+# ppi_res_fil_final_comb[ppi_res_fil_final_comb$eigen_wt_str == 0,]$eigen_wt_str <- sample(seq(0.00001, 0.0001, 0.001), size = 103, replace = T)
+# set.seed(233345563)
+# ppi_res_fil_final_comb[ppi_res_fil_final_comb$eigen_wt_str_biog == 0,]$eigen_wt_str_biog <- sample(seq(0.00001, 0.0001, 0.001), size = 12, replace = T)
 
 set.seed(233345563)
 ppi_res_fil_final_comb[ppi_res_fil_final_comb$degree == 0,]$PPI_p_val_wt <- sample(seq(0.990, 0.999, 0.00001), size = 572, replace = F)
@@ -665,10 +666,9 @@ g1 <- c("TP53", "NF1", "POT1", "TINF2", "TERF1",
 
 ##  
 
-#write.table(ppi_res_fil_final_comb, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/ppi_res_fil_final_SKATbin_comb_str_biog_Aug31.tsv", sep = "\t", row.names = F, quote = F)
-#write.table(ppi_res_fil_final_comb, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/ppi_res_fil_final_SKATbin_comb_str_biog_Aug31_noOlfac.tsv", sep = "\t", row.names = F, quote = F)
+#write.table(ppi_res_fil_final_comb, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/ppi_res_fil_final_SKATbin_comb_str_biog_Aug31_cyto.tsv", sep = "\t", row.names = F, quote = F)
 
-write.table(ppi_res_fil_final_comb, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/ppi_res_fil_final_SKATbin_comb_str_biog_Aug31_cyto.tsv", sep = "\t", row.names = F, quote = F)
+write.table(ppi_res_fil_final_comb, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/ppi_res_fil_final_SKATbin_comb_str_biog_Aug31_sep19_cyto.tsv", sep = "\t", row.names = F, quote = F)
 
 ```
 

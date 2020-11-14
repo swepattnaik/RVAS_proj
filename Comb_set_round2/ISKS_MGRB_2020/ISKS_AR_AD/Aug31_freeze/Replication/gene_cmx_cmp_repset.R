@@ -20,13 +20,13 @@
 # ##ZBTB16
 # novel <- c("ZBTB16", "ATG7", "ASB10", "ASB8", "FBXO7", "TRIM4")
 
-Shelterin <- c("POT1", "TINF2", "TERF1", "TERF2", "TERF2IP", "NBN", "SMARCAL1", "STAG3")
+Shelterin <- c("POT1", "TINF2", "TERF1", "TERF2", "TERF2IP", "SMARCAL1", "STAG3")
 
 Glutamate_NMDA <- c("DLG1", "GRIN2A", "GRIA1", "CAM2KB", "CAM2KD")
 
 ZBTB16_complex <- c("ZBTB16", "ATG7", "ASB10", "ASB8", "FBXO7")
 
-CEP_HAUS_complex <- c("CEP63", "CEP72", "HAUS4", "HAUS5")
+CEP_HAUS_complex <- c("CEP63", "CEP72", "HAUS4", "HAUS5", "MZT1", "SSNA1")
 
 CENP_complex <- c("CENPC", "CENPF", "BUB1", "BUB1B", "AURKB", "RANGAP1", "RACGAP1", "MAD2L2")
 

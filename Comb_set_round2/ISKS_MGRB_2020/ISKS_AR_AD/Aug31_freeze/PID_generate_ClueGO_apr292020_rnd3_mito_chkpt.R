@@ -172,7 +172,10 @@ make_geno_mat <- function(ftemp_file){
     }
     else{
       ##compute cohort specific MAF
-      maf_vec_cont <- sum(ifelse(is.na(as.numeric(sam_gene_gt$SAMPLE)), 1, 0))/(2*length(p_vec))
+      #maf_vec_cont <- sum(ifelse(is.na(as.numeric(sam_gene_gt$SAMPLE)), 1, 0))/(2*length(p_vec))
+      ##use this if the next run is allowed: Oct18 2020
+      ##does not make a difference in PID file since this filter is applied to only ISKS cohort
+      maf_vec_cont <- length(grep("^[ABZ]", sam_gene_gt$SAMPLE))/(2*length(p_vec))
       maf_vec_case <- sum(ifelse(!is.na(as.numeric(sam_gene_gt$SAMPLE)) | 
                                    grepl("^CR|^LK", as.character(sam_gene_gt$SAMPLE)), 1, 0))/(2*length(p_vec))
       #maf_vec <- (maf_vec_cont + maf_vec_case)/(2*(1572 + 1110))
@@ -244,6 +247,10 @@ print("save PID genes")
 #            sep = "\t", row.names = F, quote = F)
 write.table(genes, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/PID/CGC_topSKATBin300_repstress_potint_mito_chkpt_centrosome_PID_unique_genes_cluego_Sep19.txt",
             sep = "\t", row.names = F, quote = F)
+#write.table(genes, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/PID/CGC_topSKATBin300_repstress_potint_mito_chkpt_centrosome_PID_unique_genes_cluego_Oct19.txt",
+#                        sep = "\t", row.names = F, quote = F)
+#write.table(genes, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/PID/CGC_topSKATBin300_repstress_potint_mito_chkpt_centrosome_PID_unique_genes_cluego_t1_Oct19.txt",
+#            sep = "\t", row.names = F, quote = F)
 
 print("compute AD variant intra cohort frequencies and filter based on SKAT threshold")
 ##Parallelised   
@@ -264,6 +271,10 @@ print("save ISKS AD variants")
 #            sep = "\t", row.names = F, quote = F)
 write.table(comb_set_filt1, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/PID/CGC_topSKATBin300_ISKS_repstress_potint_mito_chkpt_centrosome_VARIANTS_filt_combset2020_clueGOplus_Sep19.tsv",
             sep = "\t", row.names = F, quote = F)
+#write.table(comb_set_filt1, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/PID/CGC_topSKATBin300_ISKS_repstress_potint_mito_chkpt_centrosome_VARIANTS_filt_combset2020_clueGOplus_Oct19.tsv",
+#            sep = "\t", row.names = F, quote = F)
+#write.table(comb_set_filt1, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/PID/CGC_topSKATBin300_ISKS_repstress_potint_mito_chkpt_centrosome_VARIANTS_filt_combset2020_clueGOplus_t1_Oct19.tsv",
+#            sep = "\t", row.names = F, quote = F)
 var_per_samp_isks <- summarise_var_per_samp(comb_set_filt1)
 df_sam_filt_isks_comb <- do.call("rbind.data.frame", var_per_samp_isks)
 
@@ -276,6 +287,10 @@ fil_tab_PID$auto_call <- ifelse(fil_tab_PID$is_AR == 1 & fil_tab_PID$GT == 2, pa
 #            sep = "\t", row.names = F, quote = F)
 write.table(fil_tab_PID, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/PID/CGC_topSKATBin_ISKS_MRGB_repstress_potint_mito_chkpt_centrosome_VARIANTS_filt_combset2020_clueGOplus_Sep19.tsv",
             sep = "\t", row.names = F, quote = F)
+#write.table(fil_tab_PID, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/PID/CGC_topSKATBin_ISKS_MRGB_repstress_potint_mito_chkpt_centrosome_VARIANTS_filt_combset2020_clueGOplus_Oct19.tsv",
+#            sep = "\t", row.names = F, quote = F)
+#write.table(fil_tab_PID, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/PID/CGC_topSKATBin_ISKS_MRGB_repstress_potint_mito_chkpt_centrosome_VARIANTS_filt_combset2020_clueGOplus_t1_Oct19.tsv",
+#            sep = "\t", row.names = F, quote = F)
 
 #######
 ##Add phenotypes
@@ -413,3 +428,11 @@ print("Save PID file")
 write.table(comb_ALL_phen_filt[,-c(75:81,88:94)], 
             "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/PID/PID_combset2020_CGC_skatBin_repstress_potint_mito_chkpt_centrosome_predNFE_clueGO_Sep192020_AD_addC4C5.tsv",
             sep = "\t", row.names = F, quote = F)
+##rect_test
+#write.table(comb_ALL_phen_filt[,-c(75:81,86:92)], 
+#            "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/PID/PID_combset2020_CGC_skatBin_repstress_potint_mito_chkpt_predNFE_clueGO_Sep102020_AD_Aug31_addC4C5_Oct19.tsv",
+#            sep = "\t", row.names = F, quote = F)
+
+#write.table(comb_ALL_phen_filt[,-c(75:81,86:92)], 
+#            "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/PID/PID_combset2020_CGC_skatBin_repstress_potint_mito_chkpt_predNFE_clueGO_Sep102020_AD_Aug31_addC4C5_t1_Oct19.tsv",
+#            sep = "\t", row.names = F, quote = F)

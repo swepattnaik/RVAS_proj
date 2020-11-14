@@ -269,7 +269,7 @@ Ex_tab_noCH_filt3_fin_filt <- Ex_tab_noCH_filt3_fin[Ex_tab_noCH_filt3_fin$auto_c
 Ex_tab_noCH_filt3_fin_filt <- Ex_tab_noCH_filt3_fin_filt[Ex_tab_noCH_filt3_fin_filt$QC2 %in% "pass",]
 Ex_tab_noCH_filt3_fin_filt$filt_tab <- paste(Ex_tab_noCH_filt3_fin_filt$SAMPLE, Ex_tab_noCH_filt3_fin_filt$VARIANT, sep = "_")
 
-##remove samples with more than 2 variants per gene
+##remove variants from samples with more than 2 variants per gene
 t_msfs <- Ex_tab_noCH_filt3_fin_filt %>% group_by(SAMPLE, gene_symbol) %>% summarise(n = n())
 tdf_msfs <- as.data.frame(t_msfs[t_msfs$n > 2, ])
 Ex_tab_noCH_filt3_msfs <- list()

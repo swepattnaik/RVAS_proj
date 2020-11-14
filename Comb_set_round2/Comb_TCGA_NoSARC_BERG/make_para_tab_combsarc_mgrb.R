@@ -30,9 +30,11 @@ get_coh_dist_para <- function(gene_sym, fil_db){
     for(m in 1:length(ftemp_tab_var_id)){
       sam_gene_gt <- fil_db_genes[fil_db_genes$VARIANT %in% ftemp_tab_var_id[m],][,c(1:3,9,11,127:128)]
       sam_gene_gt <- unique(sam_gene_gt)
-      maf_vec_cont <- sum(ifelse(is.na(as.numeric(sam_gene_gt$SAMPLE)), 1, 0))/((563 + 3205)*2)
-      maf_vec_case <- sum(ifelse(!is.na(as.numeric(sam_gene_gt$SAMPLE)) | 
-                                   grepl("^CR|^LK", as.character(sam_gene_gt$SAMPLE)), 1, 0))/((563 + 3205)*2)
+    #  maf_vec_cont <- sum(ifelse(is.na(as.numeric(sam_gene_gt$SAMPLE)), 1, 0))/((563 + 3205)*2)
+    #  maf_vec_case <- sum(ifelse(!is.na(as.numeric(sam_gene_gt$SAMPLE)) | 
+    #                               grepl("^CR|^LK", as.character(sam_gene_gt$SAMPLE)), 1, 0))/((563 + 3205)*2)
+      maf_vec_cont <- length(grep("^[ABZ]", sam_gene_gt$SAMPLE))/((563 + 3205)*2)
+      maf_vec_case <- length(grep("^[ABZ]", sam_gene_gt$SAMPLE, invert = T))/((563 + 3205)*2)
       ##MAF filter = 5/(1661*2); change to 3/(1661*2)
       ##changed to cohort MAF threshold : 3/((563 + 3205)*2) 
       if(!(as.numeric(as.character(maf_vec_cont)) >= 0.0005 | 
@@ -91,5 +93,6 @@ system.time(res_list <- foreach(i=1:length(genes), .errorhandling = 'remove') %d
 {get_coh_dist_para(genes[i], fil_tab_noCH)})
 res20 <- do.call("rbind.data.frame", res_list)
 
+saveRDS(res20, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/Comb_TCGA_BERG_NoSarc/Exome_para_CombSarc_Aug31_sep19.rds", compress = T)
 
-saveRDS(res20, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/Comb_TCGA_BERG_NoSarc/Exome_para_CombSarc_Aug31.rds", compress = T)
+#saveRDS(res20, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/Comb_TCGA_BERG_NoSarc/Exome_para_CombSarc_Aug31.rds", compress = T)

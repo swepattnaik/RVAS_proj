@@ -5,7 +5,10 @@
 ISKS_MGRB_2020_rnd3 <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/all_isksmgrb_skatinp_combset2020_clin_C3C4C5_NFE0002_AD_rm_dup_freeze.tsv",
                                   sep = "\t", header = T, stringsAsFactors = F)
 
-ppi_res_fil_final <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/ppi_res_fil_final_SKATbin_comb_str_biog_Aug31_cyto.tsv", 
+##file below is obtained from master script "/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/git_proj_rvas/Comb_set_round2/ISKS_MGRB_2020/ISKS_AR_AD/Aug31_freeze/Cliq_analysis/summary_analysis_freeze_cyto_AR_AD.Rmd"
+#ppi_res_fil_final <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/ppi_res_fil_final_SKATbin_comb_str_biog_Aug31_cyto.tsv", 
+ #                               sep = "\t", header = T, stringsAsFactors = F)
+ppi_res_fil_final <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/ppi_res_fil_final_SKATbin_comb_str_biog_Aug31_sep19_cyto.tsv", 
                                 sep = "\t", header = T, stringsAsFactors = F)
 
 ##function for degree detection
@@ -217,8 +220,9 @@ ppi_res_fil_final$rank_score2_biog <- apply(ppi_res_fil_final[,c(6,14,22)], 1, f
 ppi_res_fil_final$rank_score2_str <- apply(ppi_res_fil_final[,c(6,14,28)], 1, function(x)(-log10(x[2]/x[1]) + (-1)*log10(x[3])))
 ppi_res_fil_final$rank_score2_str_biog <- apply(ppi_res_fil_final[,c(6,14,34)], 1, function(x)(-log10(x[2]/x[1]) + (-1)*log10(x[3])))
 
-write.table(ppi_res_fil_final[,c(1:11,14,17:20,22,26:28,32:34,38:61)], "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/scrambled_cyto_null_ppi_fisher_res_fil_final_Aug31_09102020.tsv",
+#write.table(ppi_res_fil_final[,c(1:11,14,17:20,22,26:28,32:34,38:61)], "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/scrambled_cyto_null_ppi_fisher_res_fil_final_Aug31_09102020.tsv",
+#            sep = "\t", row.names = F, quote = F)
+write.table(ppi_res_fil_final[,c(1:11,14,17:20,22,26:28,32:34,38:61)], "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/scrambled_cyto_null_ppi_fisher_res_fil_final_Aug31_sep19.tsv",
             sep = "\t", row.names = F, quote = F)
-
 
 

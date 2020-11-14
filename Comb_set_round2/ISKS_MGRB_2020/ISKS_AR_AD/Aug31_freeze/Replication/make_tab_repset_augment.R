@@ -46,9 +46,12 @@ get_coh_dist_para <- function(gene_sym, fil_db, tot_coh_size){
     for(m in 1:length(ftemp_tab_var_id)){
       sam_gene_gt <- fil_db_genes[fil_db_genes$VARIANT %in% ftemp_tab_var_id[m],][,c(1:3,9,11,127:128)]
       sam_gene_gt <- unique(sam_gene_gt)
-      maf_vec_cont <- sum(ifelse(is.na(as.numeric(sam_gene_gt$SAMPLE)), 1, 0))/(tot_coh_size*2)
-      maf_vec_case <- sum(ifelse(!is.na(as.numeric(sam_gene_gt$SAMPLE)) | 
-                                   grepl("^CR|^LK", as.character(sam_gene_gt$SAMPLE)), 1, 0))/(tot_coh_size*2)
+      #maf_vec_cont <- sum(ifelse(is.na(as.numeric(sam_gene_gt$SAMPLE)), 1, 0))/(tot_coh_size*2)
+      ##it should be for MGRB and to not penalise CR's and LK's:Oct18-2020
+      maf_vec_cont <- length(grep("^[ABZ]", sam_gene_gt$SAMPLE))/(2*tot_coh_size)
+      maf_vec_case <- length(grep("^[ABZ]", sam_gene_gt$SAMPLE, invert = T))/(2*tot_coh_size)
+      #maf_vec_case <- sum(ifelse(!is.na(as.numeric(sam_gene_gt$SAMPLE)) | 
+      #                             grepl("^CR|^LK", as.character(sam_gene_gt$SAMPLE)), 1, 0))/(tot_coh_size*2)
       ##MAF filter = 5/(1661*2); change to 3/(1661*2)
       ##changed to cohort MAF threshold : 3/((563 + 3205)*2) 
       maf_cutoff = 3.5/(tot_coh_size*2)
