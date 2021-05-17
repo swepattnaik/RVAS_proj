@@ -1,0 +1,1175 @@
+---
+title: "SKATOPINT_package"
+author: "Swetansu Pattnaik"
+date: "18/01/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+`%nin%` = Negate(`%in%`)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##Classifying and scoring gene variants based on ClinVar annotations, LOF, amino acid position
+```{r}
+##Add score and variant class column
+##vep_input demo data is provided; use sarcoma internal control genes
+var_file_isks <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/all_isks_combset2020_variants_AR_AD_all_fields_clingene_rnd3.tsv",
+                       sep = "\t", header = T, stringsAsFactors = F)
+var_file_mgrb <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/MGRB/all_mgrb_combset2020_variants_AR_AD_all_fields_clingene_rnd3.tsv",
+                            sep = "\t", header = T, stringsAsFactors = F)
+var_file_mgrb$set <- gsub("ISKS", "MGRB", var_file_mgrb$set)
+var_file <- rbind.data.frame(var_file_isks, var_file_mgrb)
+#var_file_C3 <- var_file[var_file$auto_call %in% "C3",]
+#var_file_sel_C3 <- var_file_C3[,c(1:3,9,53,57,58,60:61,130)]
+#var_file_sel_C3$is_case <- as.factor(ifelse(var_file_sel_C3$set %in% "ISKS_AR_AD", 1, 0))
+vep_input_demo <- var_file[var_file$gene_symbol %in% c("TP53", "NF1", "BRCA2", "ERCC2", "EXT1", "EXT2","SDHA", "SDHB", "SDHD"),]
+
+vep_input_demo <- vep_input_demo[,-c(127:129)]
+saveRDS(vep_input_demo, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/skatopint/vep_input_demo.rds", compress = T)
+#vep_input_demo <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/skatopint/vep_input_demo.rds")
+#vep_input_demo$is_case <- as.factor(ifelse(vep_input_demo$set %in% "ISKS_AR_AD", 1, 0))
+
+##
+
+score_var <- function(vep_input){
+toMatch1 <- c("Likely_pathogenic", "Pathogenic", "Pathogenic/Likely_pathogenic", 
+              "Pathogenic/Likely_pathogenic/drug_response", "Pathogenic/Likely_pathogenic/other",
+              "Pathogenic/Affects", "Pathogenic/risk_factor", "Pathogenic/Likely_pathogenic/risk_factor",
+              "risk_factor")
+
+
+##modify scoring function since the annotation from the new VEP are slightly different
+toMatch2 <- c("frameshift_variant", "start_lost", "stop_gained")
+filt3_inp <- vep_input
+##sco_fun5 changed on Aug-11-2019 to further underweight last exon variants (aftermath of POT1 variants in MGRB)
+##sco_fun5 changed on Sept-05-2019 to further underweight variants that are C4 and present in the last
+## 5% of the C-terminal tail of the protein.(aftermath of POT1 variants in MGRB)
+sco_fun5 <- function(filt3_inp){
+  ##construct C5,C4, C3 and score them as sco_fun4  
+  ##All clinvar_sig variants
+  filt3_inp$vep_con1 <- unlist(lapply(strsplit(filt3_inp$vep_consequence, split = "&"), function(x)x[1]))
+  metric1 <-  ifelse(grepl(paste(toMatch1,collapse="|"), 
+                           filt3_inp$clinvar_Clinical_Significance) , "C5", 
+                     ifelse(grepl(paste(toMatch2,collapse="|"), 
+                                  filt3_inp$vep_con1), "C4", 
+                            ifelse(filt3_inp$vep_con1 %in% 
+                                     c("missense_variant", "splice_region_variant",
+                                       "splice_donor_variant", "splice_acceptor_variant",
+                                       "protein_altering_variant")
+                                   & filt3_inp$gnomad_AF_NFE == 0, "C3", "B")))
+  ##lapply(strsplit(var_type, split = "&"), function(x)x[1]) think about this
+  
+  metric2 <- as.numeric(ifelse(metric1 %in% "C5", 45, 
+                               ifelse(metric1 %in% "C4", 45, 
+                                      ifelse(metric1 %in% "C3", filt3_inp$EigenPhred, 0))))
+  
+  metric2[is.na(metric2)] <- 0
+  
+  met_df <- cbind.data.frame("auto_call" = metric1, "comb_score" = metric2 )
+  return(met_df)
+}
+vep_output <- cbind.data.frame(vep_input, sco_fun5(vep_input))
+##Changed on Aug12 after DT meeting
+##for sept05_rect dataset
+##DT new suggestions: Oct-2-2019
+##If C4 == ClinVar Benign; assign eigenphred score
+toMatch_ben <- c("Benign", "Benign/Likely_benign")
+vep_output$comb_score <- as.numeric(ifelse(grepl(paste(toMatch_ben,collapse="|"), 
+                                                        vep_output$clinvar_Clinical_Significance) & 
+                                                    vep_output$auto_call %in% "C4", vep_output$EigenPhred,vep_output$comb_score))
+#frameshift donot have eigenphred scores, hence they are assigned a score of 15 manually
+vep_output$comb_score <- ifelse(is.na(vep_output$comb_score), 15, vep_output$comb_score)
+##last 5 percent of protein sequence based score penalty
+Cterm_C3_C4 <- c("C3", "C4")
+vep_output$comb_score <- as.numeric(ifelse(vep_output$auto_call %in% Cterm_C3_C4 &
+                                                    vep_output$last_five_perc == 1, (vep_output$comb_score)/2,vep_output$comb_score))
+
+##remove benign variants
+
+vep_output <- vep_output[vep_output$comb_score > 0,]
+
+return(vep_output)
+}
+
+train_set <- score_var(vep_input_demo)
+```
+
+##generate sarc_data for package to serve as internal demo dataset
+##In the absence of known internal control, the score cut-off will be decided
+
+```{r}
+##C3 Variant scoring model
+
+library(gdata)
+library("MASS")
+library(ggplot2)
+library(gridExtra)
+library(geoR) #for 3-D plots
+library(caret)
+library(pscl)
+library(ISLR)
+library(knitr)
+
+
+# ggplot(var_file_sel_C3, aes(x = is_case, y = EigenPhred, fill = is_case)) + geom_boxplot()
+# train_set <- var_file_sel_C3[var_file_sel_C3$gene_symbol %in% c("TP53", "NF1", "BRCA2", "ERCC2", "EXT1", "EXT2","SDHA", "SDHB", "SDHD"),]
+#train_set$is_case <- ifelse(grepl("ISKS_AR_AD",train_set$set), 1, 0)
+ggplot(train_set, aes(x = set, y = EigenPhred, fill = is_case)) + geom_boxplot()
+```
+
+##In the absence of known internal controls
+##Add later (lower quantile filtering)
+
+##Logistic regression model
+```{r}
+
+dat_num <- train_set[,c(130,53,57,60,61)]
+dat_num[is.na(dat_num)] <- 0
+
+##logistic regression model
+
+logistic.regression.or.ci <- function(regress.out, level=0.95)
+{
+  ################################################################
+  #                                                              #
+  #  This function takes the output from a glm                   #
+  #  (logistic model) command in R and provides not              #
+  #  only the usual output from the summary command, but         #
+  #  adds confidence intervals for all coefficients and OR's.    #
+  #                                                              #
+  #  This version accommodates multiple regression parameters    #
+  #                                                              #
+  ################################################################
+  usual.output <- summary(regress.out)
+  z.quantile <- qnorm(1-(1-level)/2)
+  number.vars <- length(regress.out$coefficients)
+  OR <- exp(regress.out$coefficients[-1])
+  temp.store.result <- matrix(rep(NA, number.vars*2), nrow=number.vars)
+  for(i in 1:number.vars)
+  {
+    temp.store.result[i,] <- summary(regress.out)$coefficients[i] +
+      c(-1, 1) * z.quantile * summary(regress.out)$coefficients[i+number.vars]
+  }
+  intercept.ci <- temp.store.result[1,]
+  slopes.ci <- temp.store.result[-1,]
+  OR.ci <- exp(slopes.ci)
+  output <- list(regression.table = usual.output, intercept.ci = intercept.ci,
+                 slopes.ci = slopes.ci, OR=OR, OR.ci = OR.ci)
+  return(output)
+}
+####Function:ROC plots
+library(ROCR)
+plot_roc <- function(prob, resp_var){
+  pr <- prediction(prob, resp_var)
+  prf <- performance(pr, measure = "tpr", x.measure = "fpr")
+  #plot(prf)
+  auc <- performance(pr, measure = "auc")
+  auc <- auc@y.values[[1]]
+  #print("AUC")
+  #  return(auc)
+  return(list(auc, prf))
+}
+####Function: Univariate model
+anv <- numeric()
+mod_dev <- numeric()
+null_dev <- numeric()
+univar_op <- list()
+pse_r_sq <- numeric()  #MacFadden's pseudo R-squared test
+pred <- numeric()
+pred_obj <- list()
+auc_roc <- list()
+col_var <- colnames(dat_num)
+for(i in 1:dim(dat_num)[2]){
+  print(i)
+  output <- glm(is_case ~ dat_num[,i], data=dat_num, family=binomial(link="logit"))
+  pred <- predict(output,newdata = data.frame(dat_num[,i]), type = "response")
+  pred[is.na(pred)] <- 0
+  pred_obj[[i]] <- pred
+  # summary(output)
+  a <- anova(output, test = "Chisq")
+  anv[i] <- a$`Pr(>Chi)`[2]
+  mod_dev[i]<- a$Deviance[2]
+  null_dev[i] <- a$`Resid. Dev`[1]
+  pse_r_sq[i] <- pR2(output)[4]
+  univar_op[[i]] <- logistic.regression.or.ci(output)
+  auc_roc[[i]] <- plot_roc(pred, dat_num$is_case)
+}
+names(auc_roc) <- colnames(dat_num)
+names(univar_op) <- colnames(dat_num)
+Est_cor <- numeric()
+pval_cov <- numeric()
+odds_rat <- numeric()
+OR_CI_lower <- numeric()
+OR_CI_upper <- numeric()
+AUC_chk <- numeric()
+for(j in 1:length(univar_op)){
+  Est_cor[j] <- univar_op[[j]]$regression.table$coefficients[2,1]
+  pval_cov[j] <- univar_op[[j]]$regression.table$coefficients[2,4]
+  odds_rat[j] <- univar_op[[j]]$OR
+  OR_CI_lower[j] <- univar_op[[j]]$OR.ci[1]
+  OR_CI_upper[j] <- univar_op[[j]]$OR.ci[2]
+  AUC_chk[j] <- auc_roc[[j]][[1]]
+}
+
+df_univar <- as.matrix(cbind("Estimate" = Est_cor, "P value" = pval_cov, "OR" = odds_rat, "CI_lower" = OR_CI_lower, "CI_upper" = OR_CI_upper, "Chi-sq_sig" = anv,
+                             "Deviance" = mod_dev, "Null_deviance" = null_dev, "Pseudo-R.sq" = pse_r_sq, "AUC" = AUC_chk))
+rownames(df_univar) <- colnames(dat_num)
+
+df_univar_unfilt <- df_univar
+df_univar_unfilt <- df_univar_unfilt[-1,]
+
+##Plot AUC
+
+library(RColorBrewer)
+set.seed(2236789)
+#colr <- sample(brewer.pal(n = 7, name = "Dark2" ), 7, replace = F)
+colr <- sample(brewer.pal(n = 5, name = "Paired" ), 5, replace = F)
+plot(0,0,xlim = c(0,1),ylim = c(0,1),type = "n", xlab =  "False Positive Rate", ylab = "True Positive Rate")
+
+
+for(i in 2:5){
+  
+  plot(auc_roc[[i]][[2]], col = colr[i], avg = "vertical", spread.estimate = "stderror",
+       show.spread.at = seq(0.1, 0.8, 0.1), plotCI.col = colr[i], plotCI.lwd = 2, lwd = 2, add = TRUE)
+  # plot(auc_roc[[1]][[i]], col = "blue", lty = 2, lwd = 0.25, add = TRUE)
+  legend("bottomright", legend = names(auc_roc)[2:5], lty = 1, lwd =2, col = colr[2:5], cex = 0.8)
+}
+
+plot(0,0,xlim = c(0,1),ylim = c(0,1),type = "n", xlab =  "False Positive Rate", ylab = "True Positive Rate")
+plot(auc_roc[[2]][[2]], col = colr[2], avg = "vertical", spread.estimate = "stderror",
+     show.spread.at = seq(0.1, 0.8, 0.1), plotCI.col = colr[2], plotCI.lwd = 2, lwd = 2, add = TRUE)
+plot(auc_roc[[5]][[2]], col = colr[5], avg = "vertical", spread.estimate = "stderror",
+     show.spread.at = seq(0.1, 0.8, 0.1), plotCI.col = colr[5], plotCI.lwd = 2, lwd = 2, add = TRUE)
+legend("bottomright", legend = names(auc_roc)[c(2,5)], lty = 1, lwd =2, col = colr[c(2,5)], cex = 0.8)
+
+kable(df_univar[2:5,])
+
+```
+
+
+##Score threshold
+```{r}
+##transforming cut_off prob to predictor value
+#log[p/(1-p)] = b0 + b1*x
+#x = (log[p/(1-p)] - b0)/b1
+output_Eigen <- glm(is_case ~ EigenPhred, data=dat_num, family=binomial(link="logit"))
+P_Eig <- predict(output_Eigen,newdata = data.frame(EigenPhred = dat_num$EigenPhred), type = "response")
+p = mean(P_Eig)
+
+b0 = coef(output_Eigen)[1]
+b1 = coef(output_Eigen)[2]
+x = (log(p/(1-p)) - b0)/b1
+
+get_threshold <- function(score_type){
+  mdl <- glm(is_case ~ dat_num[,grep(score_type, colnames(dat_num))], data=dat_num, family=binomial(link="logit"))
+  mod_pred <- predict(mdl,newdata = data.frame(dat_num[,grep(score_type, colnames(dat_num))]), type = "response")
+p = mean(mod_pred)
+
+b0 = coef(mdl)[1]
+b1 = coef(mdl)[2]
+x = (log(p/(1-p)) - b0)/b1
+return(x)
+}
+
+#t1 <- get_threshold("EigenPhred")
+
+```
+
+##Filter C3 variants based on score threshold and run SKAT
+
+##SKAT
+```{r}
+fil_tab <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/all_isksmgrb_skatinp_combset2020_clin_C3C4C5_NFE0002_AD_rm_dup_freeze.tsv", 
+            sep = "\t", header = T, stringsAsFactors = F)
+
+fil_tab_demo <- fil_tab[fil_tab$gene_symbol %in% c("TP53", "NF1", "BRCA2", "ERCC2", "EXT1", "EXT2","SDHA", "SDHB", "SDHD"),]
+fil_tab_demo <- fil_tab_demo[,c(1:3,9,11,127:128,130)]
+saveRDS(fil_tab_demo, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/skatopint/fil_tab_demo.rds", compress = T)
+##refer fil_tab_demo data file for SKAT input format
+
+p_Data_noCH <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/PID/pheno_data_SKAT_final_freeze.tsv", sep = "\t", header = T, stringsAsFactors = F)
+#binary phenotype vector 
+p_vec <- ifelse(!is.na(as.numeric(as.character(p_Data_noCH$rect_sam))) | grepl("^CR|^LK",as.character(p_Data_noCH$rect_sam)), 1, 0)
+
+##SKAT null function with customised covariate
+SKAT_fun_null <- function(x=NULL, p_vec){
+  if(is.null(x)){
+    obj_N <- SKAT::SKAT_Null_Model(p_vec ~ 1,out_type="D")
+  }
+  # else if(is.integer(x) || is.numeric()){
+  else if(is.null(dim(x))){
+    obj_N <- SKAT::SKAT_Null_Model(p_vec ~ x,out_type="D")
+  }
+  else if(dim(x)[2] > 1){
+    nul_for <- as.formula(paste("p_vec", paste(colnames(x), collapse = " + "), sep = " ~ "))
+    obj_N <- SKAT::SKAT_Null_Model(nul_for, data = p_Data_noCH, out_type="D")
+  #  obj_N <- SKAT_Null_Model(nul_for, data = x, out_type="D")
+  }
+  return(obj_N)
+}
+
+##SKAT function for SKAT, SKATBinary, SKATO, SKAT_ERA
+SKAT_run <- function(geno_mat, gene, x=NULL, p_vec, cust_weight = NULL, rho = NULL){
+  
+  if(dim(geno_mat)[2] > 1 ){
+    null_d <- SKAT_fun_null(x, p_vec)
+    pval_SKAT <- SKAT::SKAT(t(geno_mat), null_d, weights = cust_weight, r.corr = rho)$p.value
+    pval_SKATbin <- SKAT::SKATBinary(t(geno_mat), null_d, method = "Burden", weights = cust_weight)$p.value
+    pval_SKATO <- SKAT::SKATBinary(t(geno_mat),null_d, method='SKATO', weights = cust_weight)$p.value
+    pval_SKATera <- SKAT::SKATBinary(t(geno_mat),null_d, method.bin="ER.A", weights = cust_weight)$p.value
+    skat_pv <- cbind.data.frame("eg_ID" = gene, pval_SKAT, pval_SKATbin, pval_SKATO, pval_SKATera)
+    return(skat_pv)
+  }
+  else if(dim(geno_mat)[2] == 1){
+    null_d <- SKAT::SKAT_fun_null(x, p_vec)
+    pval_SKAT <- SKAT::SKAT(geno_mat, null_d, weights = cust_weight, r.corr = rho)$p.value
+    pval_SKATbin <- SKAT::SKATBinary(t(geno_mat), null_d, method = "Burden", weights = cust_weight)$p.value
+    pval_SKATO <- SKAT::SKATBinary(geno_mat,null_d, method='SKATO', weights = cust_weight)$p.value
+    pval_SKATera <- SKAT::SKATBinary(geno_mat,null_d, method.bin="ER.A", weights = cust_weight)$p.value
+    skat_pv <- cbind.data.frame("eg_ID" = gene, pval_SKAT, pval_SKATbin, pval_SKATO, pval_SKATera)
+    
+    return(skat_pv)
+  }
+}
+
+##Run SKAT on variants collapsed by gene
+
+run_SKAT <- function(fil_tab, p_vec, p_Data_noCH, score_cutoff, VAF_cutoff, MAF_cutoff){
+DT_skat_snv_str_pc123 <- list()
+#genes <- unique(fil_tab$gene_symbol)
+
+skat_pvals <- list()
+skat_pvals_pc12 <- list()
+skat_pvals_sex <- list()
+skat_pvals_sex_pc12 <- list()
+#    skat_pvals_age <- list()
+#   skat_pvals_age_pc12 <- list()
+#   skat_pvals_age_sex <- list()
+#    skat_pvals_age_sex_pc12 <- list()
+
+#for(i in 1:length(genes)){
+ # print(i)
+#  print(genes[i])
+  ##process genes in a loop
+
+  ##parallel process genes
+##genes object can be a single gene or a geneset
+  para_SKAT <- function(genes){
+  ftemp_tab <- fil_tab[fil_tab$gene_symbol %in% genes,]
+  ftemp_tab <- ftemp_tab[ftemp_tab$comb_score >= score_cutoff & as.numeric(ftemp_tab$VAF) >= VAF_cutoff, ]
+  
+  print(max(ftemp_tab$comb_score))
+  if(dim(ftemp_tab) == 0 ){
+    next
+  }
+  else{
+    ftemp_tab_var_id <- unique(ftemp_tab$VARIANT)
+    samp_vec <- list()
+    for(m in 1:length(ftemp_tab_var_id)){
+      sam_gene_gt <- ftemp_tab[ftemp_tab$VARIANT %in% ftemp_tab_var_id[m],][,c(1:3,9,11,127:128)]
+      sam_gene_gt <- unique(sam_gene_gt)
+      if(dim(sam_gene_gt)[1] > 1 & length(unique(sam_gene_gt$vep_consequence)) > 1){
+        # if(dim(sam_gene_gt)[1] > 1 & length(unique(sam_gene_gt$vep_consequence)) > 1 & length(unique(sam_gene_gt$comb_score)) > 1){
+        vep_con <- unique(sam_gene_gt$vep_consequence)
+        samp_vec_con <- list()
+        for(k in 1:length(vep_con)){
+          sam_gene_gt_con <- sam_gene_gt[sam_gene_gt$vep_consequence %in% vep_con[k],]
+          sam_gene_gt_con <- unique(sam_gene_gt_con)
+          maf_vec_cont <- sum(dim(sam_gene_gt_con[grepl("^[ABZ]",sam_gene_gt_con$SAMPLE),])[1])/(2*length(p_vec))
+          maf_vec_case <- sum(dim(sam_gene_gt_con[!grepl("^[ABZ]",sam_gene_gt_con$SAMPLE),])[1])/(2*length(p_vec))
+          ##genotype matrix  
+          sam_gene_gt_con$add_mod <- as.numeric(sam_gene_gt_con$GT)
+          sam10 <- ifelse(Ex_samp_id %in% sam_gene_gt_con$SAMPLE, 1, 0)
+          sam10[which(sam10 != 0)] <- sam_gene_gt_con$add_mod ##additive model
+          samp_vec_con[[k]] <- c(unique(sam_gene_gt_con$VARIANT),
+                                 unique(sam_gene_gt_con$gene_symbol), 
+                                 unique(sam_gene_gt_con$vep_consequence), 
+                                 unique(as.character(sam_gene_gt_con$auto_call)),
+                                 as.numeric(unique(sam_gene_gt_con$comb_score)), as.numeric(maf_vec_case),
+                                 as.numeric(maf_vec_cont), sam10)
+        }
+        #  vep_cod <- sapply(str_extract_all(sam_gene_gt$vep_Codons, "[A-Z]+"), paste, collapse= '_')
+        #  ref_alt <- unlist(lapply(strsplit(sam_gene_gt$VARIANT, split = ":"), function(x) paste(x[3], x[4], sep = "_")))
+        #  sam_gene_gt <- sam_gene_gt[which(vep_cod %in% ref_alt),]
+        
+      }
+      else{
+        ##compute cohort specific MAF
+        maf_vec_cont <- sum(ifelse(is.na(as.numeric(sam_gene_gt$SAMPLE)), 1, 0))/(2*length(p_vec))
+        maf_vec_case <- sum(ifelse(!is.na(as.numeric(sam_gene_gt$SAMPLE)) | 
+                                     grepl("^CR|^LK", as.character(sam_gene_gt$SAMPLE)), 1, 0))/(2*length(p_vec))
+        #maf_vec <- (maf_vec_cont + maf_vec_case)/(2*(1572 + 1110))
+        ##genotype matrix  
+        sam_gene_gt$add_mod <- as.numeric(sam_gene_gt$GT)
+        sam10 <- ifelse(Ex_samp_id %in% sam_gene_gt$SAMPLE, 1, 0)
+        sam10[which(sam10 != 0)] <- sam_gene_gt$add_mod ##additive model
+        ##account for discrepancy in vep_consequence
+        #vep_con <- names(sort(table(unlist(strsplit(sam_gene_gt$vep_consequence, split = "&"))),decreasing=TRUE)[1])
+        # sam_gene_gt$vep_consequence <- vep_con
+        
+        
+        samp_vec[[m]] <- c(ftemp_tab_var_id[m],
+                           unique(sam_gene_gt$gene_symbol), 
+                           unique(sam_gene_gt$vep_consequence), 
+                           unique(as.character(sam_gene_gt$auto_call)),
+                           as.numeric(unique(sam_gene_gt$comb_score)), as.numeric(maf_vec_case),
+                           as.numeric(maf_vec_cont), sam10)
+      }
+    }
+    samp_vec_mat_uni <- do.call("rbind.data.frame", samp_vec)
+    colnames(samp_vec_mat_uni) <- c("VARIANT", "gene_symbol", "vep_consequence", "auto_call", "comb_score", "coh_MAF_case",
+                                    "coh_MAF_cont", Ex_samp_id)
+    if(exists("samp_vec_con")){
+      samp_vec_mat_con <- do.call("rbind.data.frame", samp_vec_con)
+      colnames(samp_vec_mat_con) <- c("VARIANT", "gene_symbol", "vep_consequence", "auto_call", "comb_score", "coh_MAF_case",
+                                      "coh_MAF_cont", Ex_samp_id)
+      samp_vec_mat <- rbind.data.frame(samp_vec_mat_uni, samp_vec_mat_con)
+    }else{
+      samp_vec_mat <- samp_vec_mat_uni
+    }
+    print(dim(samp_vec_mat))
+        samp_vec_mat <- samp_vec_mat[!(as.numeric(as.character(samp_vec_mat$coh_MAF_case)) >= MAF_cutoff | 
+                                     as.numeric(as.character(samp_vec_mat$coh_MAF_cont)) >= MAF_cutoff),]
+     
+    if(is.null(dim(samp_vec_mat)) | dim(samp_vec_mat)[1] == 0) {
+      skat_pvals <- NULL
+      skat_pvals_pc12 <- NULL
+      skat_pvals_sex <- NULL
+      skat_pvals_sex_pc12 <- NULL
+      
+      next
+    }
+    ##compute maf SKAT takes care of the AFs internally by assigning higher weights to rare variants 
+    
+    else {
+      gene_mat_comb <- as.numeric(as.character(samp_vec_mat[,5]))
+      gene_mat <- as.matrix(samp_vec_mat[,-c(1:7)])
+      class(gene_mat) <- "numeric"
+      ##for strictly burden test set rho = 1, else set rho = 0
+      ##no covariate
+      skat_pvals <- SKAT_run(geno_mat = gene_mat, gene = genes, x=NULL, p_vec, cust_weight = gene_mat_comb, rho = 1)
+      ##only pc1 to pc4
+      skat_pvals_pc12 <- SKAT_run(geno_mat = gene_mat, gene = genes, x=p_Data_noCH[,c(19:22)], p_vec, cust_weight = gene_mat_comb, rho = 1)
+      ##gender
+      skat_pvals_sex <- SKAT_run(geno_mat = gene_mat, gene = genes, x=p_Data_noCH$gender, p_vec, cust_weight = gene_mat_comb, rho = 1)
+      ##gender + pc1 + pc2
+      skat_pvals_sex_pc12 <- SKAT_run(geno_mat = gene_mat, gene = genes, x=p_Data_noCH[,c(54,19:22)], p_vec, cust_weight = gene_mat_comb, rho = 1)
+      
+    }
+    
+  } ##end of nested else loop
+  DT_skat_snv_str_pc123 <- list(skat_pvals, skat_pvals_pc12, skat_pvals_sex, skat_pvals_sex_pc12)
+  return(DT_skat_snv_str_pc123)
+}##end of gene loop ; i loop   
+} ##end of run_SKAT function
+
+##Parallelised SKAT  
+  library(doParallel)
+  library(doMC)
+  registerDoMC(30)
+
+  res20 <- list()
+  genes <- unique(fil_tab$gene_symbol)
+  system.time(res20 <- foreach(i=1:length(genes), .errorhandling = 'remove') %dopar% 
+  {para_SKAT(genes[i])})
+  res_skat_para <- list()
+  for(i in 1:4){
+  res_skat_para[[i]] <- lapply(res20, function(x)do.call("rbind.data.frame", x[i]))
+  }
+
+
+```
+
+
+
+##Computing rank scores from SKAT output for genes with p_value < 0.1
+
+```{r}
+Exome_skat <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/Exome_skat_para_result_isks_combset2020_uni_MAF_PC1234_ver4_clinrect_Aug31.rds")
+df_skat <- lapply(Exome_skat, function(x)do.call("rbind.data.frame", x))
+Exome_pc123_srt_SKAT <- lapply(df_skat, function(x) x[order(x$pval_SKATbin, decreasing = F),])
+Exome_pc123_srt_SKAT <- lapply(Exome_pc123_srt_SKAT, function(x){colnames(x)[1] <- c("symbol"); return(x)})
+Exome_pc123_srt_SKAT_case_enr_nCH <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/Exome_para_pc1234_SKAT_Enriched_ISKS_2020_Aug31.rds")
+##Add p-value
+Exome_pc123_srt_SKAT_case_enr_nCH_pval <- Map(cbind.data.frame, Exome_pc123_srt_SKAT_case_enr_nCH, Exome_pc123_srt_SKAT)
+
+##Remove genes that have SKATbin_pval >= 0.1, this selects only significant genes for the PPI enrichment
+##Add condition to remove genes with less than 2 variants in case 
+Exome_pc123_srt_SKAT_case_enr_nCH_pval <- lapply(Exome_pc123_srt_SKAT_case_enr_nCH_pval, function(x) x[x$pval_SKATbin < 0.1 & x$wt_diff > 0,])
+Exome_pc123_srt_SKAT_case_enr_nCH_ranked <- lapply(Exome_pc123_srt_SKAT_case_enr_nCH_pval, 
+                                                  function(x) cbind.data.frame(x, "rank_score" = -log10(x[,14]) * x[,6])) ##added intra cohort MAF filtered variant positions
+                                                    
+Exome_pc123_srt_SKAT_case_enr_nCH_ranked <- lapply(Exome_pc123_srt_SKAT_case_enr_nCH_ranked, function(x)
+  x[order(x[,17], decreasing = T),])
+
+```
+
+##Enrichment in Biogrid PPI
+
+```{r}
+##get graph degree from the genes in the top 1000 enriched list
+library(igraph)
+library(ggnet)
+library(intergraph)
+library(network)
+library(org.Hs.eg.db)
+
+
+get_topSKAT_degree <- function(enr_df){
+
+skat_genes_top100 <- as.character(enr_df[,3])
+
+can_net <- read.delim("~/VDLab_scripts/BioGrid/biogrid_db_all_subnet.sif", header = T, sep = " ", stringsAsFactor = F)
+#can_net <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/Biogrid_latest/Biog_net_hs.sif", header = T, sep = "\t", stringsAsFactor = F)
+can_net_graph <- igraph::graph.data.frame(can_net, directed = F)
+can_net_graph1 <- igraph::simplify(can_net_graph, remove.loops=T, remove.multiple = T)
+can_net1 <- igraph::as_data_frame(can_net_graph1, what = "edges")
+prot_np_all <- unique(can_net1[as.character(can_net1$from) %in% skat_genes_top100 
+                               & as.character(can_net1$to) %in% skat_genes_top100, ])
+uniongraph <- igraph::graph.data.frame(prot_np_all, directed = F)
+
+
+
+ret_df <- as.data.frame(igraph::degree(uniongraph))
+ret_df$gene <- rownames(ret_df)
+colnames(ret_df)[1] <- c("degree")
+
+l1 <- lapply(ret_df[,2], function(x)as_ids(adjacent_vertices(uniongraph, v = x)[[1]]))
+l2 <- lapply(l1, function(x)paste(x, sep=",", collapse=","))
+ret_df$interactors <- unlist(l2)
+
+return(ret_df)
+}
+
+
+##Fisher exact test for enrichment of subgraph related to each protein
+gender_PC123_cont_df <- Exome_pc123_srt_SKAT_case_enr_nCH_ranked[[4]]
+#remove genes with one hit in ISKS
+gender_PC123_cont_df <- gender_PC123_cont_df[gender_PC123_cont_df$ISKS > 1,]
+
+df_degree <- get_topSKAT_degree(gender_PC123_cont_df)
+gender_PC123_cont_df$degree <- df_degree[match(gender_PC123_cont_df$gene, df_degree$gene), 1]
+gender_PC123_cont_df$int <- df_degree[match(gender_PC123_cont_df$gene, df_degree$gene), 3]
+gender_PC123_cont_df$degree <- ifelse(is.na(gender_PC123_cont_df$degree), 0, gender_PC123_cont_df$degree)
+gender_PC123_cont_df$rank_PPI <- gender_PC123_cont_df$rank_score * log(gender_PC123_cont_df$degree + 2)
+gender_PC123_cont_df <- gender_PC123_cont_df[order(gender_PC123_cont_df$rank_PPI, decreasing = T),]
+
+###latest fisher test based on degrees in biogrid versus enriched graphs
+
+can_net <- read.delim("~/VDLab_scripts/BioGrid/biogrid_db_all_subnet.sif", header = T, sep = " ", stringsAsFactor = F)
+top_genes_enr <- as.character(gender_PC123_cont_df$gene)
+
+para_fisher_fun_new <- function(gene_sym){
+  gene_sym <- gene_sym[3]
+  print(gene_sym)
+  can_net_graph <- igraph::graph.data.frame(can_net, directed = F)
+  can_net_graph1 <- igraph::simplify(can_net_graph, remove.loops=T, remove.multiple = T)
+  can_net1 <- igraph::as_data_frame(can_net_graph1, what = "edges")
+  prot_np_all <- unique(can_net1[as.character(can_net1$from) %in% top_genes_enr 
+                                 & as.character(can_net1$to) %in% top_genes_enr, ])
+  uniongraph <- igraph::graph.data.frame(prot_np_all, directed = F)
+  
+  ##degree biogrid
+  deg_biog <- igraph::degree(can_net_graph1)[which(names(igraph::degree(can_net_graph1)) %in% gene_sym)]
+  deg_union <- igraph::degree(uniongraph)[which(names(igraph::degree(uniongraph)) %in% gene_sym)]
+  tot_biog <- igraph::ecount(can_net_graph1) 
+  tot_union <- igraph::ecount(uniongraph)
+  
+  ##test
+  #inp <- c(deg_union, deg_biog, tot_union - deg_union, tot_biog - deg_biog)
+  inp <- c(deg_union, deg_biog, tot_union, tot_biog)
+  mgrb_tsg <- matrix(inp ,nrow = 2, ncol = 2)
+  colnames(mgrb_tsg) <- c("deg_enr", "deg_bio")
+  rownames(mgrb_tsg) <- c("Enriched", "Biog")
+  #ft <- fisher.test(mgrb_tsg, alternative = "greater")
+  ft <- fisher.test(mgrb_tsg, conf.int = T, conf.level = 0.95)
+  ft_df <- cbind.data.frame("gene" =  gene_sym, "PPI_p_val_wt" = ft$p.value,
+                            "CI_lower" = ft$conf.int[1],
+                            "CI_upper" = ft$conf.int[2],
+                            "OR" = ft$estimate)
+  
+  return(ft_df)
+}
+
+
+library(parallel)
+cl <- makeCluster(25)
+#para_pheno <- parLapply(cl, 1:nrow(IBD_dist1), function(i) pick_pinf(IBD_dist1[i,]))
+clusterExport(cl, c("can_net", "top_genes_enr", "para_fisher_fun_new"))
+system.time(para_fish <- parApply(cl, gender_PC123_cont_df, 1, para_fisher_fun_new))
+stopCluster(cl)
+fisher_res <- do.call("rbind.data.frame",para_fish)
+ppi_res_fil_final <- cbind.data.frame(gender_PC123_cont_df, fisher_res)
+
+##combined cytoscape-biogrid enrichment
+ppi_res_fil_final <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/ppi_res_fil_final_SKATbin_Aug31_sep19.tsv", sep = "\t", header = T, stringsAsFactors = F)
+
+top_genes_enr <- as.character(ppi_res_fil_final$gene)
+
+##Biogrid
+can_net <- read.delim("~/VDLab_scripts/BioGrid/biogrid_db_all_subnet.sif", header = T, sep = " ", stringsAsFactor = F)
+
+##Cytoscape Stringdb
+strindb_graph_cyto <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/strindb_cyto_graph.rds")
+
+##combined cytoscape and biogrid graphs
+strindb_biog_graph1 <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/strindb_biog_graph_cyto.rds")
+
+para_fisher_fun_string_new <- function(gene_sym, graph){
+  print(gene_sym)
+ # can_net_graph <- igraph::graph.data.frame(strindb_graph, directed = F)
+ # can_net_graph1 <- igraph::simplify(can_net_graph, remove.loops=T, remove.multiple = T)
+  can_net1 <- igraph::as_data_frame(graph, what = "edges")
+  prot_np_all <- unique(can_net1[as.character(can_net1$from) %in% top_genes_enr 
+                                 & as.character(can_net1$to) %in% top_genes_enr, ])
+  uniongraph <- igraph::graph.data.frame(prot_np_all, directed = F)
+  
+  ##degree biogrid
+  deg_string <- as.numeric(igraph::degree(graph)[which(names(igraph::degree(graph)) %in% gene_sym)])
+  deg_union <- as.numeric(igraph::degree(uniongraph)[which(names(igraph::degree(uniongraph)) %in% gene_sym)])
+  deg_union <- ifelse(identical(deg_union, numeric(0)), 0, deg_union)
+  tot_string <- igraph::ecount(graph) 
+  tot_union <- igraph::ecount(uniongraph)
+  inp <- c(deg_union, deg_string, tot_union, tot_string)
+  mgrb_tsg <- matrix(inp ,nrow = 2, ncol = 2)
+  colnames(mgrb_tsg) <- c("deg_enr", "deg_bio")
+  rownames(mgrb_tsg) <- c("Enriched", "Biog")
+  #ft <- fisher.test(mgrb_tsg, alternative = "greater")
+  ft <- fisher.test(mgrb_tsg, conf.int = T, conf.level = 0.95)
+  ft_df <- cbind.data.frame("gene_str" =  gene_sym, "degree_str" = deg_union, "PPI_p_val_wt_str" = ft$p.value,
+                            "CI_lower_str" = ft$conf.int[1],
+                            "CI_upper_str" = ft$conf.int[2],
+                            "OR_str" = ft$estimate)
+  return(ft_df)
+}
+
+
+library(doParallel)
+library(doMC)
+registerDoMC(30)
+
+##for string_db
+para_fish_str <- list()
+system.time(para_fish_str <- foreach(i=1:length(top_genes_enr), .errorhandling = 'remove') %dopar% 
+{para_fisher_fun_string_new(top_genes_enr[i],strindb_graph_cyto)})
+fisher_res_str <- do.call("rbind.data.frame",para_fish_str)
+
+##for combined biogrid and string_db
+para_fish_str_bio <- list()
+system.time(para_fish_str_bio <- foreach(i=1:length(top_genes_enr), .errorhandling = 'remove') %dopar% 
+{para_fisher_fun_string_new(top_genes_enr[i],strindb_biog_graph1)})
+fisher_res_str_bio <- do.call("rbind.data.frame",para_fish_str_bio)
+
+
+
+ppi_res_fil_final_comb <- cbind.data.frame(ppi_res_fil_final,fisher_res_str, fisher_res_str_bio)
+colnames(ppi_res_fil_final_comb)[32:37] <- paste0(colnames(ppi_res_fil_final_comb)[32:37], "_biog")
+
+saveRDS(ppi_res_fil_final_comb, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/skatopint/ppi_res_fil_final_comb.rds", compress = T)
+
+
+```
+
+
+##Combine ISKS ASRB top genes
+
+```{r}
+Exome_skat <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/Exome_skat_para_result_isks_combset2020_uni_MAF_PC1234_ver4_clinrect_Aug31.rds")
+
+df_skat <- lapply(Exome_skat, function(x)do.call("rbind.data.frame", x))
+Exome_pc123_srt_SKAT <- lapply(df_skat, function(x) x[order(x$pval_SKATbin, decreasing = F),])
+Exome_pc123_srt_SKAT <- lapply(Exome_pc123_srt_SKAT, function(x){colnames(x)[1] <- c("symbol"); return(x)})
+Exome_pc123_srt_SKAT_case_enr_nCH <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/Exome_para_pc1234_SKAT_Enriched_ISKS_2020_Aug31.rds")
+##Add p-value
+Exome_pc123_srt_SKAT_case_enr_nCH_pval <- Map(cbind.data.frame, Exome_pc123_srt_SKAT_case_enr_nCH, Exome_pc123_srt_SKAT)
+isks_mgrb_genes <- Exome_pc123_srt_SKAT_case_enr_nCH_pval[[4]]
+##composite score added
+isks_mgrb_genes[,17:38] <- NA
+
+PPI_col <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/skatopint/ppi_res_fil_final_comb.rds")
+#PPI_col$PPI_p_val_wt <- ifelse(PPI_col$degree == 0, 1, PPI_col$PPI_p_val_wt)
+#isks_mgrb_genes[,17:23] <- PPI_col[match(isks_mgrb_genes$gene, PPI_col$gene), c(15,17:22)]
+isks_mgrb_genes[,17:38] <- PPI_col[match(isks_mgrb_genes$gene, PPI_col$gene), c(14,17:37)]
+#colnames(isks_mgrb_genes)[17:23] <- c("degree", "rank_PPI", "PPI_p_val_wt", "new_comp_score","t_stat", "pval_t.test",
+#                                      "comb_fisher")
+colnames(isks_mgrb_genes)[17:38] <- colnames(PPI_col)[c(14,17:37)]
+isks_mgrb_genes_top <- isks_mgrb_genes[isks_mgrb_genes$wt_diff > 0 & isks_mgrb_genes$pval_SKATbin < 0.1,]
+
+
+##ASRB data
+Exome_skat <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/CAIRNS/round2/ASRB_AR_AD/SKAT/Exome_skat_para_result_CAIRNS_combset2020_uni_MAF_PC1234_ver4.rds")
+
+df_skat <- lapply(Exome_skat, function(x)do.call("rbind.data.frame", x))
+Exome_pc123_srt_SKAT <- lapply(df_skat, function(x) x[order(x$pval_SKATbin, decreasing = F),])
+Exome_pc123_srt_SKAT <- lapply(Exome_pc123_srt_SKAT, function(x){colnames(x)[1] <- c("symbol"); return(x)})
+Exome_pc123_srt_SKAT_case_enr_nCH <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/CAIRNS/round2/ASRB_AR_AD/SKAT/Exome_para_pc123_SKAT_Enriched_CAIRNS_2020.rds")
+##Add p-value
+Exome_pc123_srt_SKAT_case_enr_nCH_pval <- Map(cbind.data.frame, Exome_pc123_srt_SKAT_case_enr_nCH, Exome_pc123_srt_SKAT)
+
+cairns_mgrb_genes <- Exome_pc123_srt_SKAT_case_enr_nCH_pval[[4]]
+cairns_mgrb_genes_top <- cairns_mgrb_genes[cairns_mgrb_genes$wt_diff > 0 & cairns_mgrb_genes$pval_SKATbin < 0.1,]
+
+
+##combine
+isks_cairns_mgrb_genes <- isks_mgrb_genes[isks_mgrb_genes$gene %in% cairns_mgrb_genes_top$gene,]
+isks_cairns_mgrb_genes_top <- rbind.data.frame(isks_mgrb_genes_top, isks_cairns_mgrb_genes)
+isks_cairns_mgrb_genes_top <- unique(isks_cairns_mgrb_genes_top)
+
+
+isks_cairns_mgrb_genes_top[,39:54] <- cairns_mgrb_genes[match(isks_cairns_mgrb_genes_top$gene, cairns_mgrb_genes$gene),1:16]
+
+
+##remove all genes with only one variant in ISKS
+isks_cairns_mgrb_genes_top <- isks_cairns_mgrb_genes_top[isks_cairns_mgrb_genes_top$ISKS > 1,]
+
+##check here
+#isks_cairns_mgrb_genes_top <- isks_cairns_mgrb_genes_top[,-c(13,15:16,36,38:39)]
+isks_cairns_mgrb_genes_top <- isks_cairns_mgrb_genes_top[,-c(13,15:17,51,53:54)]
+
+
+write.table(isks_cairns_mgrb_genes_top, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/skatopint/isks_cyto_ppifisher_ASRB_comb_genes_top_Aug31_sep19.tsv",
+            sep = "\t", row.names = F, quote = F)
+```
+
+##Option to use Pagerank algorithm for scoring genes
+##Peron-Frobenius eigen values to rank genes in the combined network (Optional)
+```{r}
+top_genes_enr <- ppi_res_fil_final_comb$gene
+#biog + stringdb
+#can_net1 <- igraph::as_data_frame(strindb_biog_graph1, what = "edges")
+#biogrid (use biogrid as it is less noisy than stringdb)
+can_net_graph <- igraph::graph.data.frame(can_net, directed = F)
+can_net_graph1 <- igraph::simplify(can_net_graph, remove.loops=T, remove.multiple = T)
+
+graph_centrality <- function(graph){
+
+can_net1 <- igraph::as_data_frame(graph, what = "edges")
+  prot_np_all <- unique(can_net1[as.character(can_net1$from) %in% top_genes_enr 
+                                 & as.character(can_net1$to) %in% top_genes_enr, ])
+  uniongraph_comb <- igraph::graph.data.frame(prot_np_all, directed = F)
+  
+  ##similar to eigen_centrality function
+  wt_nodes <- eigen_centrality(uniongraph_comb)
+  return(wt_nodes)
+}
+#biogrid
+eigen_wt_nodes_biog <- graph_centrality(can_net_graph1)
+eigen_wt_nodes_biog_vec <- as.data.frame(eigen_wt_nodes_biog[[1]])
+eigen_wt_nodes_biog_vec$gene <- rownames(eigen_wt_nodes_biog_vec)
+#stringdb
+eigen_wt_nodes_str <- graph_centrality(strindb_graph_rect1)
+eigen_wt_nodes_str_vec <- as.data.frame(eigen_wt_nodes_str[[1]])
+eigen_wt_nodes_str_vec$gene <- rownames(eigen_wt_nodes_str_vec)
+#stringdb + biogrid
+eigen_wt_nodes_str_biog <- graph_centrality(strindb_biog_graph1_rect1)
+eigen_wt_nodes_str_biog_vec <- as.data.frame(eigen_wt_nodes_str_biog[[1]])
+eigen_wt_nodes_str_biog_vec$gene <- rownames(eigen_wt_nodes_str_biog_vec)
+ppi_res_fil_final_comb$eigen_wt_biog <- eigen_wt_nodes_biog_vec[match(ppi_res_fil_final_comb$gene,
+                                                          eigen_wt_nodes_biog_vec$gene),1]
+ppi_res_fil_final_comb$eigen_wt_str <- eigen_wt_nodes_str_vec[match(ppi_res_fil_final_comb$gene,
+                                                          eigen_wt_nodes_str_vec$gene),1]
+ppi_res_fil_final_comb$eigen_wt_str_biog <- eigen_wt_nodes_str_biog_vec[match(ppi_res_fil_final_comb$gene,
+                                                          eigen_wt_nodes_str_biog_vec$gene),1]
+
+##Retain genes with no interactors, these genes are downweighted
+set.seed(23334556)
+ppi_res_fil_final_comb[ppi_res_fil_final_comb$degree == 0,]$eigen_wt_biog <- sample(seq(0.00001, 0.0001, 0.001), size = 572, replace = T)
+set.seed(233345561)
+ppi_res_fil_final_comb[ppi_res_fil_final_comb$degree_str == 0,]$eigen_wt_str <- sample(seq(0.00001, 0.0001, 0.001), size = 289, replace = T)
+set.seed(233345563)
+ppi_res_fil_final_comb[ppi_res_fil_final_comb$degree_str_biog == 0,]$eigen_wt_str_biog <- sample(seq(0.00001, 0.0001, 0.001), size = 191, replace = T)
+
+#ppi_res_fil_final_comb[ppi_res_fil_final_comb$eigen_wt_biog == 0,]$eigen_wt_biog <- sample(seq(0.00001, 0.0001, 0.001), size = 5, replace = T)
+ppi_res_fil_final_comb[ppi_res_fil_final_comb$eigen_wt_str == 0,]$eigen_wt_str <- sample(seq(0.00001, 0.0001, 0.001), size = 36, replace = T)
+ppi_res_fil_final_comb[ppi_res_fil_final_comb$eigen_wt_str_biog == 0,]$eigen_wt_str_biog <- sample(seq(0.00001, 0.0001, 0.001), size = 13, replace = T)
+
+set.seed(233345563)
+ppi_res_fil_final_comb[ppi_res_fil_final_comb$degree == 0,]$PPI_p_val_wt <- sample(seq(0.990, 0.999, 0.00001), size = 572, replace = F)
+set.seed(233345563)
+ppi_res_fil_final_comb[ppi_res_fil_final_comb$degree_str == 0,]$PPI_p_val_wt_str <- sample(seq(0.990, 0.999, 0.00001), size = 289, replace = F)
+set.seed(233345563)
+ppi_res_fil_final_comb[ppi_res_fil_final_comb$degree_str_biog == 0,]$PPI_p_val_wt_str_biog <- sample(seq(0.990, 0.999, 0.00001), size = 191, replace = F)
+##Liptak_Stouffer combined z-score and p-value
+#ppi_res_fil_final_comb$z_SKATbin <- -log10(ppi_res_fil_final_comb$pval_SKATbin) - mean(-log10(ppi_res_fil_final_comb$pval_SKATbin))/(sd(-log10(ppi_res_fil_final_comb$pval_SKATbin)))
+ppi_res_fil_final_comb$z_SKATbin <- abs(ppi_res_fil_final_comb$pval_SKATbin - mean(ppi_res_fil_final_comb$pval_SKATbin)/(sd(ppi_res_fil_final_comb$pval_SKATbin)))
+
+#combined network score for each gene
+comb_zscore <- function(gene_inp, ref_net){
+  net_genes <- c(unlist(strsplit(as.character(ppi_res_fil_final_comb[ppi_res_fil_final_comb$gene %in% as.character(gene_inp), 19]), ",")),as.character(gene_inp))
+  net_genes <- net_genes[!is.na(net_genes)]
+  ##SKAT p-value based Z score:product of eigen weights(for biogrid network) and zscore
+  if(ref_net %in% "biog"){
+  net_score_df <- ppi_res_fil_final_comb[ppi_res_fil_final_comb$gene %in% net_genes, c(41,38,22)]
+  if(length(net_genes) > 3){
+    net_score <- sum(net_score_df$z_SKATbin * net_score_df$eigen_wt_biog*-log10(net_score_df$PPI_p_val_wt))/(sd(net_score_df$eigen_wt_biog*-log10(net_score_df$PPI_p_val_wt)))
+}
+  else{
+  net_score <- sum(net_score_df$z_SKATbin * net_score_df$eigen_wt_biog*-log10(net_score_df$PPI_p_val_wt))/sqrt(sum(net_score_df$eigen_wt_biog*(-log10(net_score_df$PPI_p_val_wt)))^2)
+  }
+  }
+  
+  else if(ref_net %in% "str"){
+  net_score_df <- ppi_res_fil_final_comb[ppi_res_fil_final_comb$gene %in% net_genes, c(41,39,28)]
+  if(length(net_genes) > 3){
+    net_score <- sum(net_score_df$z_SKATbin * net_score_df$eigen_wt_str*-log10(net_score_df$PPI_p_val_wt_str))/(sd(net_score_df$eigen_wt_str*-log10(net_score_df$PPI_p_val_wt_str)))
+}
+  else{
+  net_score <- sum(net_score_df$z_SKATbin * net_score_df$eigen_wt_str*-log10(net_score_df$PPI_p_val_wt_str))/sqrt(sum(net_score_df$eigen_wt_str*(-log10(net_score_df$PPI_p_val_wt_str)))^2)
+  }
+  }
+  else if(ref_net %in% "str_biog"){
+  net_score_df <- ppi_res_fil_final_comb[ppi_res_fil_final_comb$gene %in% net_genes, c(41,40,34)]
+  if(length(net_genes) > 3){
+    net_score <- sum(net_score_df$z_SKATbin * net_score_df$eigen_wt_str_biog*-log10(net_score_df$PPI_p_val_wt_str_biog))/(sd(net_score_df$eigen_wt_str_biog*-log10(net_score_df$PPI_p_val_wt_str_biog)))
+}
+  else{
+  net_score <- sum(net_score_df$z_SKATbin * net_score_df$eigen_wt_str_biog*-log10(net_score_df$PPI_p_val_wt_str_biog))/sqrt(sum(net_score_df$eigen_wt_str_biog*(-log10(net_score_df$PPI_p_val_wt_str_biog)))^2)
+  }
+  }
+ # net_score <- sum(net_score_df$z_SKATbin * net_score_df$eigen_wt_biog)/(sd(net_score_df$eigen_wt_biog))
+
+  return(cbind.data.frame("gene" = as.character(gene_inp), "comb_zscore" = net_score))
+}
+
+library(doParallel)
+library(doMC)
+registerDoMC(30)
+
+##for biogrid
+para_net_score <- list()
+system.time(para_net_score <- foreach(i=1:length(top_genes_enr), .errorhandling = 'remove') %dopar% 
+{comb_zscore(top_genes_enr[i], "biog")})
+net_score_fin <- do.call("rbind.data.frame",para_net_score)
+
+##for stringdb
+para_net_score <- list()
+system.time(para_net_score <- foreach(i=1:length(top_genes_enr), .errorhandling = 'remove') %dopar% 
+{comb_zscore(top_genes_enr[i], "str")})
+net_score_fin_str <- do.call("rbind.data.frame",para_net_score)
+
+##for string_biogrid
+para_net_score <- list()
+system.time(para_net_score <- foreach(i=1:length(top_genes_enr), .errorhandling = 'remove') %dopar% 
+{comb_zscore(top_genes_enr[i],"str_biog")})
+net_score_fin_str_biog <- do.call("rbind.data.frame",para_net_score)
+
+##Add z-transforms and p-values
+zscore2pval <- function(net_df){
+  net_df$degree <- ppi_res_fil_final_comb[match(net_df$gene, ppi_res_fil_final_comb$gene),18]
+net_df <- net_df[order(net_df$comb_zscore, decreasing = T),]
+mean_x <- mean(net_df$comb_zscore)
+sd_x <- sd(net_df$comb_zscore)
+net_df$z_tran <- (net_df$comb_zscore - mean_x)/(sd_x/sqrt(length(net_df$comb_zscore)))
+net_df$pval_norm <- pnorm(net_df$z_tran, lower.tail=FALSE)
+net_df_pval <- net_df
+  return(net_df_pval)
+}
+net_pval_fin_biog <- zscore2pval(net_score_fin)
+net_pval_fin_str <- zscore2pval(net_score_fin_str)
+colnames(net_pval_fin_str)[4:5] <- paste0(colnames(net_pval_fin_str)[4:5], "_str")
+net_pval_fin_str_biog <- zscore2pval(net_score_fin_str_biog)
+colnames(net_pval_fin_str_biog)[4:5] <- paste0(colnames(net_pval_fin_str_biog)[4:5], "_str_biog")
+net_pval_fin <- cbind.data.frame(net_pval_fin_biog, net_pval_fin_str, net_pval_fin_str_biog)
+net_pval_fin[,6:10] <- net_pval_fin[match(net_pval_fin[,1], net_pval_fin[,6]),6:10]
+net_pval_fin[,11:15] <- net_pval_fin[match(net_pval_fin[,1], net_pval_fin[,11]),11:15]
+
+ppi_res_fil_final_comb[,42:47] <- net_pval_fin[match(ppi_res_fil_final_comb$gene, net_pval_fin[,1]),c(4:5, 9:10,14:15)]
+##test
+g1 <- c("TP53", "NF1", "POT1", "TINF2", "TERF1",
+        "DLG1", "GRIN2A", "GRIA1", "GRM4", "CAM2KB", "CAM2KD",
+        "CEP63", "CEP72", "HAUS4", "HAUS5",
+        "ZBTB16", "ATG7", "ASB10", "ASB8", "FBXO7", "TRIM4",
+        "PCM1",
+        "CENPC", "CENPF", "BUB1", "BUB1B", "AURKB", "RANGAP1", "RACGAP1", "MAD2L2",
+        "TCP1", "CCT2", "CCT6A",
+        "PRPF4", "DHX9", "DHX16", "SF3A1", "CPSF3", "PPIL3",
+        "L3MBTL3")
+
+##  
+
+#write.table(ppi_res_fil_final_comb, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/ppi_res_fil_final_SKATbin_comb_str_biog_Aug31.tsv", sep = "\t", row.names = F, quote = F)
+write.table(ppi_res_fil_final_comb, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/ppi_res_fil_final_SKATbin_comb_str_biog_Aug31_noOlfac.tsv", sep = "\t", row.names = F, quote = F)
+
+```
+
+
+##Selection of genes based on ISKS and ASRB SKATbin p-value
+##Clique detection
+##Burden test for cliques using Fisher's test and SKAT
+```{r}
+##ref: cliq_OR_SKAT.R
+
+library(igraph)
+isks_cairns_mgrb_genes_top <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/skatopint/isks_cyto_ppifisher_ASRB_comb_genes_top_Aug31_sep19.tsv",
+            sep = "\t", header = T, stringsAsFactors = F)
+##filter1
+filt1_df <- isks_cairns_mgrb_genes_top[isks_cairns_mgrb_genes_top$ISKS > 1 & isks_cairns_mgrb_genes_top$MGRB <= 14,]
+
+##filter2: based on pvalue of ASRB genes
+filt2_df <- filt1_df[filt1_df$pval_SKATbin.2 > 0.1 | is.na(filt1_df$pval_SKATbin.2),]
+top_genes <- as.character(filt2_df$gene)
+##filter3 : based on hypergeometric score of PPI (can be used for further fine-tuning and ranking)##not needed for gene selection
+strindb_biog_graph1 <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/strindb_biog_graph_cyto.rds")
+
+can_net1 <- igraph::as_data_frame(strindb_biog_graph1, what = "edges")
+prot_np_all <- unique(can_net1[as.character(can_net1$from) %in% top_genes 
+                               & as.character(can_net1$to) %in% top_genes, ])
+
+uniongraph <- igraph::graph.data.frame(prot_np_all, directed = F)
+
+te3 <- max_cliques(uniongraph, min=4)
+names(te3) <- paste("c", 1:length(te3), sep = "_")
+
+saveRDS(te3, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/skatopint/Cliques_max64.rds", compress = T)
+
+#####################################
+##Burden test
+cpx_OR_fisher <- function(ppi_res,cliq_list, case_coh_size, cont_coh_size, coh){
+  ft_df <- list()
+  for(i in 1:length(cliq_list)){
+    ppi_res_tab <- ppi_res[ppi_res$gene %in% names(cliq_list[[i]]),]
+    # ppi_res_tab[,2] <- ifelse(ppi_res_tab[,2] == 0, 1, ppi_res_tab[,2])
+    inp <- c(sum(ppi_res_tab[,1]), case_coh_size - sum(ppi_res_tab[,1]) , 
+             sum(ppi_res_tab[,2]), cont_coh_size - sum(ppi_res_tab[,2]))
+    sim_mat <- matrix(inp ,nrow = 2, ncol = 2)
+    colnames(sim_mat) <- c("case", "cont")
+    rownames(sim_mat) <- c("hits", "no_hits")
+    #ft <- fisher.test(sim_mat, alternative = "greater")
+    #ft <- fisher.test(sim_mat)
+    ft <- fisher.test(sim_mat, conf.int = T, conf.level = 0.99)
+    ft_df[[i]] <- cbind.data.frame("clique" = names(cliq_list)[i] ,"Cases" = sum(ppi_res_tab[,1]),
+                                   "Controls" = sum(ppi_res_tab[,2]),
+                                   "Fish_pval" = ft$p.value,"CI_lower" = ft$conf.int[1],
+                                   "CI_upper" = ft$conf.int[2],
+                                   "OR_Fish" = ft$estimate, "case_coh_size" = case_coh_size,
+                                   "Coh" = coh, "genes" = paste(names(cliq_list[[i]]), collapse = ","))
+  }
+  return(ft_df)
+}
+
+##ISKS vs MGRB enrichment (burden test)
+##ref: make_para_tab_isks_C345.R (Aug31_freeze directory)
+isks_mgrb_genes <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/Exome_para_tab_ISKS_MGRB_C345_Aug31.rds")
+##ref: make_para_tab_isks_noC3.R (Aug31_freeze directory)
+isks_mgrb_genes_noC3 <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Exome_para_tab_ISKS_MGRB_minusC3_Aug31.rds")
+
+
+cpx_ISKS_OR_df <- do.call("rbind.data.frame", cpx_OR_fisher(isks_mgrb_genes, te3, 1644, 3205, "ISKSvsMGRB"))
+cpx_ISKS_OR_df_noC3 <- do.call("rbind.data.frame", cpx_OR_fisher(isks_mgrb_genes_noC3, te3, 1644, 3205, "ISKSvsMGRB"))
+cpx_ISKS_OR_df_noC3$adj_pval <- p.adjust(cpx_ISKS_OR_df_noC3$Fish_pval, method = "bonferroni", n = length(cpx_ISKS_OR_df_noC3$Fish_pval))
+
+############################
+##Weighted Burden test(SKAT)
+library(data.table)
+library(VariantAnnotation)
+library(stringr)
+library(SKAT)
+
+###get input files and process
+##Experiments
+
+fil_tab <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/all_isksmgrb_skatinp_combset2020_clin_C3C4C5_NFE0002_AD_rm_dup_freeze.tsv", 
+            sep = "\t", header = T, stringsAsFactors = F)
+
+p_Data_noCH <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/PID/pheno_data_SKAT_final_freeze.tsv", sep = "\t", header = T, stringsAsFactors = F)
+#binary phenotype vector 
+p_vec <- ifelse(!is.na(as.numeric(as.character(p_Data_noCH$rect_sam))) | grepl("^CR|^LK",as.character(p_Data_noCH$rect_sam)), 1, 0)
+
+
+##SKAT null function with customised covariate
+SKAT_fun_null <- function(x=NULL, p_vec){
+  if(is.null(x)){
+    obj_N <- SKAT::SKAT_Null_Model(p_vec ~ 1,out_type="D")
+  }
+  # else if(is.integer(x) || is.numeric()){
+  else if(is.null(dim(x))){
+    obj_N <- SKAT::SKAT_Null_Model(p_vec ~ x,out_type="D")
+  }
+  else if(dim(x)[2] > 1){
+    nul_for <- as.formula(paste("p_vec", paste(colnames(x), collapse = " + "), sep = " ~ "))
+    obj_N <- SKAT::SKAT_Null_Model(nul_for, data = p_Data_noCH, out_type="D")
+    #  obj_N <- SKAT_Null_Model(nul_for, data = x, out_type="D")
+  }
+  return(obj_N)
+}
+
+##SKAT function for SKAT, SKATBinary, SKATO, SKAT_ERA
+SKAT_run <- function(geno_mat, gene, x=NULL, p_vec, cust_weight = NULL, rho = NULL){
+  
+  if(dim(geno_mat)[2] > 1 ){
+    null_d <- SKAT_fun_null(x, p_vec)
+    pval_SKAT <- SKAT::SKAT(t(geno_mat), null_d, weights = cust_weight, r.corr = rho)$p.value
+    pval_SKATbin <- SKAT::SKATBinary(t(geno_mat), null_d, method = "Burden", weights = cust_weight)$p.value
+    ##ER: Effective resampling for best p-value calculation
+    pval_SKATO <- SKAT::SKATBinary(t(geno_mat),null_d, method='SKATO', weights = cust_weight)$p.value
+    pval_SKATera <- SKAT::SKATBinary(t(geno_mat),null_d, method.bin="ER.A", weights = cust_weight)$p.value
+    skat_pv <- cbind.data.frame("eg_ID" = gene, pval_SKAT, pval_SKATbin, pval_SKATO, pval_SKATera)
+    return(skat_pv)
+  }
+  else if(dim(geno_mat)[2] == 1){
+    null_d <- SKAT::SKAT_fun_null(x, p_vec)
+    pval_SKAT <- SKAT::SKAT(geno_mat, null_d, weights = cust_weight, r.corr = rho)$p.value
+    pval_SKATbin <- SKAT::SKATBinary(t(geno_mat), null_d, method = "Burden", weights = cust_weight)$p.value
+    ##ER: Effective resampling for best p-value calculation
+    pval_SKATO <- SKAT::SKATBinary(geno_mat,null_d, method='SKATO', weights = cust_weight)$p.value
+    pval_SKATera <- SKAT::SKATBinary(geno_mat,null_d, method.bin="ER.A", weights = cust_weight)$p.value
+    skat_pv <- cbind.data.frame("eg_ID" = gene, pval_SKAT, pval_SKATbin, pval_SKATO, pval_SKATera)
+    
+    return(skat_pv)
+  }
+}
+
+DT_skat_snv_str_pc123 <- list()
+skat_pvals <- list()
+skat_pvals_pc12 <- list()
+skat_pvals_sex <- list()
+skat_pvals_sex_pc12 <- list()
+
+##parallel process genes (remove C3)
+para_SKAT <- function(genes, cpx_name, score_cutoff, VAF_cutoff, MAF_cutoff){
+  ftemp_tab <- fil_tab[fil_tab$gene_symbol %in% names(genes),]
+  ftemp_tab <- ftemp_tab[ftemp_tab$comb_score >= score_cutoff & as.numeric(ftemp_tab$VAF) >= VAF_cutoff & ftemp_tab$auto_call %nin% "C3", ]
+  
+  print(max(ftemp_tab$comb_score))
+  if(dim(ftemp_tab) == 0 ){
+    next
+  }
+  else{
+    ftemp_tab_var_id <- unique(ftemp_tab$VARIANT)
+    samp_vec <- list()
+    for(m in 1:length(ftemp_tab_var_id)){
+      sam_gene_gt <- ftemp_tab[ftemp_tab$VARIANT %in% ftemp_tab_var_id[m],][,c(1:3,9,11,127:128)]
+      sam_gene_gt <- unique(sam_gene_gt)
+      if(dim(sam_gene_gt)[1] > 1 & length(unique(sam_gene_gt$vep_consequence)) > 1){
+        # if(dim(sam_gene_gt)[1] > 1 & length(unique(sam_gene_gt$vep_consequence)) > 1 & length(unique(sam_gene_gt$comb_score)) > 1){
+        vep_con <- unique(sam_gene_gt$vep_consequence)
+        samp_vec_con <- list()
+        for(k in 1:length(vep_con)){
+          sam_gene_gt_con <- sam_gene_gt[sam_gene_gt$vep_consequence %in% vep_con[k],]
+          sam_gene_gt_con <- unique(sam_gene_gt_con)
+          maf_vec_cont <- sum(dim(sam_gene_gt_con[grepl("^[ABZ]",sam_gene_gt_con$SAMPLE),])[1])/(2*length(p_vec))
+          maf_vec_case <- sum(dim(sam_gene_gt_con[!grepl("^[ABZ]",sam_gene_gt_con$SAMPLE),])[1])/(2*length(p_vec))
+          ##genotype matrix  
+          sam_gene_gt_con$add_mod <- as.numeric(sam_gene_gt_con$GT)
+          sam10 <- ifelse(Ex_samp_id %in% sam_gene_gt_con$SAMPLE, 1, 0)
+          sam10[which(sam10 != 0)] <- sam_gene_gt_con$add_mod ##additive model
+          samp_vec_con[[k]] <- c(unique(sam_gene_gt_con$VARIANT),
+                                 unique(sam_gene_gt_con$gene_symbol), 
+                                 unique(sam_gene_gt_con$vep_consequence), 
+                                 unique(as.character(sam_gene_gt_con$auto_call)),
+                                 as.numeric(unique(sam_gene_gt_con$comb_score)), as.numeric(maf_vec_case),
+                                 as.numeric(maf_vec_cont), sam10)
+        }
+        
+      }
+      else{
+        ##compute cohort specific MAF
+        maf_vec_cont <- sum(ifelse(is.na(as.numeric(sam_gene_gt$SAMPLE)), 1, 0))/(2*length(p_vec))
+        maf_vec_case <- sum(ifelse(!is.na(as.numeric(sam_gene_gt$SAMPLE)) | 
+                                     grepl("^CR|^LK", as.character(sam_gene_gt$SAMPLE)), 1, 0))/(2*length(p_vec))
+        #maf_vec <- (maf_vec_cont + maf_vec_case)/(2*(1572 + 1110))
+        ##genotype matrix  
+        sam_gene_gt$add_mod <- as.numeric(sam_gene_gt$GT)
+        sam10 <- ifelse(Ex_samp_id %in% sam_gene_gt$SAMPLE, 1, 0)
+        sam10[which(sam10 != 0)] <- sam_gene_gt$add_mod ##additive model
+        ##account for discrepancy in vep_consequence
+        #vep_con <- names(sort(table(unlist(strsplit(sam_gene_gt$vep_consequence, split = "&"))),decreasing=TRUE)[1])
+        # sam_gene_gt$vep_consequence <- vep_con
+        
+        
+        samp_vec[[m]] <- c(ftemp_tab_var_id[m],
+                           unique(sam_gene_gt$gene_symbol), 
+                           unique(sam_gene_gt$vep_consequence), 
+                           unique(as.character(sam_gene_gt$auto_call)),
+                           as.numeric(unique(sam_gene_gt$comb_score)), as.numeric(maf_vec_case),
+                           as.numeric(maf_vec_cont), sam10)
+      }
+    }
+    samp_vec_mat_uni <- do.call("rbind.data.frame", samp_vec)
+    colnames(samp_vec_mat_uni) <- c("VARIANT", "cpx_name", "vep_consequence", "auto_call", "comb_score", "coh_MAF_case",
+                                    "coh_MAF_cont", Ex_samp_id)
+    if(exists("samp_vec_con")){
+      samp_vec_mat_con <- do.call("rbind.data.frame", samp_vec_con)
+      colnames(samp_vec_mat_con) <- c("VARIANT", "cpx_name", "vep_consequence", "auto_call", "comb_score", "coh_MAF_case",
+                                      "coh_MAF_cont", Ex_samp_id)
+      samp_vec_mat <- rbind.data.frame(samp_vec_mat_uni, samp_vec_mat_con)
+    }else{
+      samp_vec_mat <- samp_vec_mat_uni
+    }
+    print(dim(samp_vec_mat))
+    ##Intracohort filter  : equivalent to ~ 5/1661*2 for case ; ~ 5/3209*2 for control
+    ##changed to uniform intra_cohort_MAF filter
+    ## change to entire cohort MAF filter to 3/(4849*2)##latest Aug.31
+    #     samp_vec_mat <- samp_vec_mat[as.numeric(as.character(samp_vec_mat$coh_MAF_case)) <= 0.0015 | 
+    #                                    as.numeric(as.character(samp_vec_mat$coh_MAF_cont)) <= 0.001,]
+    samp_vec_mat <- samp_vec_mat[!(as.numeric(as.character(samp_vec_mat$coh_MAF_case)) >= MAF_cutoff | 
+                                     as.numeric(as.character(samp_vec_mat$coh_MAF_cont)) >= MAF_cutoff),]
+    
+    if(is.null(dim(samp_vec_mat)) | dim(samp_vec_mat)[1] == 0) {
+      skat_pvals <- NULL
+      skat_pvals_pc12 <- NULL
+      skat_pvals_sex <- NULL
+      skat_pvals_sex_pc12 <- NULL
+      next
+    }
+    ##compute maf SKAT takes care of the AFs internally by assigning higher weights to rare variants 
+    
+    else {
+      gene_mat_comb <- as.numeric(as.character(samp_vec_mat[,5]))
+      gene_mat <- as.matrix(samp_vec_mat[,-c(1:7)])
+      class(gene_mat) <- "numeric"
+      ##for strictly burden test set rho = 1, else set rho = 0
+      ##no covariate
+      skat_pvals <- SKAT_run(geno_mat = gene_mat, gene = cpx_name, x=NULL, p_vec, cust_weight = gene_mat_comb, rho = 1)
+      ##only pc1 + pc2
+      skat_pvals_pc12 <- SKAT_run(geno_mat = gene_mat, gene = cpx_name, x=p_Data_noCH[,c(19:22)], p_vec, cust_weight = gene_mat_comb, rho = 1)
+      ##gender
+      skat_pvals_sex <- SKAT_run(geno_mat = gene_mat, gene = cpx_name, x=p_Data_noCH$gender, p_vec, cust_weight = gene_mat_comb, rho = 1)
+      ##gender + pc1 + pc2
+      skat_pvals_sex_pc12 <- SKAT_run(geno_mat = gene_mat, gene = cpx_name, x=p_Data_noCH[,c(54,19:22)], p_vec, cust_weight = gene_mat_comb, rho = 1)
+      
+    }
+    
+  } ##end of nested else loop
+  DT_skat_snv_str_pc123 <- list(skat_pvals, skat_pvals_pc12, skat_pvals_sex, skat_pvals_sex_pc12)
+  return(DT_skat_snv_str_pc123)
+}##end of gene loop ; i loop   
+
+##Parallelised SKAT  
+library(doParallel)
+library(doMC)
+registerDoMC(30)
+
+res20 <- list()
+system.time(res20 <- foreach(i=1:length(te3), .errorhandling = 'remove') %dopar% 
+{para_SKAT(te3[[i]], names(te3)[i])})
+res_skat_para <- list()
+for(i in 1:4){
+  res_skat_para[[i]] <- lapply(res20, function(x)do.call("rbind.data.frame", x[i]))
+}
+
+
+SKAT_res_df <- do.call("rbind.data.frame", res_skat_para[[4]])
+SKAT_res_df$SKATbin_p_adj <- p.adjust(SKAT_res_df$pval_SKATbin, method = "bonferroni", n = length(SKAT_res_df$pval_SKATbin))
+
+##combine burden(noC3) and SKAT test(C3-5)
+comb_burd_SKAT <- cpx_ISKS_OR_df_noC3
+
+comb_burd_SKAT[,12:14] <- SKAT_res_df[match(comb_burd_SKAT$clique, SKAT_res_df$eg_ID),c(1,3,6)]
+comb_burd_SKAT <- comb_burd_SKAT[complete.cases(comb_burd_SKAT),]
+rownames(comb_burd_SKAT) <- comb_burd_SKAT$clique
+
+#write.table(comb_burd_SKAT, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Aug31/Cliques/Clique_OR_SKAT_968.tsv", sep = "\t", row.names = F, quote = F)
+
+```
+
+
+
+##Clique analysis; collapsing and scoring
+
+```{r}
+#ref: cliques_for_paper.Rmd
+
+```
+
