@@ -164,6 +164,7 @@ cpx_repset_839_POIS_noC3 <- do.call("rbind.data.frame", cpx_OR_fisher(aug_all_ha
 noC3_df_comb_hart <- rbind.data.frame(cpx_ISKS_OR_df_noC3, cpx_repset_839_POIS_noC3)
 #noC3_df_comb_hart_sp <- rbind.data.frame(cpx_ISKS_OR_df_noC3, cpx_repset_839_POIS_noC3_sp)
 ##Plots
+library(ggplot2)
 forest_custplot <- function(df, repset = NULL){
   #  dotCOLS = c("#a6d8f0","#f9b282", "#78f542", "#f5c6e5", "#ffe3bf", "#cfabff")
   #  barCOLS = c("#008fd5","#de6b35", "#7a9406", "#fc0373", "#f79514", "#6c0ee8")
@@ -265,9 +266,13 @@ forestplot(as.character(comb_hart_list$Repset[,1]),
 
 comb_hart_list_all <- do.call("rbind.data.frame", comb_hart_list)
 colnames(comb_hart_list_all)[7] <- "log2_OR"
-write.table(comb_hart_list_all, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/Comb_TCGA_BERG_NoSarc/augmented_sarc/ISKS_repset_563_Hartwig_POIS_noC3_geneset_OR.tsv",
+#write.table(comb_hart_list_all, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/Comb_TCGA_BERG_NoSarc/augmented_sarc/ISKS_repset_563_Hartwig_POIS_noC3_geneset_OR.tsv",
+#            row.names = F, quote = F, sep = "\t")
+##geneset constituents synced with Fig.2
+write.table(comb_hart_list_all, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/Comb_TCGA_BERG_NoSarc/augmented_sarc/ISKS_repset_563_Hartwig_POIS_noC3_geneset_OR_synced.tsv",
             row.names = F, quote = F, sep = "\t")
 ##Paired forestplot
+svg("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/Comb_TCGA_BERG_NoSarc/augmented_sarc/Fig3A_synced.svg", height = 8, width = 8)
 forestplot(as.character(comb_hart_list$Repset[,1]), 
            legend = c("Discovery", "Replication"),
            fn.ci_norm = c(fpDrawNormalCI, fpDrawCircleCI),
@@ -284,6 +289,7 @@ forestplot(as.character(comb_hart_list$Repset[,1]),
            col = fpColors(box = c("blue", "darkred"), line = c("darkblue", "darkred")),
            xlab = "log2 OR",
            vertices = TRUE)
+dev.off()
 #legend_args = fpLegend(pos = list(x = .85, y = 0.25), 
 #gp = gpar(col = "#CCCCCC", fill = "#F9F9F9")),
 
