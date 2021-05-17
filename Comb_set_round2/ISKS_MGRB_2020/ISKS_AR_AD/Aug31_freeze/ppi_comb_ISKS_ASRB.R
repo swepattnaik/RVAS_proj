@@ -30,10 +30,10 @@ PPI_col <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb
                       sep = "\t", header = T, stringsAsFactors = F)
 #PPI_col$PPI_p_val_wt <- ifelse(PPI_col$degree == 0, 1, PPI_col$PPI_p_val_wt)
 #isks_mgrb_genes[,17:23] <- PPI_col[match(isks_mgrb_genes$gene, PPI_col$gene), c(15,17:22)]
-isks_mgrb_genes[,17:47] <- PPI_col[match(isks_mgrb_genes$gene, PPI_col$gene), c(15,17:18,20:47)]
+isks_mgrb_genes[,17:47] <- PPI_col[match(isks_mgrb_genes$gene, PPI_col$gene), c(14,17,19:47)]
 #colnames(isks_mgrb_genes)[17:23] <- c("degree", "rank_PPI", "PPI_p_val_wt", "new_comp_score","t_stat", "pval_t.test",
 #                                      "comb_fisher")
-colnames(isks_mgrb_genes)[17:47] <- colnames(PPI_col)[c(15,17:18,20:47)]
+colnames(isks_mgrb_genes)[17:47] <- colnames(PPI_col)[c(14,17,19:47)]
 isks_mgrb_genes_top <- isks_mgrb_genes[isks_mgrb_genes$wt_diff > 0 & isks_mgrb_genes$pval_SKATbin < 0.1,]
 
 ##Epithelial data

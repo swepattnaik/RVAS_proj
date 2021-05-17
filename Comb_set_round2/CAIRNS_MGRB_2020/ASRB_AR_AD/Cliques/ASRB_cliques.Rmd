@@ -1,0 +1,406 @@
+---
+title: "ASRB_cliques"
+author: "Swetansu Pattnaik"
+date: "15/04/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+`%nin%` = Negate(`%in%`)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##load libraries
+```{r echo = FALSE, warning = FALSE, message = FALSE, figure.align = "center", figure.height = 10, figure.width = 12}
+library(readxl)
+library(ggplot2)
+library(ggdendro)
+library(dendextend)
+library(dplyr)
+library(ggrepel)
+library(knitr)
+library(igraph)
+library(ggnet)
+library(intergraph)
+library(network)
+library(org.Hs.eg.db)
+library(topGO)
+```
+
+
+##Clique detection (cliq_OR_SKAT.R and SKATOPINT_package.Rmd; line:701-711)
+##Select ASRB genes without controlling for age
+```{r}
+Exome_skat <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/CAIRNS/round2/ASRB_AR_AD/SKAT/Exome_skat_para_result_CAIRNS_combset2020_uni_MAF_PC1234_ver4.rds")
+
+df_skat <- lapply(Exome_skat, function(x)do.call("rbind.data.frame", x))
+Exome_pc123_srt_SKAT <- lapply(df_skat, function(x) x[order(x$pval_SKATbin, decreasing = F),])
+Exome_pc123_srt_SKAT <- lapply(Exome_pc123_srt_SKAT, function(x){colnames(x)[1] <- c("symbol"); return(x)})
+Exome_pc123_srt_SKAT_case_enr_nCH <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/CAIRNS/round2/ASRB_AR_AD/SKAT/Exome_para_pc123_SKAT_Enriched_CAIRNS_2020.rds")
+##Add p-value
+Exome_pc123_srt_SKAT_case_enr_nCH_pval <- Map(cbind.data.frame, Exome_pc123_srt_SKAT_case_enr_nCH, Exome_pc123_srt_SKAT)
+
+cairns_mgrb_genes <- Exome_pc123_srt_SKAT_case_enr_nCH_pval[[4]]
+cairns_mgrb_genes_top <- cairns_mgrb_genes[cairns_mgrb_genes$wt_diff > 0 & cairns_mgrb_genes$pval_SKATbin < 0.1,]
+
+filt1_df <- cairns_mgrb_genes_top[cairns_mgrb_genes_top$CAIRNS > 1 & cairns_mgrb_genes_top$MGRB <= 14,]
+top_genes <- as.character(filt1_df$gene)
+##filter3 : based on hypergeometric score of PPI (can be used for further fine-tuning and ranking)
+##not needed for gene selection
+
+
+strindb_biog_graph1 <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/strindb_biog_graph_cyto.rds")
+
+can_net1 <- igraph::as_data_frame(strindb_biog_graph1, what = "edges")
+prot_np_all <- unique(can_net1[as.character(can_net1$from) %in% top_genes 
+                               & as.character(can_net1$to) %in% top_genes, ])
+# prot_np_all <- unique(can_net1[as.character(can_net1$from) %in% cep_genes 
+#                                & as.character(can_net1$to) %in% cep_genes, ])
+
+uniongraph <- igraph::graph.data.frame(prot_np_all, directed = F)
+
+te3 <- max_cliques(uniongraph, min=3)
+names(te3) <- paste("c", 1:length(te3), sep = "_")
+
+##OR use a more generic connected component based filter
+groups <- components(uniongraph)
+group_tab <- as.data.frame(groups$membership)
+group_tab$genes <- names(groups$membership)
+#saveRDS(te3, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Aug31/Cliques/Cliques_max101.rds", compress = T)
+#saveRDS(te3, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/CAIRNS/round2/ASRB_AR_AD/SKAT/Cliques/Cliques_min4.rds", compress = T)
+
+```
+
+##GO analysis
+```{r}
+library(enrichR)
+# dbs <- listEnrichrDbs()
+# if (is.null(dbs)) websiteLive <- FALSE
+# if (websiteLive) head(dbs)
+
+#dbs <- listEnrichrDbs()
+
+dbs <- c("GO_Molecular_Function_2018", "GO_Cellular_Component_2018", "GO_Biological_Process_2018")
+#if (websiteLive) enriched <- enrichr(c("Runx1", "Gfi1", "Gfi1b", "Spi1", "Gata1", "Kdr"), dbs)
+#enriched <- enrichr(c("Runx1", "Gfi1", "Gfi1b", "Spi1", "Gata1", "Kdr"), dbs)
+##loop over the interactors of each protein and report the top pathway and p-value
+
+
+
+##clique proteins
+te3_prot <- unique(unlist(lapply(te3, function(x)names(x))))
+enriched_te3 <- enrichr(te3_prot, dbs)
+enrichr_df_te3 <- cbind.data.frame("gene_hub" =  "ASRB", "GO_MF" = enriched_te3[[1]]$Term[1:20],
+                                       "GO_MF_p_val" = enriched_te3[[1]]$P.value[1:20],
+                                       "GO_CC" = enriched_te3[[2]]$Term[1:20],
+                                       "GO_CC_p_val" = enriched_te3[[2]]$P.value[1:20],
+                                       "GO_BP" = enriched_te3[[3]]$Term[1:20],
+                                       "GO_BP_p_val" = enriched_te3[[3]]$P.value[1:20])
+View(enrichr_df_te3[,6:7])
+##connected component proteins
+##next version: threshold based on size of connected component
+#group_tab_cc_filt <- group_tab[as.character(group_tab$`groups$membership`) %in% names(which(table(group_tab$`groups$membership`) > 2)), ]
+enriched_cc <- enrichr(group_tab$genes, dbs)
+enrichr_df_cc <- cbind.data.frame("gene_hub" =  "ASRB", "GO_MF" = enriched_cc[[1]]$Term[1:20],
+                                       "GO_MF_p_val" = enriched_cc[[1]]$P.value[1:20],
+                                       "GO_CC" = enriched_cc[[2]]$Term[1:20],
+                                       "GO_CC_p_val" = enriched_cc[[2]]$P.value[1:20],
+                                       "GO_BP" = enriched_cc[[3]]$Term[1:20],
+                                       "GO_BP_p_val" = enriched_cc[[3]]$P.value[1:20])
+View(enrichr_df_cc[,6:7])
+##All SKAT genes
+enriched_skat <- enrichr(as.character(filt1_df$gene), dbs)
+enrichr_df_skat <- cbind.data.frame("gene_hub" =  "ASRB", "GO_MF" = enriched_skat[[1]]$Term[1:20],
+                                  "GO_MF_p_val" = enriched_skat[[1]]$P.value[1:20],
+                                  "GO_skat" = enriched_skat[[2]]$Term[1:20],
+                                  "GO_skat_p_val" = enriched_skat[[2]]$P.value[1:20],
+                                  "GO_BP" = enriched_skat[[3]]$Term[1:20],
+                                  "GO_BP_p_val" = enriched_skat[[3]]$P.value[1:20])
+View(enrichr_df_skat[,6:7])
+##next version: add page rank based eigen ranking to nodes
+
+```
+
+
+##Map GO IDs to gene symbols
+```{r}
+##map GO term to gene symbol
+xx <- as.list(org.Hs.egGO2EG)
+
+df_skat_GO <- enrichr_df_skat$GO_BP
+df_skat_GO <- gsub("^*.*\\(", "", df_skat_GO)
+df_skat_GO <- gsub("\\)", "", df_skat_GO)
+t1 <- lapply(df_skat_GO, function(y)unlist(xx[y]))
+#symbols <- mapIds(org.Hs.eg.db, keys = t1, keytype = "ENTREZID", column="SYMBOL")
+t1_symbols <- lapply(t1, function(x)tryCatch(mapIds(org.Hs.eg.db, keys = x, keytype = "ENTREZID", column="SYMBOL"), error=function(x) NULL))
+
+t1_symbols_match <- lapply(t1_symbols, function(x)unique(x[x %in% as.character(filt1_df$gene)]))
+t1_symbols_match <- lapply(t1_symbols_match, function(x)paste(x,collapse=","))
+
+```
+
+##Map genes to gene functions
+
+```{r}
+##Gene function summary
+library(mygene)
+# gene <- getGene("1017", fields="all")
+# gene$summary
+#t1 <- te3_prot
+##Clique proteins
+EGID <- as.data.frame(mapIds(org.Hs.eg.db, keys = te3_prot, keytype = "SYMBOL", column="ENTREZID"))
+EGID$symbol <- rownames(EGID)
+colnames(EGID)[1] <- "EntrezID"
+gene_summ <- getGenes(as.numeric(as.character(EGID$EntrezID)), fields="summary")
+EGID$summary <- gene_summ$summary
+View(EGID)
+
+```
+
+##Visualise cliques
+```{r}
+## Jaccard similarity function
+library(arrangements)
+library(ggdendro)
+library(ggplot2)
+make_matrix <- function(cliq_list) {
+  
+ # comb <- combinations(names(cliq_list), 2, replace = F)
+ comb <- combinations(names(cliq_list), 2, replace = T) #include diagonals
+  prct <- list()
+  a_len <- list()
+  b_len <- list()
+  a_len_ov <- list()
+  b_len_ov <- list()
+  ov_tot <- list()
+  for (i in 1:nrow(comb)) {
+  #  a <- unlist(strsplit(as.character(exemp_df_L1[exemp_df_L1$L1 == comb[i, 1],]$mods), ","))
+  #  b <- unlist(strsplit(as.character(exemp_df_L1[exemp_df_L1$L1 == comb[i, 2],]$mods), ","))
+    a <- cliq_list[[comb[i,1]]]
+    b <- cliq_list[[comb[i,2]]]
+    prct[[i]] <- 2 * length(intersect(a, b)) / (length(a) + length(b))
+    a_len[[i]] <- length(a) 
+    b_len[[i]] <- length(b)
+    a_len_ov[[i]] <- length(a[a %in% b])/length(a)
+    b_len_ov[[i]] <- length(b[b %in% a])/length(b)
+    ov_tot[[i]] <- length(intersect(a, b))
+    # cat("\nMatching between", comb[i, 1], "and", comb[i, 2], "is", prct)
+  }
+  
+  comb1 <- cbind.data.frame(comb, "perc" = unlist(prct), "c1" = unlist(a_len), "c2" = unlist(b_len),
+                            "c1_perc_ov" = unlist(a_len_ov), "c2_perc_ov" = unlist(b_len_ov), 
+                            "ov_tot" = unlist(ov_tot), stringsAsFactors=FALSE)
+  colnames(comb1)[1] <- "m1"
+  colnames(comb1)[2] <- "m2"
+  
+  return(comb1)
+ 
+}
+te3_list <- lapply(te3, function(x)names(x))
+cliq_jacc_sim <- make_matrix(te3)
+#library(reshape2)
+#raw_mat <- acast(cliq_jacc_sim, m1 ~ m2, value.var="ov_tot")
+
+g <- graph.data.frame(cliq_jacc_sim[,c(1:3)], directed=FALSE)
+raw_mat <- get.adjacency(g, attr="perc", sparse=FALSE)
+##function to extract cluster after specifying a cutpoint
+cluster_mem <- function(mat_inp){
+hc <- hclust(dist(mat_inp), "ave")
+#plot(hc, hang = -1, cex = 0.8)
+#abline(h = 1.5, lty = 2)
+#groups <- cutree(hc, h=1.5)
+
+#cliq_clusters <- cbind("cliq_name"= rownames(raw_mat),groups)
+
+###start here
+groups <- cutree(hc, h=1)
+plot(hc, hang = -1, cex = 0.8)
+gg <- rect.hclust(hc,k=length(unique(groups)))
+return(gg)
+}
+gg1 <- cluster_mem(raw_mat)
+hc <- hclust(dist(raw_mat), "ave")
+groups <- cutree(hc, h=1)
+clust.gr<-data.frame(num=unlist(gg1), clust=rep(c(paste0("Clust_",1:length(unique(groups)))),times=sapply(gg1,length)))
+dendr <- dendro_data(hc, type="rectangle") 
+text.df<-merge(label(dendr),clust.gr,by.x="label",by.y="row.names")
+ggplot() + 
+  geom_segment(data=segment(dendr), aes(x=x, y=y, xend=xend, yend=yend)) + 
+  geom_text(data=text.df, aes(x=x, y=y, label=label, hjust=0,color=clust), size=3) +
+  geom_hline(yintercept=1, linetype="dashed") + 
+  coord_flip() + scale_y_reverse(expand=c(0.2, 0)) + 
+  theme(axis.line.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.title.y=element_blank(),
+        panel.background=element_rect(fill="white"),
+        panel.grid=element_blank())
+
+```
+
+##Some notes: GRIA2, KIF complex, SEC24B seem to be directly implicated in neuronal diseases (Peho syndrome)
+##Singh et. al (SCHEMA consortium) https://www.medrxiv.org/content/10.1101/2020.09.18.20192815v1.full.pdf; identifies 10 genes from exome wide RVAS
+##case = 24248, control: 97322
+##The annotated functions of these genes are diverse and include ion transport (CACNA1G, GRIN2A, and GRIA3), neuronal migration and growth (TRIO), transcriptional regulation (SP4, RB1CC1, and SETD1A), nuclear transport (XPO7), and ubiquitin ligation (CUL1, HERC1).
+#table(group_tab$genes %in% c("CACNA1G", "GRIN2A", "GRIA3", "SP4", "RB1CC1", "SETD1A", "TRIO", "XPO7", "CUL1", "HERC1")) ##none were found in the top 100 genes in ASRB
+
+##Alternate plotting
+
+```{r}
+#https://cran.r-project.org/web/packages/dendextend/vignettes/dendextend.html
+#dend <- raw_mat %>%  scale %>% 
+#        dist %>% hclust %>% as.dendrogram
+#Already scaled as the Jaccard Index is expressed as percentages
+
+dend <- raw_mat %>% dist %>% hclust %>% as.dendrogram
+dend %>% plot
+lab_ord <- labels(dend)
+cust_col_df <- cbind.data.frame("code" = paste("Clust", 1:7, sep = "_"), "col_cust" = c("#008fd5","#de6b35", "#7a9406", "#fc0373","#8f5467", "#6c0ee8", "#03fcca"))
+text.df$col_cust <- as.character(cust_col_df[match(as.character(text.df$clust), cust_col_df$code), 2])
+text.df <- text.df[match(lab_ord, as.character(text.df$label)),]
+#write.table(text.df, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Aug31/Cliques/node_cluster_color_map.tsv", sep = "\t", row.names = F, quote = F)
+#dend %>% set("labels_col", text.df$col_cust) %>% plot
+#abline(v = 1.5, lty = 2)
+##use this
+dend1 <- dend %>% set("branches_k_color", text.df$col_cust) %>% set("branches_lwd", 1.2) %>%
+   set("labels_colors", text.df$col_cust) %>% set("labels_cex", 0.8)
+ggd1 <- as.ggdend(dend1)
+ggplot(ggd1, horiz = TRUE, theme = NULL) + geom_hline(yintercept=1.0, linetype="dashed") + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black"))
+
+##Circular dendrogram
+# ggplot(ggd1, labels = FALSE) + 
+#   scale_y_reverse(expand = c(0.2, 0)) +
+#   coord_polar(theta="x")
+
+library(circlize)
+
+dend2 <- dend1 %>% set("branches_lwd", c(5,5,5,5,5,5,5))
+circlize_dendrogram(dend2, labels = T)
+
+```
+
+
+##Collapse cliques
+
+```{r}
+strindb_biog_graph1 <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/strindb_biog_graph_cyto.rds")
+collapsed_cliques <- lapply(gg1, function(x)unique(unlist(lapply(te3[names(x)], function(y)names(y)))))
+names(collapsed_cliques) <- paste("Clust", 1:length(collapsed_cliques), sep = "_")
+saveRDS(collapsed_cliques,"~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/CAIRNS/round2/ASRB_AR_AD/SKAT/Cliques/collapsed_cliques_ASRB.rds", compress = T)
+#text.df
+cust_col_df <- cbind.data.frame("code" = paste("Clust", 1:7, sep = "_"), "col_cust" = c("#008fd5","#de6b35", "#7a9406", "#fc0373","#8f5467", "#6c0ee8", "#03fcca"))
+text.df$col_cust <- as.character(cust_col_df[match(as.character(text.df$clust), cust_col_df$code), 2])
+#text.df <- text.df[match(lab_ord, as.character(text.df$label)),]
+
+plot_col_cliq <- function(col_cliq_df, clust_id){
+ # cpx_genes <- names(cliq_list)
+  col <- unique(as.character(col_cliq_df[as.character(col_cliq_df$clust) %in% clust_id,6]))
+  print(col)
+  cliq_mem <- unlist(collapsed_cliques[clust_id])
+  can_net1 <- igraph::as_data_frame(strindb_biog_graph1, what = "edges")
+  prot_np_all <- unique(can_net1[as.character(can_net1$from) %in% cliq_mem 
+                                 & as.character(can_net1$to) %in% cliq_mem, ])
+  
+  cpx_graph <- igraph::graph.data.frame(prot_np_all, directed = F)
+  
+  net_mat_t_list <- get.adjacency(cpx_graph, type=c("both"), attr=NULL, names=TRUE, sparse = FALSE)
+  net_new_t_list <- network(net_mat_t_list, directed = FALSE)
+  network.vertex.names(net_new_t_list) <- V(cpx_graph)$name
+  
+  cpx_plt <- ggnet2(net_new_t_list, alpha = 0.75, node.size = 4, edge.alpha = 0.5, label = TRUE, label.size = 2.5, edge.color = col,  mode = "kamadakawai")
+  cpx_plt <- cpx_plt + scale_color_manual(values = col)
+return(cpx_plt)
+}
+
+cliq_col_list <- list()
+for(k in 1:length(collapsed_cliques)){
+  cliq_col_list[[k]] <- plot_col_cliq(text.df, paste("Clust", k, sep = "_"))
+}
+
+source("~/APCluster_graphs/case_TCGA_new_PRAD_3431/multi_plot.R")
+#multiplot(plotlist = cliq_col_list, cols = 3)
+multiplot(cliq_col_list[[7]],
+  cliq_col_list[[6]], 
+          cliq_col_list[[5]],
+          cliq_col_list[[4]],
+          cliq_col_list[[3]],
+          cliq_col_list[[1]],
+          cliq_col_list[[2]],
+          cols = 2)
+
+```
+
+##make sif files from collapsed cliques for cytoscape
+```{r}
+make_sif_cliq <- function(col_cliq_list){
+ # cpx_genes <- names(cliq_list)
+  #col <- unique(as.character(col_cliq_df[as.character(col_cliq_df$clust) %in% clust_id,6]))
+  #print(col)
+  
+  cliq_mem <- unlist(col_cliq_list)
+  can_net1 <- igraph::as_data_frame(strindb_biog_graph1, what = "edges")
+  prot_np_all <- unique(can_net1[as.character(can_net1$from) %in% cliq_mem 
+                                 & as.character(can_net1$to) %in% cliq_mem, ])
+  prot_np_all$interaction <- "combined_score"
+  prot_np_all$combined_score <- 1
+  colnames(prot_np_all)[1:2] <- c("node1", "node2")
+  prot_np_all_sif <- prot_np_all[,c(1,3,2,4)]
+  return(prot_np_all_sif)
+}
+sif_list <- lapply(collapsed_cliques, function(x)make_sif_cliq(x))
+sif_list_comb <- do.call("rbind.data.frame", sif_list)
+write.table(sif_list_comb,"~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/CAIRNS/round2/ASRB_AR_AD/SKAT/Cliques/Collapse_cliques.sif", sep = " ", row.names = F, quote = F)
+
+color_map_prot <- mapply(cbind, collapsed_cliques, "SampleID"=names(collapsed_cliques), SIMPLIFY=F)
+color_map_prot_df <- do.call("rbind.data.frame", color_map_prot)
+color_map_prot_df$SampleID <- as.numeric(gsub("Clust_", "", color_map_prot_df$SampleID))
+colnames(color_map_prot_df) <- c("node1", "col_name")
+write.table(color_map_prot_df,"~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/CAIRNS/round2/ASRB_AR_AD/SKAT/Cliques/Colormap_cliques.tsv", sep = "\t", row.names = F, quote = F)
+```
+
+##Clique significance (Fisher's test)
+```{r}
+#####################################
+##Burden test
+cpx_OR_fisher <- function(ppi_res,cliq_list, case_coh_size, cont_coh_size, coh){
+  ft_df <- list()
+  for(i in 1:length(cliq_list)){
+    print(i)
+    ppi_res_tab <- ppi_res[ppi_res$gene %in% cliq_list[[i]],]
+    # ppi_res_tab[,2] <- ifelse(ppi_res_tab[,2] == 0, 1, ppi_res_tab[,2])
+    inp <- c(sum(ppi_res_tab[,1]), case_coh_size - sum(ppi_res_tab[,1]) , 
+             sum(ppi_res_tab[,2]), cont_coh_size - sum(ppi_res_tab[,2]))
+    sim_mat <- matrix(inp ,nrow = 2, ncol = 2)
+    colnames(sim_mat) <- c("case", "cont")
+    rownames(sim_mat) <- c("hits", "no_hits")
+    #ft <- fisher.test(sim_mat, alternative = "greater")
+    #ft <- fisher.test(sim_mat)
+    ft <- fisher.test(sim_mat, conf.int = T, conf.level = 0.99)
+    ft_df[[i]] <- cbind.data.frame("clique" = names(cliq_list)[i] ,"Cases" = sum(ppi_res_tab[,1]),
+                                   "Controls" = sum(ppi_res_tab[,2]),
+                                   "Fish_pval" = ft$p.value,"CI_lower" = ft$conf.int[1],
+                                   "CI_upper" = ft$conf.int[2],
+                                   "OR_Fish" = ft$estimate, "case_coh_size" = case_coh_size,
+                                   "Coh" = coh, "genes" = paste(names(cliq_list[[i]]), collapse = ","))
+  }
+  return(ft_df)
+}
+collapsed_cliques <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/CAIRNS/round2/ASRB_AR_AD/SKAT/Cliques/collapsed_cliques_ASRB.rds")
+
+##ASRB vs MGRB enrichment
+asrb_mgrb_genes <- Exome_pc123_srt_SKAT_case_enr_nCH[[4]]
+
+cpx_ASRB_OR_df <- do.call("rbind.data.frame", cpx_OR_fisher(asrb_mgrb_genes, collapsed_cliques, 406, 3205, "ASRBvsMGRB"))
+cpx_ASRB_OR_df$adj_pval <- p.adjust(cpx_ASRB_OR_df$Fish_pval, method = "bonferroni", n = length(cpx_ASRB_OR_df$Fish_pval))
+
+##ISKS vs MGRB enrichment
+isks_mgrb_genes <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/Exome_para_tab_ISKS_MGRB_C345_Aug31.rds")
+
+cpx_ISKS_OR_df <- do.call("rbind.data.frame", cpx_OR_fisher(isks_mgrb_genes, collapsed_cliques, 1644, 3205, "ISKSvsMGRB"))
+cpx_ISKS_OR_df$adj_pval <- p.adjust(cpx_ISKS_OR_df$Fish_pval, method = "bonferroni", n = length(cpx_ISKS_OR_df$Fish_pval))
+
+
+```
+
+

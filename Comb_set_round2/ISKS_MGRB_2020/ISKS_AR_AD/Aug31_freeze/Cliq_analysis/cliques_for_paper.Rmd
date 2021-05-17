@@ -118,6 +118,8 @@ multiplot(e1,e2,e3,e5, cols = 2)
 
 ## Jaccard similarity function
 library(arrangements)
+library(ggdendro)
+library(ggplot2)
 make_matrix <- function(cliq_list) {
   
  # comb <- combinations(names(cliq_list), 2, replace = F)

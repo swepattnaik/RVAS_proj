@@ -6,8 +6,8 @@
 #the rare variants are filtered using intra cohort_MAF filter that removes variants that are found in > 3 samples
 #in either case of control(added after sep05 output)
 
-.libPaths(c( "/home/shu/R/x86_64-redhat-linux-gnu-library/3.4", .libPaths() ) )
-
+#.libPaths(c( "/home/shu/R/x86_64-redhat-linux-gnu-library/3.4", .libPaths() ) )
+.libPaths(c( "/home/shu/R/x86_64-redhat-linux-gnu-library/3.4", "/home/shu/R/x86_64-redhat-linux-gnu-library/3.5/", .libPaths() ) )
 
 ##Using D data structure
 

@@ -7,7 +7,7 @@
 #in either case of control(added after sep05 output)
 
 .libPaths(c( "/home/shu/R/x86_64-redhat-linux-gnu-library/3.4", .libPaths() ) )
-`%nin%` = Negate(`%in%`)
+
 
 ##Using D data structure
 
@@ -15,15 +15,12 @@ library(data.table)
 library(VariantAnnotation)
 library(stringr)
 library(SKAT)
-#library(githubinstall)
-#githubinstall("SKATR")
-library(SKATR)
-library(CompQuadForm)
 
 ###get input files and process
 ##Experiments
 
-fil_tab <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/all_isksmgrb_skatinp_combset2020_clin_C3C4C5_NFE0002_AD_all_fields_rnd3_freeze.tsv",
+`%nin%` = Negate(`%in%`)
+fil_tab <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/CVD_DIANE/round2/CVD_AR_AD/all_CVD_mgrb_skatinp_combset2021_clin_C3C4C5_NFE0002_AD_all_fields_rnd3.tsv",
                       sep = "\t", stringsAsFactors = F, header = T)
 fil_tab <- fil_tab[!is.na(fil_tab$SAMPLE),]
 dim(fil_tab)
@@ -31,107 +28,105 @@ dim(fil_tab)
 ##Additive model
 Ex_samp_id <- unique(fil_tab$SAMPLE)
 
-
-#Ex_samp_id <- Ex_samp_id[Ex_samp_id %nin% dup_samp]
-
-#Ex_var_id <- unique(fil_tab$VARIANT)
-
+#remove duplicates
+# dup_samp <- read.delim("~/RVAS/Cairns_set/PC_relate/ldpruned/ASRB_fin_samp_dup_drop.txt", sep = "", header = T,
+#                        stringsAsFactors = F)
+# `%nin%` = Negate(`%in%`)
+# Ex_samp_id <- Ex_samp_id[Ex_samp_id %nin% dup_samp$x]
 ######get phenotype data to control for age and sex and PC's; 
 
-QC2_dat <- read.table("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/Rep_set_variants/joint_calls_2019jan_2019nov.final_qc_output.tsv", 
+QC2_dat <- read.table("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/Rep_set_variants/joint_calls_2019jan_2019nov.final_qc_output.tsv",
                       header = T, sep = "\t", stringsAsFactors = F)
 QC2_dat_pass <- QC2_dat[QC2_dat$passes_qc2 %in% "TRUE",]
-QC2_dat_pass$isFemale <- ifelse(QC2_dat_pass$f_stat < 0.2, 1, 
+QC2_dat_pass$isFemale <- ifelse(QC2_dat_pass$f_stat < 0.2, 1,
                                 ifelse(QC2_dat_pass$f_stat > 0.8, 0, 2))
-##note p_Data_PC_comb does not change
+QC2_dat_pass_mgrb <- QC2_dat_pass[grepl("^[ABZ]", QC2_dat_pass$new_sampleid),]
+QC2_dat_pass_mgrb <- QC2_dat_pass_mgrb[,c(1,21)]
+
+
 #p_Data <- read.table("~/RVAS/ISKS_MGRB_gender_age_3665.tsv", header = T, sep = "\t")
-#p_Data <- read.table("~/RVAS/comb_set_2020/pop_PCA/MGRB_ISKS_1000G_pca_combset.scores.tsv", header = T, sep = "\t", stringsAsFactors = F)
-##for future QC with prob.NFE correction use the following file and adjust the column for gender from 39 to 53
-p_Data <- read.table("~/RVAS/comb_set_2020/pop_PCA/MGRB_ISKS_1000G_combset_pca.scores_clustered.tsv", 
-                     header = T, sep = "\t", stringsAsFactors = F)
-p_Data <- p_Data[p_Data$superPopulation %in% c("ISKS", "RISC", "LIONS", "MGRB"),]
-p_Data_MGRB <-  p_Data[p_Data$superPopulation %in% c("MGRB"),]
-#remove duplicates
-dup_samp <- read.delim("~/RVAS/comb_set_2020/PC_relate/ldpruned/fin_samp_dup_drop.txt", sep = "", header = T,
-                       stringsAsFactors = F)
-dup_samp <- dup_samp$x[grepl("^[ABZ]", dup_samp$x)]
-p_Data_MGRB <- p_Data_MGRB[p_Data_MGRB$sample %nin% dup_samp,]
-p_Data_MGRB$rect_sam <- p_Data_MGRB$sample
-p_Data_MGRB <- p_Data_MGRB[p_Data_MGRB$rect_sam %in% QC2_dat_pass$new_sampleid,]
-##rename p_Data
-p_Data_ISKS <-  p_Data[p_Data$superPopulation %in% c("ISKS", "RISC", "LIONS"),]
-rect_sam_dat <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/PID/ISKS_RISC_LIONS_final_freeze.tsv",
-                           sep = "\t", header = T, stringsAsFactors = F)
-p_Data_ISKS$rect_sam <- rect_sam_dat[match(p_Data_ISKS$sample,rect_sam_dat$JCInputID),9]
-p_Data_ISKS <- p_Data_ISKS[!is.na(p_Data_ISKS$rect_sam),]
-write.table(p_Data_ISKS, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/p_Data_ISKS.tsv",
-            sep = "\t", quote = F, row.names = F)
-##two samples missed due to mislabelling and QC2
-#rect_sam_dat$JCInputRecID[rect_sam_dat$JCInputRecID %nin% p_Data_ISKS$sample]
-p_Data_ISKS <- p_Data_ISKS[p_Data_ISKS$rect_sam %in% QC2_dat_pass$new_sampleid,] ##3105 is lost(QC2 fail)
-p_Data_noCH <- rbind.data.frame(p_Data_ISKS, p_Data_MGRB)
-p_Data_noCH <- p_Data_noCH[as.character(p_Data_noCH$rect_sam) %in% Ex_samp_id,]
+p_Data <- read.delim("~/RVAS/CVD_Diane/pop_PCA/MGRB_CVD_1000G_combset_pca.scores_clustered.tsv", header = T, sep = "\t", stringsAsFactors = F)
+#p_Data <- p_Data[p_Data$sample %in% QC2_dat_pass_mgrb$new_sampleid,]
+p_Data_noCH <- p_Data[as.character(p_Data$sample) %in% Ex_samp_id,]
 ##drop MGRB sample BAAUD; not in latest call
 #samp_ID_match <- samp_ID_match[grep("BAAUD", samp_ID_match, invert = T)]
 #p_Data_noCH <- p_Data_noCH[match(samp_ID_match, p_Data_noCH$sample),]
-Ex_samp_id <- Ex_samp_id[match(p_Data_noCH$rect_sam, Ex_samp_id)]
-##filter out QC fail cases
-fil_tab <- fil_tab[fil_tab$SAMPLE %in% Ex_samp_id,]
-##save table
-write.table(fil_tab, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/all_isksmgrb_skatinp_combset2020_clin_C3C4C5_NFE0002_AD_rm_dup_freeze.tsv", 
-            sep = "\t", row.names = F, quote = F)
+
 ##remove from gene matrix
 #col_rm <- which(colnames(D_tab) ==  "BAAUD")
 #D_tab <- D_tab[,-c(col_rm)]
 ##Add gender information
+Ex_samp_id_df <- as.data.frame(Ex_samp_id)
+Ex_samp_id_df$Ex_samp_id <- as.character(Ex_samp_id_df$Ex_samp_id)
+Ex_samp_id_df$gender <- QC2_dat_pass_mgrb[match(Ex_samp_id_df$Ex_samp_id, QC2_dat_pass_mgrb$new_sampleid), 2]
+#p_Data_noCH$gender <- QC2_dat_pass_mgrb[match(p_Data_noCH$sample, QC2_dat_pass_mgrb$new_sampleid), 2]
 
-p_Data_noCH$gender <- QC2_dat_pass[match(p_Data_noCH$rect_sam, QC2_dat_pass$new_sampleid), 21]
-#write.table(p_Data_noCH, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/PID/pheno_data_SKAT_final_freeze.tsv",
+##Add CVD phenotype
+CVD_pheno <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/git_proj_rvas/Comb_set_round2/CVD_MGRB_2021/CVD_AR_AD/CVD_pheno.tsv",
+                         sep = "\t", header = T, stringsAsFactors = F)
+CVD_pheno$Gender <- ifelse(CVD_pheno$Gender %in% "F", 1, 0)
+Ex_samp_id_df$gender_cvd <- CVD_pheno[match(Ex_samp_id_df$Ex_samp_id,CVD_pheno$Sample.ID), 2]
+Ex_samp_id_df$gender <- ifelse(is.na(Ex_samp_id_df$gender), Ex_samp_id_df$gender_cvd, Ex_samp_id_df$gender)
+
+p_Data_noCH$gender <- Ex_samp_id_df[match(p_Data_noCH$sample, Ex_samp_id_df$Ex_samp_id),2]
+
+##remove cases with no gender (24 Cairns lost)
+p_Data_noCH <- p_Data_noCH[!is.na(p_Data_noCH$gender),]
+Ex_samp_id <- Ex_samp_id[match(p_Data_noCH$sample, Ex_samp_id)]
+##filter out QC fail cases
+fil_tab <- fil_tab[fil_tab$SAMPLE %in% Ex_samp_id,]
+
+##save table (not needed in this round)
+#write.table(fil_tab, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/CAIRNS/all_cairns_mgrb_combset2020_variants_filt_all_fields_rmdup_fin.tsv", 
 #            sep = "\t", row.names = F, quote = F)
+
+#  p_Data_noCH$sample[grepl("^FR0", p_Data_noCH$sample)]
+#QC
+#t2 <- Cairns_pheno
+#t1 <- p_Data_noCH[match(t2$Sample, p_Data_noCH$sample),]
+#t1 <- is.na(t1)
 #binary phenotype vector 
-p_vec <- ifelse(!is.na(as.numeric(as.character(p_Data_noCH$rect_sam))) | grepl("^CR|^LK",as.character(p_Data_noCH$rect_sam)), 1, 0)
+toMatch <- c("-", "^F")
+p_vec <- ifelse(grepl(paste(toMatch,collapse="|"), p_Data_noCH$sample), 1, 0)
 
 ##SKAT null function with customised covariate
 SKAT_fun_null <- function(x=NULL, p_vec){
-  if(is.null(x)){
-    obj_N <- SKAT::SKAT_Null_Model(p_vec ~ 1,out_type="D")
-  }
+  if(is.null(x))
+    obj_N <- SKAT_Null_Model(p_vec ~ 1,out_type="D")
   # else if(is.integer(x) || is.numeric()){
   else if(is.null(dim(x))){
-    obj_N <- SKAT::SKAT_Null_Model(p_vec ~ x,out_type="D")
+    obj_N <- SKAT_Null_Model(p_vec ~ x,out_type="D")
   }
   else if(dim(x)[2] > 1){
     nul_for <- as.formula(paste("p_vec", paste(colnames(x), collapse = " + "), sep = " ~ "))
-    obj_N <- SKAT::SKAT_Null_Model(nul_for, data = p_Data_noCH, out_type="D")
-  #  obj_N <- SKAT_Null_Model(nul_for, data = x, out_type="D")
+    obj_N <- SKAT_Null_Model(nul_for, data = p_Data_noCH, out_type="D")
   }
   return(obj_N)
 }
-
 ##SKAT function for SKAT, SKATBinary, SKATO, SKAT_ERA
 SKAT_run <- function(geno_mat, gene, x=NULL, p_vec, cust_weight = NULL, rho = NULL){
   
   if(dim(geno_mat)[2] > 1 ){
     null_d <- SKAT_fun_null(x, p_vec)
-    pval_SKAT <- SKAT::SKAT(t(geno_mat), null_d, weights = cust_weight, r.corr = rho)$p.value
-    pval_SKATbin <- SKAT::SKATBinary(t(geno_mat), null_d, method = "Burden", weights = cust_weight)$p.value
+    pval_SKAT <- SKAT(t(geno_mat), null_d, weights = cust_weight, r.corr = rho)$p.value
+    pval_SKATbin <- SKATBinary(t(geno_mat), null_d, method = "Burden", weights = cust_weight)$p.value
     ##ER: Effective resampling for best p-value calculation
     # pval_SKATbin <- SKATBinary(t(geno_mat), null_d, method.bin = "ER", weights = cust_weight, r.corr = rho)$p.value
     #  pval_SKATO <- SKAT(t(geno_mat),null_d, method='optimal.adj', weights = cust_weight)$p.value ##r.corr will be ignored
-    pval_SKATO <- SKAT::SKATBinary(t(geno_mat),null_d, method='SKATO', weights = cust_weight)$p.value
-    pval_SKATera <- SKAT::SKATBinary(t(geno_mat),null_d, method.bin="ER.A", weights = cust_weight)$p.value
+    pval_SKATO <- SKATBinary(t(geno_mat),null_d, method='SKATO', weights = cust_weight)$p.value
+    pval_SKATera <- SKATBinary(t(geno_mat),null_d, method.bin="ER.A", weights = cust_weight)$p.value
     skat_pv <- cbind.data.frame("eg_ID" = gene, pval_SKAT, pval_SKATbin, pval_SKATO, pval_SKATera)
     return(skat_pv)
   }
   else if(dim(geno_mat)[2] == 1){
-    null_d <- SKAT::SKAT_fun_null(x, p_vec)
-    pval_SKAT <- SKAT::SKAT(geno_mat, null_d, weights = cust_weight, r.corr = rho)$p.value
-    pval_SKATbin <- SKAT::SKATBinary(t(geno_mat), null_d, method = "Burden", weights = cust_weight)$p.value
+    null_d <- SKAT_fun_null(x, p_vec)
+    pval_SKAT <- SKAT(geno_mat, null_d, weights = cust_weight, r.corr = rho)$p.value
+    pval_SKATbin <- SKATBinary(t(geno_mat), null_d, method = "Burden", weights = cust_weight)$p.value
     ##ER: Effective resampling for best p-value calculation
     # pval_SKATbin <- SKATBinary(t(geno_mat), null_d, method.bin = "ER", weights = cust_weight, r.corr = rho)$p.value
     #pval_SKATO <- SKAT(geno_mat,null_d, method='optimal.adj', weights = cust_weight)$p.value ##r.corr will be ignored
-    pval_SKATO <- SKAT::SKATBinary(geno_mat,null_d, method='SKATO', weights = cust_weight)$p.value
-    pval_SKATera <- SKAT::SKATBinary(geno_mat,null_d, method.bin="ER.A", weights = cust_weight)$p.value
+    pval_SKATO <- SKATBinary(geno_mat,null_d, method='SKATO', weights = cust_weight)$p.value
+    pval_SKATera <- SKATBinary(geno_mat,null_d, method.bin="ER.A", weights = cust_weight)$p.value
     skat_pv <- cbind.data.frame("eg_ID" = gene, pval_SKAT, pval_SKATbin, pval_SKATO, pval_SKATera)
     
     return(skat_pv)
@@ -163,8 +158,11 @@ skat_pvals_sex_pc12 <- list()
   ftemp_tab <- ftemp_tab[ftemp_tab$comb_score >= 5.6 & as.numeric(ftemp_tab$VAF) >= 0.35, ]
   
   print(max(ftemp_tab$comb_score))
-  if(dim(ftemp_tab) == 0 ){
-    next
+  if(dim(ftemp_tab)[1] == 0 ){
+    skat_pvals <- NULL
+    skat_pvals_pc12 <- NULL
+    skat_pvals_sex <- NULL
+    skat_pvals_sex_pc12 <- NULL
   }
   else{
     ftemp_tab_var_id <- unique(ftemp_tab$VARIANT)
@@ -179,8 +177,9 @@ skat_pvals_sex_pc12 <- list()
         for(k in 1:length(vep_con)){
           sam_gene_gt_con <- sam_gene_gt[sam_gene_gt$vep_consequence %in% vep_con[k],]
           sam_gene_gt_con <- unique(sam_gene_gt_con)
-          maf_vec_cont <- sum(dim(sam_gene_gt_con[grepl("^[ABZ]",sam_gene_gt_con$SAMPLE),])[1])/(2*length(p_vec))
-          maf_vec_case <- sum(dim(sam_gene_gt_con[!grepl("^[ABZ]",sam_gene_gt_con$SAMPLE),])[1])/(2*length(p_vec))
+          toMatch <- c("-", "^F")
+          maf_vec_cont <- dim(sam_gene_gt_con[!grepl(paste(toMatch,collapse="|"),sam_gene_gt_con$SAMPLE),])[1]/(2*length(p_vec))
+          maf_vec_case <- dim(sam_gene_gt_con[grepl(paste(toMatch,collapse="|"),sam_gene_gt_con$SAMPLE),])[1]/(2*length(p_vec))
           ##genotype matrix  
           sam_gene_gt_con$add_mod <- as.numeric(sam_gene_gt_con$GT)
           sam10 <- ifelse(Ex_samp_id %in% sam_gene_gt_con$SAMPLE, 1, 0)
@@ -199,9 +198,9 @@ skat_pvals_sex_pc12 <- list()
       }
       else{
         ##compute cohort specific MAF
-        maf_vec_cont <- sum(ifelse(is.na(as.numeric(sam_gene_gt$SAMPLE)), 1, 0))/(2*length(p_vec))
-        maf_vec_case <- sum(ifelse(!is.na(as.numeric(sam_gene_gt$SAMPLE)) | 
-                                     grepl("^CR|^LK", as.character(sam_gene_gt$SAMPLE)), 1, 0))/(2*length(p_vec))
+        toMatch <- c("-", "^F")
+        maf_vec_cont <- dim(sam_gene_gt[!grepl(paste(toMatch,collapse="|"),sam_gene_gt$SAMPLE),])[1]/(2*length(p_vec))
+        maf_vec_case <- dim(sam_gene_gt[grepl(paste(toMatch,collapse="|"),sam_gene_gt$SAMPLE),])[1]/(2*length(p_vec))
         #maf_vec <- (maf_vec_cont + maf_vec_case)/(2*(1572 + 1110))
         ##genotype matrix  
         sam_gene_gt$add_mod <- as.numeric(sam_gene_gt$GT)
@@ -234,11 +233,11 @@ skat_pvals_sex_pc12 <- list()
     print(dim(samp_vec_mat))
     ##Intracohort filter  : equivalent to ~ 5/1661*2 for case ; ~ 5/3209*2 for control
     ##changed to uniform intra_cohort_MAF filter
-    ## change to entire cohort MAF filter to 3/(4849*2)##latest Aug.31
+    ## change to MAF filter to 3/((117 + 3205)*2)
     #     samp_vec_mat <- samp_vec_mat[as.numeric(as.character(samp_vec_mat$coh_MAF_case)) <= 0.0015 | 
     #                                    as.numeric(as.character(samp_vec_mat$coh_MAF_cont)) <= 0.001,]
-    samp_vec_mat <- samp_vec_mat[!(as.numeric(as.character(samp_vec_mat$coh_MAF_case)) >= 0.00035 | 
-                                     as.numeric(as.character(samp_vec_mat$coh_MAF_cont)) >= 0.00035),]
+    samp_vec_mat <- samp_vec_mat[!(as.numeric(as.character(samp_vec_mat$coh_MAF_case)) >= 0.00046 | 
+                                     as.numeric(as.character(samp_vec_mat$coh_MAF_cont)) >= 0.00046),]
     #  samp_vec_mat <- samp_vec_mat[as.numeric(as.character(samp_vec_mat$coh_MAF_cont)) <= 0.001,]
     
     if(is.null(dim(samp_vec_mat)) | dim(samp_vec_mat)[1] == 0) {
@@ -251,7 +250,7 @@ skat_pvals_sex_pc12 <- list()
       # skat_pvals_age_sex[[i]] <- NULL
       # skat_pvals_age_sex_pc12[[i]] <- NULL
       #   break
-      next
+      # next
     }
     ##compute maf SKAT takes care of the AFs internally by assigning higher weights to rare variants 
     
@@ -267,7 +266,7 @@ skat_pvals_sex_pc12 <- list()
       ##gender
       skat_pvals_sex <- SKAT_run(geno_mat = gene_mat, gene = genes, x=p_Data_noCH$gender, p_vec, cust_weight = gene_mat_comb, rho = 1)
       ##gender + pc1 + pc2
-      skat_pvals_sex_pc12 <- SKAT_run(geno_mat = gene_mat, gene = genes, x=p_Data_noCH[,c(54,19:22)], p_vec, cust_weight = gene_mat_comb, rho = 1)
+      skat_pvals_sex_pc12 <- SKAT_run(geno_mat = gene_mat, gene = genes, x=p_Data_noCH[,c(53,19:22)], p_vec, cust_weight = gene_mat_comb, rho = 1)
       
     }
     
@@ -276,20 +275,30 @@ skat_pvals_sex_pc12 <- list()
   return(DT_skat_snv_str_pc123)
 }##end of gene loop ; i loop   
 
+
+#DT_skat_snv_str_pc123 <- list(skat_pvals, skat_pvals_pc12, skat_pvals_sex, skat_pvals_sex_pc12)
+
 ##Parallelised SKAT  
   library(doParallel)
   library(doMC)
   registerDoMC(30)
-
+  #fil_tab_genes <- fil_tab[,c(9,18)]
+  #fil_tab_genes <- fil_tab_genes[!duplicated(fil_tab_genes$gene_symbol),]
+  #fil_tab_genes <- fil_tab_genes[fil_tab_genes$gene_symbol %in% c("TP53", "TINF2", "POT1", "TERF1"),]
   res20 <- list()
+ # system.time(res20 <- foreach(i=1:length(fil_tab_genes$gene_symbol), .errorhandling = 'remove') %dopar% 
+ #               {para_SKAT(fil_tab_genes$gene_symbol[i])})
   genes <- unique(fil_tab$gene_symbol)
   system.time(res20 <- foreach(i=1:length(genes), .errorhandling = 'remove') %dopar% 
   {para_SKAT(genes[i])})
+ # res20_skat <- lapply(res20, function(x)do.call("rbind.data.frame", x[4]))
+  #t2 <- do.call("rbind.data.frame", res20_skat)
   res_skat_para <- list()
   for(i in 1:4){
   res_skat_para[[i]] <- lapply(res20, function(x)do.call("rbind.data.frame", x[i]))
   }
-
+ # t1 <- lapply(res20, function(x)lapply(x, function(y)do.call("rbind.data.frame", y)))
+  # stopCluster(cl)
 ##SKAT ERA added along with changes to SKATO; now SKATBinary is used for SKATO and SKAT_ERA
 #ERA -> Adaptive resampling for conservative p-values
-saveRDS(res_skat_para, file = "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/Exome_skat_para_result_isks_combset2020_uni_MAF_PC1234_ver4_clinrect_Aug31.rds", compress = T)
+saveRDS(res_skat_para, file = "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/CVD_DIANE/round2/CVD_AR_AD/SKAT/Exome_skat_para_result_CVD_combset2020_uni_MAF_PC1234_ver4.rds", compress = T)

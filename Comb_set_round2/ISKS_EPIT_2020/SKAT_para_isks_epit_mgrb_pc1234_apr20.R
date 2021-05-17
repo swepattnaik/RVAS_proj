@@ -7,8 +7,8 @@
 #in either case of control(added after sep05 output)
 #ISKS vs EPIT+MGRB
 
-.libPaths(c( "/home/shu/R/x86_64-redhat-linux-gnu-library/3.4", .libPaths() ) )
-
+#.libPaths(c( "/home/shu/R/x86_64-redhat-linux-gnu-library/3.4", .libPaths() ) )
+.libPaths(c( "/home/shu/R/x86_64-redhat-linux-gnu-library/3.4", "/home/shu/R/x86_64-redhat-linux-gnu-library/3.5/", .libPaths() ) )
 
 ##Using D data structure
 
