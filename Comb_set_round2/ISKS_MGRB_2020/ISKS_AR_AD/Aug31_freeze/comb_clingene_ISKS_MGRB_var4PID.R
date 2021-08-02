@@ -193,6 +193,7 @@ Ex_tab_comb_C3C4C5 <- unique(rbind.data.frame(Ex_tab_C4C5, Ex_tab_C3, All_cpd_he
 ##remove chromosome X variants from GT = 2
 rm_X_GT2 <- Ex_tab_comb_C3C4C5[Ex_tab_comb_C3C4C5$GT == 2 & grepl("^X", Ex_tab_comb_C3C4C5$VARIANT), ]
 Ex_tab_comb_C3C4C5 <- Ex_tab_comb_C3C4C5[Ex_tab_comb_C3C4C5$filt_tab %nin% rm_X_GT2$filt_tab, ]
+##Ex_tab_comb_C3C4C5 <- Ex_tab_comb_C3C4C5[Ex_tab_comb_C3C4C5$comb_score >= 5.6,] ##Accounted in SKAT variants
 Ex_tab_comb_C3C4C5$is_AR <- ifelse(Ex_tab_comb_C3C4C5$gnomad_AF_NFE > 0.0002 | Ex_tab_comb_C3C4C5$GT == 2, 1, 0)
 write.table(Ex_tab_comb_C3C4C5, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/PID/comb_clin_isks_mgrb_2020_C3C4C5_NFE0002_AD_AR_all_fields_rnd3_Aug31.tsv", 
             row.names = F, quote = F, sep = "\t")

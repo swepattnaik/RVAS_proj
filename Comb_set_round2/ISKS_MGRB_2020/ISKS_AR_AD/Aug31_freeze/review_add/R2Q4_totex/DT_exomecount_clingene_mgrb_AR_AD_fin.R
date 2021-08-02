@@ -1,13 +1,9 @@
-.libPaths(c( "/home/shu/R/x86_64-redhat-linux-gnu-library/3.4", .libPaths() ) )
+#.libPaths(c( "/home/shu/R/x86_64-redhat-linux-gnu-library/3.4", .libPaths() ) )
 `%nin%` = Negate(`%in%`)
 
 Ex_tab <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/MGRB/all_shards_MGRB_combset2020_gnomadAF05.tsv", sep = "\t",
                      header = T, stringsAsFactors = F)
-#isks_tsv <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS/all_shards_ISKS_combset2020.tsv", sep = "\t",
-#                       header = T, stringsAsFactors = F)
-#mgrb_tsv <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/MGRB/all_shards_MGRB_combset2020.tsv", sep = "\t",
-#                       header = T, stringsAsFactors = F)
-#Ex_tab <- rbind.data.frame(isks_tsv, mgrb_tsv)
+
 #rm(isks_tsv, mgrb_tsv)
 Ex_tab <- Ex_tab[!is.na(Ex_tab$SAMPLE),]
 #Ex_tab$SAMPLE <- gsub(".variant.*$", "", Ex_tab$SAMPLE) ##check this in the next run
@@ -16,35 +12,17 @@ Ex_tab <- Ex_tab[!is.na(Ex_tab$gene_symbol),]
 
 Ex_tab <- Ex_tab[!is.na(Ex_tab$DP),] ##There are records with NA in DP attribute ; file: sept05_rect
 
-##remove duplicates
 #remove duplicates
 dup_samp <- read.delim("~/RVAS/comb_set_2020/PC_relate/ldpruned/fin_samp_dup_drop.txt", sep = "", header = T,
                        stringsAsFactors = F)
 `%nin%` = Negate(`%in%`)
 Ex_tab <- Ex_tab[Ex_tab$SAMPLE %nin% dup_samp$x,]
 
-#Ex_tab <- Ex_tab[is.na(Ex_tab$VAF),] ##VAF's have NaNs as DP = 0. Its a division by zero for VAF
-
-#Ex_tab <- Ex_tab[!is.na(Ex_tab$VAF),]
-#Ex_tab <- Ex_tab[Ex_tab$DP != 0,]
-#table(Ex_tab[Ex_tab$VAF == "NaN",]$gene_symbol %in% c("TP53", "TINF2", "POT1", "SMARCAL1"))
 Ex_tab <- Ex_tab[!(Ex_tab$VAF %in% "NaN"),]
 class(Ex_tab$VAF) <- "numeric" ##remove headers from shards in the next run
 Ex_tab <- Ex_tab[!is.na(Ex_tab$VAF),] ##some VAFs are NAs in sept05_rect file
 Ex_tab1 <- Ex_tab[as.numeric(Ex_tab$VAF) >= 0.35 & as.numeric(Ex_tab$DP) >= 10,]
 
-#rm_ncvar <- Ex_tab[is.na(Ex_tab$vep_hgvsp) & is.na(Ex_tab$clinvar_Name) & is.na(Ex_tab$vep_Protein_position),]
-#rm_ncvar <- rm_ncvar[rm_ncvar$vep_biotype %in% "protein_coding",]
-#Ex_tab1 <- Ex_tab[!is.na(Ex_tab$vep_hgvsp) & !is.na(Ex_tab$clinvar_Name) & !is.na(Ex_tab$vep_Protein_position),]
-#resc_ind <- c("stop_gained", "splice_acceptor_variant", "splice_donor_variant", "missense_variant",
- #             "protein_altering_variant", "frameshift_variant", "start_lost")
-#resc_splice <- rm_ncvar[(grepl(paste(resc_ind,collapse="|"), 
-#                rm_ncvar$vep_consequence)),]
-  
-#spl_match_ind <- ifelse(rm_ncvar$vep_consequence %in% "splice_acceptor_variant" |
-#                          rm_ncvar$vep_consequence %in% "splice_donor_variant", 1, 0)
-#resc_splice <- rm_ncvar[which(spl_match_ind == 1),]
-#Ex_tab1 <- rbind.data.frame(Ex_tab1, resc_splice) ##use this
 
 ##Misannotation of MUTYH to HPDL.. change that
 #MUTYH hg19 coordinates: chr1: 45,794,835-45,806,142
@@ -145,13 +123,6 @@ MGRB2_chip <- read.table("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/d
                          header = T, sep = "\t", stringsAsFactors = F)
 MGRB2_chip_pos <- MGRB2_chip[grepl("^CN", MGRB2_chip$algorithm_CN_category),]$sample_id
 
-#Ex_tab$is_CH <- ifelse(Ex_tab$SAMPLE %in% MGRB2_chip_pos, 1, 0)
-
-##remove CHIP MGRB
-#Ex_tab <- Ex_tab[Ex_tab$is_CH == 0,]
-
-#Ex_tab1 <- Ex_tab[Ex_tab$VAF >= 0.25 & Ex_tab$VAF < 1,] ##OR use the command below to not lose highly significant homozygous variants
-#Ex_tab1 <- Ex_tab[as.numeric(Ex_tab$VAF) >= 0.35 & as.numeric(Ex_tab$DP) >= 10,] ##Depth filter
 Ex_tab1$gnomad_AF_NFE <- gsub("\\[", "", Ex_tab1$gnomad_AF_NFE)
 Ex_tab1$gnomad_AF_NFE <- gsub("\\]", "", Ex_tab1$gnomad_AF_NFE)
 class(Ex_tab1$gnomad_AF_NFE) <- "numeric"
@@ -242,18 +213,17 @@ Ex_tab3$vep_comb_pos <- ifelse(Ex_tab3$vep_comb_pos == 0 & Ex_tab3$vep_Protein_p
 t1 <- as.numeric(Ex_tab3$LONGEST_GENE_LENGTH_IN_AMINO_ACIDS) - as.numeric(Ex_tab3$vep_comb_pos)
 Ex_tab3$vep_comb_pos <- ifelse(t1 < 0, Ex_tab3$vep_Protein_position, Ex_tab3$vep_comb_pos)
 Ex_tab3$vep_comb_pos <- ifelse(is.na(Ex_tab3$vep_comb_pos), vep_comb_pos, Ex_tab3$vep_comb_pos)
-#c(1:9,11,17,22:24,30,32,33,53,73,80,87,118:122)
 ##combine Ex_tab2 and Ex_tab3 and rescued variants
 Ex_tab2_comb <- Ex_tab2_comb[,-122]
 Ex_tab23_comb <- rbind.data.frame(Ex_tab2_comb, Ex_tab3)
 dim(Ex_tab23_comb)
-#Ex_tab_filt1 <- Ex_tab1[Ex_tab1$gnomad_AF_NFE <= 0.0001, ] ##check this; loses some variants from Aug12 on Sept05 run(don't use)
 rm(Ex_tab, Ex_tab2_comb, Ex_tab2, Ex_tab3)
 ##remove SAMPLE CR57
 Ex_tab_filt1 <- Ex_tab23_comb[(Ex_tab23_comb$SAMPLE %nin% "CR57"),]
 
+#don't remove "synonymous_variant" 
 toMatch <- c("3_prime_UTR_variant", "5_prime_UTR_variant", "intron_variant", 
-             "synonymous_variant", "upstream_gene_variant", "non_coding_transcript_exon_variant",
+             "upstream_gene_variant", "non_coding_transcript_exon_variant",
              "non_coding_transcript_variant", "downstream_gene_variant", "NMD_transcript_variant",
              "intergenic_variant", "mature_miRNA_variant")
 #"NMD_transcript_variant"
@@ -268,38 +238,13 @@ Ex_tab_filt2$is_ASPC <- ifelse(Ex_tab_filt2$SAMPLE %in% ASPREE_can_samp, 1, 0)
 Ex_tab_filt2$is_45up <- ifelse(Ex_tab_filt2$SAMPLE %in% can269$V1, 1, 0)
 
 ##filter out MGRB samples that have CH
-
-#Ex_tab_noCH_filt3 <- Ex_tab_filt2[!(Ex_tab_filt2$is_CH == 0 & Ex_tab_filt2$is_MGRB == 1),]
 Ex_tab_noCH_filt3 <- Ex_tab_filt2[Ex_tab_filt2$is_ASPC == 0 & Ex_tab_filt2$is_45up == 0,]
 
 rm(Ex_tab_filt2)
 ##Capture variant present in the last 5% of the length of the protein sequence
 
-# Ex_tab_noCH_filt3$vep_Protein_position <- ifelse(is.na(Ex_tab_noCH_filt3$vep_Protein_position), 0, Ex_tab_noCH_filt3$vep_Protein_position)
-# class(Ex_tab_noCH_filt3$vep_Protein_position) <- "numeric"
-# Ex_tab_noCH_filt3$vep_Protein_position <- ifelse(is.na(Ex_tab_noCH_filt3$vep_Protein_position), 0, Ex_tab_noCH_filt3$vep_Protein_position)
-# 
-# vep_hgvsp <- ifelse(is.na(Ex_tab_noCH_filt3$vep_hgvsp), 0, Ex_tab_noCH_filt3$vep_hgvsp)
-# vep_hgvsp <- gsub("^*.*p\\.","", vep_hgvsp)
-# vep_hgvsp <- gsub("Ter*.*$","", vep_hgvsp)
-# library(tidyr)
-# vep_hgvsp <- extract_numeric(vep_hgvsp)
-# 
-# ex_mut_pos <- gsub("^*.*p\\.","", Ex_tab_noCH_filt3$clinvar_Name)
-# library(tidyr)
-# ex_mut_pos <- extract_numeric(ex_mut_pos)
-# #combine position from vep_Protein_position and vep_hgvsp
-# vep_comb_pos <- ifelse(ex_mut_pos == 0, Ex_tab_noCH_filt3$vep_Protein_position, vep_hgvsp)
-# Ex_tab_noCH_filt3$vep_comb_pos <- vep_comb_pos
-
 dim(Ex_tab_noCH_filt3[Ex_tab_noCH_filt3$vep_consequence %in% "frameshift_variant",])
-#check redundant records
-#dim(Ex_tab_noCH_filt3[Ex_tab_noCH_filt3$vep_consequence %in% "frameshift_variant" & Ex_tab_noCH_filt3$vep_comb_pos == 0,])
-#Ex_tab_noCH_filt3 <- Ex_tab_noCH_filt3[!is.na(Ex_tab_noCH_filt3$SAMPLE),]
-# Ex_tab_noCH_filt3$vep_comb_pos <- ifelse(is.na(Ex_tab_noCH_filt3$vep_comb_pos), 0, Ex_tab_noCH_filt3$vep_comb_pos)
-# Ex_tab_noCH_filt3$vep_comb_pos <- gsub("\\-.*$", "", Ex_tab_noCH_filt3$vep_comb_pos)
-# Ex_tab_noCH_filt3$vep_comb_pos <- ifelse(Ex_tab_noCH_filt3$vep_comb_pos %in% "?", Ex_tab_noCH_filt3$vep_Protein_position, Ex_tab_noCH_filt3$vep_comb_pos)
-# Ex_tab_noCH_filt3$vep_comb_pos <- gsub("\\?\\-", "", Ex_tab_noCH_filt3$vep_comb_pos)
+
 ##remove RNA genes
 Ex_tab_noCH_filt3 <- Ex_tab_noCH_filt3[which(!is.na(as.numeric(Ex_tab_noCH_filt3$LONGEST_GENE_LENGTH_IN_AMINO_ACIDS))),]
 
@@ -310,83 +255,39 @@ Ex_tab_noCH_filt3$last_five_perc <- ifelse((as.numeric(Ex_tab_noCH_filt3$LONGEST
                                            0)
 
 ##David algorithm JUl-22-2019
-toMatch1 <- c("Likely_pathogenic", "Pathogenic", "Pathogenic/Likely_pathogenic", 
-              "Pathogenic/Likely_pathogenic/drug_response", "Pathogenic/Likely_pathogenic/other",
-              "Pathogenic/Affects", "Pathogenic/risk_factor", "Pathogenic/Likely_pathogenic/risk_factor",
-              "risk_factor")
-
-
-##modify scoring function since the annotation from the new VEP are slightly different
-toMatch2 <- c("frameshift_variant", "start_lost", "stop_gained")
-
-##sco_fun5 changed on Aug-11-2019 to further underweight last exon variants (aftermath of POT1 variants in MGRB)
-##sco_fun5 changed on Sept-05-2019 to further underweight variants that are C4 and present in the last
-## 5% of the C-terminal tail of the protein.(aftermath of POT1 variants in MGRB)
-sco_fun5 <- function(filt3_inp){
-  ##construct C5,C4, C3 and score them as sco_fun4  
-  ##All clinvar_sig variants
-  filt3_inp$vep_con1 <- unlist(lapply(strsplit(filt3_inp$vep_consequence, split = "&"), function(x)x[1]))
-  metric1 <-  ifelse(grepl(paste(toMatch1,collapse="|"), 
-                           filt3_inp$clinvar_Clinical_Significance) , "C5", 
-                     ifelse(grepl(paste(toMatch2,collapse="|"), 
-                                  filt3_inp$vep_con1), "C4", 
-                            ifelse(filt3_inp$vep_con1 %in% 
-                                     c("missense_variant", "splice_region_variant",
-                                       "splice_donor_variant", "splice_acceptor_variant",
-                                       "protein_altering_variant")
-                                   & filt3_inp$gnomad_AF_NFE == 0, "C3", "B")))
-  ##lapply(strsplit(var_type, split = "&"), function(x)x[1]) think about this
-  
-  metric2 <- as.numeric(ifelse(metric1 %in% "C5", 45, 
-                               ifelse(metric1 %in% "C4", 45, 
-                                      ifelse(metric1 %in% "C3", filt3_inp$EigenPhred, 0))))
-  
-  metric2[is.na(metric2)] <- 0
-  
-  ##changed on Aug-11-2019: Adjust this outside the function later
-  #metric3 <- as.numeric(ifelse(metric1 %in% "C4" & filt3_inp$last_exon == 1, -10, 0))
-  #metric3 <- as.numeric(ifelse(metric1 %in% "C4" & filt3_inp$last_exon == 1, -25, 0))
-  
-  #met <- metric2 + metric3
-  
-  #met_df <- cbind.data.frame("auto_call" = metric1, "comb_score" = met )
-  met_df <- cbind.data.frame("auto_call" = metric1, "comb_score" = metric2 )
-  return(met_df)
-}
-
-
-
-##Experiments
-
-##scoring function5
-#DT_gene_tab_ISKS_MGRB_nCH_fil3 <- filt3_inp
-Ex_tab_noCH_filt3 <- cbind.data.frame(Ex_tab_noCH_filt3, sco_fun5(Ex_tab_noCH_filt3))
-
+##Total Exome count
+toMatch_var <- c("synonymous_variant", "frameshift_variant", "start_lost", "stop_gained",
+                 "missense_variant", "splice_region_variant",
+                 "splice_donor_variant", "splice_acceptor_variant",
+                 "protein_altering_variant")
+Ex_tab_noCH_filt3$vep_con1 <- unlist(lapply(strsplit(Ex_tab_noCH_filt3$vep_consequence, split = "&"), function(x)x[1]))
+Ex_tab_noCH_filt3 <- Ex_tab_noCH_filt3[grepl(paste(toMatch_var,collapse="|"), 
+                                             Ex_tab_noCH_filt3$vep_con1),]
 ##Changed on Aug12 after DT meeting
 ##for sept05_rect dataset
 ##DT nee suggestions: Oct-2-2019
 ##If C4 == ClinVar Benign; assign eigenphred score
-toMatch_ben <- c("Benign", "Benign/Likely_benign")
-Ex_tab_noCH_filt3$comb_score <- as.numeric(ifelse(grepl(paste(toMatch_ben,collapse="|"), 
-                                                        Ex_tab_noCH_filt3$clinvar_Clinical_Significance) & 
-                                                    Ex_tab_noCH_filt3$auto_call %in% "C4", Ex_tab_noCH_filt3$EigenPhred,
-                                                  Ex_tab_noCH_filt3$comb_score))
-#frameshift donot have eigenphred scores, hence they are assigned a score of 15 manually
-Ex_tab_noCH_filt3$comb_score <- ifelse(is.na(Ex_tab_noCH_filt3$comb_score), 15, Ex_tab_noCH_filt3$comb_score)
-##last 5 percent of protein sequence based score penalty
-Cterm_C3_C4 <- c("C3", "C4")
-Ex_tab_noCH_filt3$comb_score <- as.numeric(ifelse(Ex_tab_noCH_filt3$auto_call %in% Cterm_C3_C4 &
-                                                    Ex_tab_noCH_filt3$last_five_perc == 1, (Ex_tab_noCH_filt3$comb_score)/2,
-                                                  Ex_tab_noCH_filt3$comb_score))
-
-##remove benign variants
-
-Ex_tab_noCH_filt3 <- Ex_tab_noCH_filt3[Ex_tab_noCH_filt3$comb_score > 0,]
+# toMatch_ben <- c("Benign", "Benign/Likely_benign")
+# Ex_tab_noCH_filt3$comb_score <- as.numeric(ifelse(grepl(paste(toMatch_ben,collapse="|"), 
+#                                                         Ex_tab_noCH_filt3$clinvar_Clinical_Significance) & 
+#                                                     Ex_tab_noCH_filt3$auto_call %in% "C4", Ex_tab_noCH_filt3$EigenPhred,
+#                                                   Ex_tab_noCH_filt3$comb_score))
+# #frameshift donot have eigenphred scores, hence they are assigned a score of 15 manually
+# Ex_tab_noCH_filt3$comb_score <- ifelse(is.na(Ex_tab_noCH_filt3$comb_score), 15, Ex_tab_noCH_filt3$comb_score)
+# ##last 5 percent of protein sequence based score penalty
+# Cterm_C3_C4 <- c("C3", "C4")
+# Ex_tab_noCH_filt3$comb_score <- as.numeric(ifelse(Ex_tab_noCH_filt3$auto_call %in% Cterm_C3_C4 &
+#                                                     Ex_tab_noCH_filt3$last_five_perc == 1, (Ex_tab_noCH_filt3$comb_score)/2,
+#                                                   Ex_tab_noCH_filt3$comb_score))
+# 
+# ##remove benign variants
+# 
+# Ex_tab_noCH_filt3 <- Ex_tab_noCH_filt3[Ex_tab_noCH_filt3$comb_score > 0,]
 
 ##remove samples with multiple frameshift mutations in the same gene
 library(tidyr)
 library(dplyr)
-
+print("remove GATK artefacts")
 ## frameshifts; these are handled better in comb_ISKS_MGRB_var_filt.R script using same-gene-same-sample
 #Ex_tab_noCH_filt3 %>% filter(gene_symbol %in% "BRIP1" & vep_consequence %in% "frameshift_variant") %>% group_by(SAMPLE, gene_symbol) %>% summarise(n = n()) 
 fs_all <- Ex_tab_noCH_filt3[grepl("frameshift_variant", Ex_tab_noCH_filt3$vep_consequence),]
@@ -402,7 +303,8 @@ for(j in 1:dim(t3)[1]){
   f1 <- Ex_tab_noCH_filt3[Ex_tab_noCH_filt3$SAMPLE %in% t3$SAMPLE[j] &
                             Ex_tab_noCH_filt3$gene_symbol %in% t3$gene_symbol[j],]
   f1 <- f1[grep("frameshift_variant",f1$vep_consequence), ]
-  f1 <- f1[order(f1$VAF, f1$comb_score, decreasing = T),]
+ # f1 <- f1[order(f1$VAF, f1$comb_score, decreasing = T),]
+  f1 <- f1[order(f1$VAF, decreasing = T),]
   f1 <- f1[-1,]
 #  print(j)
   # Ex_tab_noCH_filt3_fs[[j]] <- f1[grep("frameshift_variant",f1$vep_consequence), ]
@@ -431,13 +333,36 @@ for(j in 1:dim(t3_mis)[1]){
 rm_ms <- do.call("rbind.data.frame", Ex_tab_noCH_filt3_ms)
 #rm_ms$filt_tab <- paste(rm_ms$SAMPLE, rm_ms$VARIANT, sep = "_")
 
+##for synonymous variants
+## mis-sense
+t1_syn <- Ex_tab_noCH_filt3[grepl("synonymous_variant",Ex_tab_noCH_filt3$vep_consequence),] %>% group_by(SAMPLE, gene_symbol) %>% summarise(n = n()) 
+
+t2_syn <- as.data.frame(t1_syn)
+
+t3_syn <- t2_syn[t2_syn$n > 3,]
+
+Ex_tab_noCH_filt3_syn <- list()
+if(dim(t3_syn)[1] > 0){
+for(j in 1:dim(t3_syn)[1]){
+  f3 <- Ex_tab_noCH_filt3[Ex_tab_noCH_filt3$SAMPLE %in% t3_syn$SAMPLE[j] &
+                            Ex_tab_noCH_filt3$gene_symbol %in% t3_syn$gene_symbol[j],]
+  
+  Ex_tab_noCH_filt3_syn[[j]] <- f3[f3$vep_consequence %in% "synonymous_variant", ]
+  
+}
+} else{Ex_tab_noCH_filt3_syn <- NULL }
+
+if(!is.null(Ex_tab_noCH_filt3_syn)){
+rm_syn <- do.call("rbind.data.frame", Ex_tab_noCH_filt3_syn)
+}else{rm_syn <- NULL}
+
 ##combine the sets to remove from 
 
-rm_fin <- rbind.data.frame(rm_fs, rm_ms)
+rm_fin <- rbind.data.frame(rm_fs, rm_ms, rm_syn)
 rm_fin$filt_tab <- paste(rm_fin$SAMPLE, rm_fin$VARIANT, sep = "_")
 ##retain C5 variants, "start_lost", "stop_gained"
-rm_fin <- rm_fin[rm_fin$auto_call %nin% "C5",]
-rm_fin <- rm_fin[rm_fin$vep_consequence %nin% c("start_lost", "stop_gained"),]
+#rm_fin <- rm_fin[rm_fin$auto_call %nin% "C5",]
+#rm_fin <- rm_fin[rm_fin$vep_consequence %nin% c("start_lost", "stop_gained"),]
 
 Ex_tab_noCH_filt3$filt_tab <- paste(Ex_tab_noCH_filt3$SAMPLE, Ex_tab_noCH_filt3$VARIANT, sep = "_")
 
@@ -452,17 +377,12 @@ Ex_tab_noCH_filt3_fin$QC2 <- ifelse(Ex_tab_noCH_filt3_fin$SAMPLE %in% QC2_dat_fa
 ##QC2 failed samples: ("1383", "AABTU", "1", "AACDY")
 Ex_tab_noCH_filt3_fin_filt <- Ex_tab_noCH_filt3_fin[Ex_tab_noCH_filt3_fin$QC2 %in% "pass",]
 
-Ex_tab_noCH_filt3_fin_filt <- Ex_tab_noCH_filt3_fin[as.character(Ex_tab_noCH_filt3_fin$auto_call) %nin% "B",]
+#Ex_tab_noCH_filt3_fin_filt <- Ex_tab_noCH_filt3_fin[as.character(Ex_tab_noCH_filt3_fin$auto_call) %nin% "B",]
 
 Ex_tab_noCH_filt3_fin_filt$set <- c("MGRB_AR_AD")
 
-#Ex_tab_noCH_filt3_fin_filt[Ex_tab_noCH_filt3_fin_filt$gene_symbol %in% "POT1" & 
-#                             Ex_tab_noCH_filt3_fin_filt$auto_call != "B",c(1,4,9:10,37:38)]
-#write.table(Ex_tab_noCH_filt3_fin_filt, file = "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/all_isks_combset2020_variants_AR_AD_all_fields_rnd3.tsv",
-#            row.names = F, quote = F, sep = "\t")
 
-
-write.table(Ex_tab_noCH_filt3_fin_filt, file = "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/MGRB/all_mgrb_combset2020_variants_AR_AD_all_fields_clingene_rnd3.tsv",
+write.table(Ex_tab_noCH_filt3_fin_filt, file = "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/all_mgrb_combset2020_variants_AR_AD_exome_count_clingene_rnd3_freeze.tsv",
             row.names = F, quote = F, sep = "\t")
 
 
