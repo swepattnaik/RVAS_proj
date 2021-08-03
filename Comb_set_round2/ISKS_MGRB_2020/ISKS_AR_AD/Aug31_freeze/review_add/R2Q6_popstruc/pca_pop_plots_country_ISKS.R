@@ -77,7 +77,7 @@ g23 <- ggplot(scores, aes(x = PC2, y = PC3, colour = Country)) + geom_point() + 
   geom_vline(xintercept = -0.1, lty = 2) + geom_hline(yintercept = -0.05, lty = 2)
 
 source("~/APCluster_graphs/case_TCGA_new_PRAD_3431/multi_plot.R")
-multiplot(g12, g13, g23, cols = 1)
+#multiplot(g12, g13, g23, cols = 1)
 ##stat ellipse
 ##factor: predicted superPopulation
 
@@ -127,7 +127,7 @@ multiplot(g12, k12, p12, g13, k13, p13, g23, k23, p23, cols = 3)
 
 ##Subset based on PC1
 
-#scores_1000sub_PC1 <- scores[scores$PC1 < -0.2,]
+scores_1000sub_PC1 <- scores[scores$PC1 < -0.2,]
 scores_1000sub_PC23 <- scores[scores$PC2 < -0.07 & scores$PC3 < 0.05,] #use this
 table(scores_sub_PC2$rect_sam %in% scores_sub_PC1$rect_sam)
 
@@ -135,7 +135,13 @@ table(scores_sub_PC2$rect_sam %in% scores_sub_PC1$rect_sam)
 fil_tab <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/all_isksmgrb_skatinp_combset2020_clin_C3C4C5_NFE0002_AD_rm_dup_freeze.tsv", 
                       sep = "\t", header = T, stringsAsFactors = F)
 
-genes_outlier <- unique(fil_tab[fil_tab$SAMPLE %in% scores_sub_PC1$rect_sam,]$gene_symbol)
+fil_tab_PC1_sub <- fil_tab[fil_tab$SAMPLE %nin% scores_1000sub_PC1$rect_sam,]
+
+write.table(fil_tab_PC1_sub, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/all_isksmgrb_skatinp_combset2020_clin_C3C4C5_NFE0002_AD_rm_dup_freeze_rev_PC1_sub.tsv",
+            sep = "\t", quote = F, row.names = F)
+
+
+genes_outlier <- unique(fil_tab[fil_tab$SAMPLE %in% scores_1000sub_PC1$rect_sam,]$gene_symbol)
 
 Shelterin <- c("POT1", "TINF2", "TERF1", "TERF2", "TERF2IP", "SMARCAL1", "STAG3", "TIMELESS")
 CEP_HAUS_core <- c("CEP63", "CEP72", "HAUS4", "HAUS5", "MZT1", "SSNA1")
