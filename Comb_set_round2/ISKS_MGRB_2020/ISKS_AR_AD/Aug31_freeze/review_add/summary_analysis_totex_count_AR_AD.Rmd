@@ -41,6 +41,12 @@ gg_qqplot_genes <- function(data, ci = 0.95, genes, SKAT = NULL) {
     gene_ID <- as.character(data[order(data$pval_SKATbin, decreasing = F),]$symbol)
     ps <- data$pval_SKATbin
   }
+  else if(SKAT == "pval_SKATburden"){
+    data$symbol <- ifelse(is.na(data$symbol), as.character(data$eg_ID) , as.character(data$symbol) )
+    gene_top <- head(as.character(data[order(data$pval_SKATburden, decreasing = F),]$symbol), 10)
+    gene_ID <- as.character(data[order(data$pval_SKATburden, decreasing = F),]$symbol)
+    ps <- data$pval_SKATburden
+  }
   else if(SKAT == "pval_SKAT"){
     data$symbol <- ifelse(is.na(data$symbol), as.character(data$eg_ID) , as.character(data$symbol) )
     gene_top <- head(as.character(data[order(data$pval_SKAT, decreasing = F),]$symbol), 10)
@@ -102,7 +108,7 @@ C3/C4 Variants in the last 5 percent of the C-terminal region of the protein = a
 #Exome_skat <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/SKAT/Exome_skat_para_result_isks_no1000G_PC1234_ver4_clinrect_Aug31.rds")
 
 ##no1000G.pc1234, gender, totex
-Exome_skat <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/SKAT/Exome_skat_para_result_isks_no1000G_PC1234_ver4_totex.rds")
+Exome_skat <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/SKAT/Exome_skat_para_result_isks_totex_count_PC1234_ver4_clinrect_Aug31_subPC1.rds")
 
 ##totex, pc1234, gender
 #Exome_skat <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/SKAT/Exome_skat_para_result_isks_totex_count_PC1234_ver4_clinrect_Aug31.rds")
@@ -122,20 +128,35 @@ multiplot(plotlist = SKAT_plots_eigen, cols = 2)
 
 ```
 
+```{r}
+##PC1234, gender, totex, EMMAX
+
+#Exome_skat <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/SKAT/Exome_skat_para_result_isks_totex_count_noPC1234_ver4_clinrect_Aug31_subPC1_EMMAX.rds")
+
+Exome_skat <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/SKAT/Exome_skat_para_result_isks_totex_count_PC1234_subPC1_EMMAX.rds")
+
+Exome_EMMAX_SKAT <- do.call("rbind.data.frame", Exome_skat)
+colnames(Exome_EMMAX_SKAT)[1] <- "symbol" 
+gg_qqplot_genes(data = Exome_EMMAX_SKAT, ci = 0.95, genes = Exome_EMMAX_SKAT[,1], SKAT = "pval_SKATburden")
+
+```
+
 
 ```{r, out.width='\\textwidth', fig.height = 7, fig.align='center', echo=FALSE}
 ##Add filtering option to final set by limiting the gene set to using a total variant cutoff of greater than
 ## or equal to 3
 
 #Exome_skat <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/Exome_skat_para_result_isks_combset2020_uni_MAF_PC1234_ver4_clinrect.rds")
-Exome_skat <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/SKAT/Exome_skat_para_result_isks_totex_count_PC1234_ver4_clinrect_Aug31.rds")
+Exome_skat <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/SKAT/Exome_skat_para_result_isks_totex_count_PC1234_ver4_clinrect_Aug31_subPC1.rds")
 df_skat <- lapply(Exome_skat, function(x)do.call("rbind.data.frame", x))
 Exome_pc123_srt_SKAT <- lapply(df_skat, function(x) x[order(x$pval_SKATbin, decreasing = F),])
 Exome_pc123_srt_SKAT <- lapply(Exome_pc123_srt_SKAT, function(x){colnames(x)[1] <- c("symbol"); return(x)})
-Exome_pc123_srt_SKAT_df <- Exome_pc123_srt_SKAT[[4]]
+###
+#Exome_pc123_srt_SKAT_df <- Exome_pc123_srt_SKAT[[4]]
+Exome_pc123_srt_SKAT_df <- Exome_EMMAX_SKAT
 Exome_pc123_srt_SKAT_case_enr_nCH <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/Exome_para_pc1234_SKAT_Enriched_ISKS_2020_Aug31.rds")
 Exome_pc123_srt_SKAT_case_enr_nCH_df <- Exome_pc123_srt_SKAT_case_enr_nCH[[4]]
-
+Exome_pc123_srt_SKAT_case_enr_nCH_df <- Exome_pc123_srt_SKAT_case_enr_nCH_df[Exome_pc123_srt_SKAT_case_enr_nCH_df$gene %in% Exome_pc123_srt_SKAT_df$symbol,]
 ##Add p-value
 #Exome_pc123_srt_SKAT_case_enr_nCH_pval <- Map(cbind.data.frame, Exome_pc123_srt_SKAT_case_enr_nCH, Exome_pc123_srt_SKAT)
 Exome_pc123_srt_SKAT_case_enr_nCH_df_srt <- Exome_pc123_srt_SKAT_case_enr_nCH_df[match(as.character(Exome_pc123_srt_SKAT_df$symbol),as.character(Exome_pc123_srt_SKAT_case_enr_nCH_df$gene)),]
@@ -150,12 +171,17 @@ Exome_pc123_srt_SKAT_case_enr_nCH_pval <- cbind.data.frame(Exome_pc123_srt_SKAT_
 ##Add condition to remove genes with less than 3 variants in case + control
 Exome_pc123_srt_SKAT_case_enr_nCH_pval <- Exome_pc123_srt_SKAT_case_enr_nCH_pval[Exome_pc123_srt_SKAT_case_enr_nCH_pval$pval_SKATbin < 0.1 & Exome_pc123_srt_SKAT_case_enr_nCH_pval$wt_diff > 0,]
 
+##EMMAX
+Exome_pc123_srt_SKAT_case_enr_nCH_pval <- Exome_pc123_srt_SKAT_case_enr_nCH_pval[Exome_pc123_srt_SKAT_case_enr_nCH_pval$pval_SKATburden < 0.1 & Exome_pc123_srt_SKAT_case_enr_nCH_pval$wt_diff > 0,]
+
 ##Better option for Enriched list: sort by -log(p_val) * weight difference ; appropriately factors influence of variant on ISKS phenotype
 ##use SKATO p-value; go back to using SKATbin (x[,14])
 # Exome_pc123_srt_SKAT_case_enr_nCH_ranked <- lapply(Exome_pc123_srt_SKAT_case_enr_nCH_pval, 
 #                                                   function(x) cbind.data.frame(x, "rank_score" = -log10(x[,14]) * x[,6])) ##added intra cohort MAF filtered variant positions
 
-Exome_pc123_srt_SKAT_case_enr_nCH_pval$rank_score <- -log10(Exome_pc123_srt_SKAT_case_enr_nCH_pval$pval_SKATbin) * Exome_pc123_srt_SKAT_case_enr_nCH_pval$wt_diff
+#Exome_pc123_srt_SKAT_case_enr_nCH_pval$rank_score <- -log10(Exome_pc123_srt_SKAT_case_enr_nCH_pval$pval_SKATbin) * Exome_pc123_srt_SKAT_case_enr_nCH_pval$wt_diff
+
+Exome_pc123_srt_SKAT_case_enr_nCH_pval$rank_score <- -log10(Exome_pc123_srt_SKAT_case_enr_nCH_pval$pval_SKATburden) * Exome_pc123_srt_SKAT_case_enr_nCH_pval$wt_diff
                                                     
 Exome_pc123_srt_SKAT_case_enr_nCH_ranked <- Exome_pc123_srt_SKAT_case_enr_nCH_pval[order(Exome_pc123_srt_SKAT_case_enr_nCH_pval$rank_score, decreasing = T),] ##added intra cohort MAF filtered variant positions
 
@@ -272,7 +298,10 @@ stopCluster(cl)
 fisher_res <- do.call("rbind.data.frame",para_fish)
 ppi_res_fil_final <- cbind.data.frame(gender_PC123_cont_df, fisher_res)
 #write.table(ppi_res_fil_final, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/ppi_res_fil_final_SKATbin_Aug31.tsv", sep = "\t", row.names = F, quote = F)
-write.table(ppi_res_fil_final, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/SKAT/ppi_res_fil_final_SKATbin_totex_2021.tsv", sep = "\t", row.names = F, quote = F)
+#write.table(ppi_res_fil_final, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/SKAT/ppi_res_fil_final_SKATbin_totex_2021.tsv", sep = "\t", row.names = F, quote = F)
+#write.table(ppi_res_fil_final, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/SKAT/ppi_res_fil_final_SKATbin_totex_2021_subPC1.tsv", sep = "\t", row.names = F, quote = F)
+write.table(ppi_res_fil_final, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/SKAT/ppi_res_fil_final_SKATbin_totex_2021_subPC1_EMMAX_noPC.tsv", sep = "\t", row.names = F, quote = F)
+
 
 
 ```
@@ -281,7 +310,7 @@ write.table(ppi_res_fil_final, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/
 ##Cliques in the enriched set of genes
 ```{r, out.width='\\textwidth', fig.height = 7, fig.align='center', echo=FALSE}
 ######Cliques in uniongraph (enriched cliques from SKAT)
-ppi_res_fil_final <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/SKAT/ppi_res_fil_final_SKATbin_totex_2021.tsv", sep = "\t", header = T)
+ppi_res_fil_final <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/SKAT/ppi_res_fil_final_SKATbin_totex_2021_subPC1.tsv", sep = "\t", header = T)
 top_genes <- as.character(ppi_res_fil_final$gene)
 can_net_graph <- igraph::graph.data.frame(can_net, directed = F)
 can_net_graph1 <- igraph::simplify(can_net_graph, remove.loops=T, remove.multiple = T)
@@ -373,7 +402,7 @@ theme(legend.position = "bottom")
 ##combine biogrid and stringdb
 
 #ppi_res_fil_final <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/ppi_res_fil_final_SKATbin_Aug31.tsv", sep = "\t", header = T, stringsAsFactors = F)
-ppi_res_fil_final <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/SKAT/ppi_res_fil_final_SKATbin_totex_2021.tsv", sep = "\t", header = T)
+ppi_res_fil_final <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/SKAT/ppi_res_fil_final_SKATbin_totex_2021_subPC1.tsv", sep = "\t", header = T)
 
 top_genes_enr <- as.character(ppi_res_fil_final$gene)
 
@@ -491,7 +520,7 @@ ppi_res_fil_final_comb <- cbind.data.frame(ppi_res_fil_final,fisher_res_str, fis
 colnames(ppi_res_fil_final_comb)[32:37] <- paste0(colnames(ppi_res_fil_final_comb)[32:37], "_biog")
 
 #write.table(ppi_res_fil_final_comb, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/ppi_res_fil_final_SKATbin_comb_str_biog_Aug31.tsv", sep = "\t", row.names = F, quote = F)
-write.table(ppi_res_fil_final_comb, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/SKAT/ppi_res_fil_final_SKATbin_comb_str_biog_totex.tsv", sep = "\t", row.names = F, quote = F)
+write.table(ppi_res_fil_final_comb, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/SKAT/ppi_res_fil_final_SKATbin_comb_str_biog_totex_subPC1.tsv", sep = "\t", row.names = F, quote = F)
 
 ```
 
@@ -693,7 +722,7 @@ write.table(ppi_res_fil_final_comb, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_
 
 ##Use ASRB subtracted gene list
 
-ppi_res_fil_final_comb <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/SKAT/ppi_res_fil_final_SKATbin_comb_str_biog_totex.tsv", sep = "\t", header = T,
+ppi_res_fil_final_comb <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/SKAT/ppi_res_fil_final_SKATbin_comb_str_biog_totex_subPC1.tsv", sep = "\t", header = T,
                            stringsAsFactors = F)
 ##too many cliques and the graph is too crowded
 #top_genes <- as.character(ppi_res_fil_final_comb[ppi_res_fil_final_comb$PPI_p_val_wt_str < 0.01 & ppi_res_fil_final_comb$MGRB <= 14,]$gene)
@@ -749,7 +778,7 @@ for(i in 1:length(cliq_size)){
 ## Jaccard similarity function
 library(arrangements)
 make_matrix <- function(cliq_list) {
-  
+  if(length(cliq_list) > 1){
   comb <- combinations(names(cliq_list), 2, replace = F)
  # comb_ind <- apply(comb, 1, function(x) ifelse(x[1] == x[2], 0, 1))
  # comb <- comb[which(comb_ind == 1),]
@@ -778,6 +807,8 @@ make_matrix <- function(cliq_list) {
   colnames(comb1)[2] <- "m2"
   
   return(comb1)
+  }
+  else { return(names(cliq_list))}
  
 }
 
@@ -800,7 +831,10 @@ ids_to_merge <- names(cliq_size_ids[[2]]) %in% t1_cliq3
 #cpx <- gsub("^c_.*\\.", "", names(unlist(cliq_size_ids[[2]][ids_to_merge])))
 cpx <- gsub("^c_.*\\.", "", names(unlist(cliq_size_ids[[2]][ids_to_retain])))
 #cpx <- names(unlist(te3))
-cpx <- clique_genes #(names(unlist(te3)))
+te4 <- te3
+names(te4) <-NULL
+cpx <- unique(names(unlist(te4)))
+#cpx <- clique_genes #(names(unlist(te3)))
 cpx_np_all <- unique(can_net1[as.character(can_net1$from) %in% cpx 
                                & as.character(can_net1$to) %in% cpx, ])
 cpx_graph <- igraph::graph.data.frame(cpx_np_all, directed = F)
@@ -823,6 +857,7 @@ top_genes <- as.character(ppi_res_fil_final_comb[ppi_res_fil_final_comb$PPI_p_va
                                                    ppi_res_fil_final_comb$MGRB <= 14,]$gene)
 #can_net_graph <- igraph::graph.data.frame(can_net, directed = F)
 #can_net_graph1 <- igraph::simplify(can_net_graph, remove.loops=T, remove.multiple = T)
+strindb_biog_graph1 <- igraph::simplify(strindb_biog_graph1, remove.loops=T, remove.multiple = T)
 can_net1 <- igraph::as_data_frame(strindb_biog_graph1, what = "edges")
 prot_np_all <- unique(can_net1[as.character(can_net1$from) %in% top_genes 
                                & as.character(can_net1$to) %in% top_genes, ])

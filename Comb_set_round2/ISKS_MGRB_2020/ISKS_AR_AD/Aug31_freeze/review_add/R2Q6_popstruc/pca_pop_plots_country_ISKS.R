@@ -66,15 +66,22 @@ scores$Country <- ifelse((!grepl("^[ABZ]",scores$sample) & (scores$Country %in% 
 
 ggplot(scores, aes(x = PC1, y = PC2, colour = Country)) + geom_point() + theme_bw()
 
+scores = scores[scores$Country %nin% "Unknown",]
+
+# g12 <- ggplot(scores, aes(x = PC1, y = PC2, colour = Country)) + geom_point() + theme_bw() + 
+#   theme(legend.position="bottom", legend.title = element_blank()) + 
+#   geom_vline(xintercept = -0.2, lty = 2) + geom_hline(yintercept = -0.1, lty = 2)
 g12 <- ggplot(scores, aes(x = PC1, y = PC2, colour = Country)) + geom_point() + theme_bw() + 
   theme(legend.position="bottom", legend.title = element_blank()) + 
-  geom_vline(xintercept = -0.2, lty = 2) + geom_hline(yintercept = -0.1, lty = 2)
+  geom_vline(xintercept = -0.2, lty = 2) 
 g13 <- ggplot(scores, aes(x = PC1, y = PC3, colour = Country)) + geom_point() + theme_bw() +
   geom_vline(xintercept = -0.2, lty = 2) + 
   theme(legend.position="bottom", legend.title = element_blank()) 
 g23 <- ggplot(scores, aes(x = PC2, y = PC3, colour = Country)) + geom_point() + theme_bw() + 
-  theme(legend.position="bottom", legend.title = element_blank()) + 
-  geom_vline(xintercept = -0.1, lty = 2) + geom_hline(yintercept = -0.05, lty = 2)
+  theme(legend.position="bottom", legend.title = element_blank()) 
+# g23 <- ggplot(scores, aes(x = PC2, y = PC3, colour = Country)) + geom_point() + theme_bw() + 
+#   theme(legend.position="bottom", legend.title = element_blank()) + 
+#   geom_vline(xintercept = -0.1, lty = 2) + geom_hline(yintercept = -0.05, lty = 2)
 
 source("~/APCluster_graphs/case_TCGA_new_PRAD_3431/multi_plot.R")
 #multiplot(g12, g13, g23, cols = 1)
@@ -89,11 +96,11 @@ ggplot(scores, aes(x = PC1, y = PC2, colour = pred.superPop)) +
 p12 <- ggplot(scores, aes(x = PC1, y = PC2, colour = pred.superPop)) + geom_point() + theme_bw() + 
   stat_ellipse(type = "norm", linetype = 2) + theme(legend.position="bottom") +
   theme(legend.title = element_blank()) + 
-  stat_ellipse(level = 0.95)
+  stat_ellipse(level = 0.95) + geom_vline(xintercept = -0.2, lty = 2) 
 p13 <- ggplot(scores, aes(x = PC1, y = PC3, colour = pred.superPop)) + geom_point() + theme_bw() + 
   stat_ellipse(type = "norm", linetype = 2) + theme(legend.position="bottom") +
   theme(legend.title = element_blank()) +
-  stat_ellipse(level = 0.95)
+  stat_ellipse(level = 0.95) + geom_vline(xintercept = -0.2, lty = 2) 
 p23 <- ggplot(scores, aes(x = PC2, y = PC3, colour = pred.superPop)) + geom_point() + theme_bw() + 
   stat_ellipse(type = "norm", linetype = 2) + theme(legend.position="bottom") +
   theme(legend.title = element_blank()) +
@@ -103,15 +110,20 @@ p23 <- ggplot(scores, aes(x = PC2, y = PC3, colour = pred.superPop)) + geom_poin
 
 ##factor: MGRB or ISKS
 scores$superPopulation <- ifelse(scores$superPopulation %in% "MGRB", "MGRB", "ISKS")
+# k12 <- ggplot(scores, aes(x = PC1, y = PC2, colour = superPopulation)) + geom_point() + theme_bw() + 
+#   theme(legend.position="bottom", legend.title = element_blank()) + 
+#   geom_vline(xintercept = -0.2, lty = 2) + geom_hline(yintercept = -0.1, lty = 2)
 k12 <- ggplot(scores, aes(x = PC1, y = PC2, colour = superPopulation)) + geom_point() + theme_bw() + 
   theme(legend.position="bottom", legend.title = element_blank()) + 
-  geom_vline(xintercept = -0.2, lty = 2) + geom_hline(yintercept = -0.1, lty = 2)
+  geom_vline(xintercept = -0.2, lty = 2)
 k13 <- ggplot(scores, aes(x = PC1, y = PC3, colour = superPopulation)) + geom_point() + theme_bw() +
   geom_vline(xintercept = -0.2, lty = 2) + 
   theme(legend.position="bottom", legend.title = element_blank()) 
 k23 <- ggplot(scores, aes(x = PC2, y = PC3, colour = superPopulation)) + geom_point() + theme_bw() + 
-  theme(legend.position="bottom", legend.title = element_blank()) + 
-  geom_vline(xintercept = -0.1, lty = 2) + geom_hline(yintercept = -0.05, lty = 2)
+  theme(legend.position="bottom", legend.title = element_blank()) 
+# k23 <- ggplot(scores, aes(x = PC2, y = PC3, colour = superPopulation)) + geom_point() + theme_bw() + 
+#   theme(legend.position="bottom", legend.title = element_blank()) + 
+#   geom_vline(xintercept = -0.1, lty = 2) + geom_hline(yintercept = -0.05, lty = 2)
 
 #multiplot(k12, k13, k23, cols = 3)
 
@@ -130,6 +142,8 @@ multiplot(g12, k12, p12, g13, k13, p13, g23, k23, p23, cols = 3)
 scores_1000sub_PC1 <- scores[scores$PC1 < -0.2,]
 scores_1000sub_PC23 <- scores[scores$PC2 < -0.07 & scores$PC3 < 0.05,] #use this
 table(scores_sub_PC2$rect_sam %in% scores_sub_PC1$rect_sam)
+
+write.table(scores[scores$PC1 < -0.2,]$rect_sam, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/git_proj_rvas/Comb_set_round2/ISKS_MGRB_2020/ISKS_AR_AD/Aug31_freeze/review_add/R2Q6_popstruc/Results/rm_13_outlier_list.txt", sep = "", row.names = F, quote = F)
 
 ##Variant file used for SKAT
 fil_tab <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/all_isksmgrb_skatinp_combset2020_clin_C3C4C5_NFE0002_AD_rm_dup_freeze.tsv", 

@@ -35,7 +35,10 @@ write.table(Ex_tab_sarc, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/c
 ##start gridsearch
 Ex_tab_sarc <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/R2Q8/Ex_tab_sarc_genes_rnd3_freeze.tsv",
                           sep = "\t", header = T, stringsAsFactors = F)
-grid_scenario <- c(0, 0.0001, 0.0002, 0.0004, 0.0016, 0.0128)
+#grid_scenario <- c(0, 0.0001, 0.0002, 0.0004, 0.0016, 0.0128)
+grid_scenario <- numeric()
+  for (i in 0:7){grid_scenario[i+1] = (0.0001 * 2^i)} #covers the entire range of rare variants
+grid_scenario = c(0, grid_scenario)
 Ex_tab_sarc_C45 <- Ex_tab_sarc[Ex_tab_sarc$auto_call %in% c("C4", "C5"),]
 table(Ex_tab_sarc[Ex_tab_sarc$auto_call %in% c("C4", "C5"),]$set)
 summary(Ex_tab_sarc_C45$gnomad_AF_NFE)
@@ -47,6 +50,7 @@ for(i in 1:length(grid_scenario)){
 }
 
 mgrb_isks_list_df <- do.call("rbind.data.frame", mgrb_isks_list)
+#mgrb_isks_list_df$log_AF = -log2(mgrb_isks_list_df$gnomad_AF_NFE)
 library(ggplot2)
 gg1 <- ggplot(data=mgrb_isks_list_df,
        aes(x=gnomad_AF_NFE, y=Freq, colour=Var1)) + scale_x_continuous(trans='log2') + 
@@ -68,19 +72,25 @@ mgrb_isks_list_ft <- lapply(mgrb_isks_list, function(x)cpx_OR_fisher_sarc(x[1,2]
 mgrb_isks_list_ft_df <- do.call("rbind.data.frame", mgrb_isks_list_ft)
 mgrb_isks_list_ft_df$NFE <- grid_scenario
 
+##final plot
 library(ggplot2)
 
+scaleFUN <- function(x) sprintf("%.5f", x)
   fp <- ggplot(data=mgrb_isks_list_ft_df, aes(x=NFE, y=log2(OR_Fish), ymin=log2(CI_lower), 
                                               ymax=log2(CI_upper))) +
   geom_pointrange() + 
   geom_hline(yintercept=0, lty=2) +  # add a dotted line at x=1 after flip
   coord_flip() +  # flip coordinates (puts labels on y axis)
-  scale_x_continuous(trans='log2') + 
-  xlab("NFE") + ylab("OR Mean (95% CI)") +
-  theme_bw()  # use a white background
-
-  fp
-  fp + annotation_logticks()
+  scale_x_continuous(trans='log2', labels = scaleFUN) + 
+  xlab("gnomAD_AF_NFE") + ylab("log(OR) Mean (95% CI)") +
+  theme_bw() + # use a white background
+    theme(panel.grid.minor.y = element_blank(),
+          panel.grid.major.y = element_blank())
+  fp1 = fp + xlim(-0.00001, 0.013) + geom_vline(xintercept = 0.0002, lty = 2, color = "red")
+  fp2 = fp + geom_vline(xintercept = 0.0002, lty = 2, color = "red") 
+  #fp + theme(axis.text.x = element_text(vjust = 0.5)) + geom_hline(yintercept = 0.0002, lty = 2, color = "red")
+  #fp + annotation_logticks()
+  multiplot(fp1, fp2, cols = 2)
   
   
   #   scale_x_continuous(breaks = log2(c(0, 0.0001, 0.0002, 0.0004, 0.0016, 0.0128),

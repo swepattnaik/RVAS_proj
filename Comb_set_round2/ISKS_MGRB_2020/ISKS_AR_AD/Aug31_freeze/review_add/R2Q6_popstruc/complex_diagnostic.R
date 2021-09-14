@@ -17,8 +17,8 @@ cpx_OR_fisher_one <- function(ppi_res,case_coh_size, cont_coh_size, cpx_list, su
   
   ppi_res_tab <- ppi_res[ppi_res$gene %in% cpx_list,]
   # ppi_res_tab[,2] <- ifelse(ppi_res_tab[,2] == 0, 1, ppi_res_tab[,2])
-  inp <- c(sum(ppi_res_tab[,1]) - sub_case , case_coh_size - sum(ppi_res_tab[,1]) - sub_ISKS , 
-           sum(ppi_res_tab[,2]) - sub_cont, cont_coh_size - sum(ppi_res_tab[,2]) - sub_MGRB)
+  inp <- c(sum(ppi_res_tab[,1]) - sub_case , case_coh_size - sub_ISKS - (sum(ppi_res_tab[,1]) - sub_case), 
+           sum(ppi_res_tab[,2]) - sub_cont, cont_coh_size - sub_MGRB - (sum(ppi_res_tab[,2]) - sub_cont))
   sim_mat <- matrix(inp ,nrow = 2, ncol = 2)
   colnames(sim_mat) <- c("case", "cont")
   rownames(sim_mat) <- c("hits", "no_hits")

@@ -97,51 +97,88 @@ p_Data_noCH$totex_count <- tot_exome_count[match(p_Data_noCH$rect_sam, tot_exome
 #binary phenotype vector 
 p_vec <- ifelse(!is.na(as.numeric(as.character(p_Data_noCH$rect_sam))) | grepl("^CR|^LK",as.character(p_Data_noCH$rect_sam)), 1, 0)
 
+##Add EMMAX GRM
+mat_GRM <- readRDS("~/RVAS/comb_set_2020/PC_relate/ldpruned/GRM_ISKS_MGRB.rds")
+samp_all <- as.data.frame(colnames(mat_GRM))
+#table(grepl("^[ABZ]", samp_all$Samp))
+colnames(samp_all)[1] <- "Samp"
+samp_all$Coh <- ifelse(grepl("^[ABZ]", samp_all$Samp), "MGRB", "ISKS")
+rect_sam_dat <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/PID/ISKS_RISC_LIONS_final_freeze.tsv",
+                           sep = "\t", header = T, stringsAsFactors = F)
+samp_all$rect_sam <- rect_sam_dat[match(samp_all$Samp,rect_sam_dat$JCInputID),9]
+rect_MGRB <- Ex_samp_id[grepl("^[ABZ]", Ex_samp_id)]
+rect_ISKS <- Ex_samp_id[!grepl("^[ABZ]", Ex_samp_id)]
+samp_all$rect_sam_MGRB <- rect_MGRB[match(samp_all$Samp, rect_MGRB)]
+samp_all$rect_sam_ind <-  ifelse(!is.na(samp_all$rect_sam) & samp_all$rect_sam %in% rect_ISKS, 1,
+                                 ifelse(!is.na(samp_all$rect_sam_MGRB), 1, 0))
+coalesce2 <- function(...) {
+  Reduce(function(x, y) {
+    i <- which(is.na(x))
+    x[i] <- y[i]
+    x},
+    list(...))
+}
+samp_all$coal <- coalesce2(samp_all$rect_sam,samp_all$rect_sam_MGRB)
+
+mat_GRM_rect <- mat_GRM[which(samp_all$rect_sam_ind == 1), which(samp_all$rect_sam_ind == 1)]
+colnames(mat_GRM_rect) <- samp_all[which(samp_all$rect_sam_ind == 1),]$coal
+rownames(mat_GRM_rect) <- samp_all[which(samp_all$rect_sam_ind == 1),]$coal
+mat_GRM_rect <- mat_GRM_rect[,p_Data_noCH$rect_sam]
+mat_GRM_rect <- mat_GRM_rect[p_Data_noCH$rect_sam,]
+#saveRDS(mat_GRM_rect, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/mat_GRM_rect.rds", compress = T)
+
 ##SKAT null function with customised covariate
-SKAT_fun_null <- function(x=NULL, p_vec){
+SKAT_fun_null <- function(x=NULL, p_vec, GRM){
   if(is.null(x)){
-    obj_N <- SKAT::SKAT_Null_Model(p_vec ~ 1,out_type="D")
+    obj_N <- SKAT::SKAT_NULL_emmaX(p_vec ~ 1, K = GRM)
   }
   # else if(is.integer(x) || is.numeric()){
   else if(is.null(dim(x))){
-    obj_N <- SKAT::SKAT_Null_Model(p_vec ~ x,out_type="D")
+    obj_N <- SKAT::SKAT_NULL_emmaX(p_vec ~ x, K = GRM)
   }
   else if(dim(x)[2] > 1){
     nul_for <- as.formula(paste("p_vec", paste(colnames(x), collapse = " + "), sep = " ~ "))
-    obj_N <- SKAT::SKAT_Null_Model(nul_for, data = p_Data_noCH, out_type="D")
+    obj_N <- SKAT::SKAT_NULL_emmaX(nul_for, data = p_Data_noCH, K = GRM)
+  #  saveRDS(obj_N, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/Emmax_SKAT_NUll_obj.rds", compress = T)
     #  obj_N <- SKAT_Null_Model(nul_for, data = x, out_type="D")
   }
   return(obj_N)
 }
+#null_d <- SKAT_fun_null(p_Data_noCH[,c(54:55,19:22)], p_vec, mat_GRM_rect)
+##accounts for gender, total exome count and genetic relatedness
+null_d <- SKAT_fun_null(p_Data_noCH[,c(54:55)], p_vec, mat_GRM_rect)
 
 ##SKAT function for SKAT, SKATBinary, SKATO, SKAT_ERA
-SKAT_run <- function(geno_mat, gene, x=NULL, p_vec, cust_weight = NULL, rho = NULL){
+SKAT_run_new <- function(geno_mat, gene, null_obj=NULL, p_vec, cust_weight = NULL, rho = NULL){
   
-  if(dim(geno_mat)[2] > 1 ){
-    null_d <- SKAT_fun_null(x, p_vec)
-    pval_SKAT <- SKAT::SKAT(t(geno_mat), null_d, weights = cust_weight, r.corr = rho)$p.value
-    pval_SKATbin <- SKAT::SKATBinary(t(geno_mat), null_d, method = "Burden", weights = cust_weight)$p.value
+ # if(dim(geno_mat)[2] > 1 ){
+  #  null_d <- SKAT_fun_null(x, p_vec, GRM)
+    #null_d <- null_obj
+   # pval_SKAT <- SKAT::SKAT(t(geno_mat), null_d, weights = cust_weight, r.corr = rho)$p.value
+   # pval_SKATbin <- SKAT::SKATBinary(t(geno_mat), null_d, method = "Burden", weights = cust_weight)$p.value
+    pval_SKATburden <- SKAT::SKAT(t(geno_mat), null_obj, method = "Burden", weights = cust_weight)$p.value
     ##ER: Effective resampling for best p-value calculation
     # pval_SKATbin <- SKATBinary(t(geno_mat), null_d, method.bin = "ER", weights = cust_weight, r.corr = rho)$p.value
     #  pval_SKATO <- SKAT(t(geno_mat),null_d, method='optimal.adj', weights = cust_weight)$p.value ##r.corr will be ignored
-    pval_SKATO <- SKAT::SKATBinary(t(geno_mat),null_d, method='SKATO', weights = cust_weight)$p.value
-    pval_SKATera <- SKAT::SKATBinary(t(geno_mat),null_d, method.bin="ER.A", weights = cust_weight)$p.value
-    skat_pv <- cbind.data.frame("eg_ID" = gene, pval_SKAT, pval_SKATbin, pval_SKATO, pval_SKATera)
+  #  pval_SKATO <- SKAT::SKATBinary(t(geno_mat),null_d, method='SKATO', weights = cust_weight)$p.value
+  #  pval_SKATera <- SKAT::SKATBinary(t(geno_mat),null_d, method.bin="ER.A", weights = cust_weight)$p.value
+  #  skat_pv <- cbind.data.frame("eg_ID" = gene, pval_SKAT, pval_SKATbin, pval_SKATO, pval_SKATera)
+    skat_pv <- cbind.data.frame("eg_ID" = gene, pval_SKATburden)
     return(skat_pv)
-  }
-  else if(dim(geno_mat)[2] == 1){
-    null_d <- SKAT::SKAT_fun_null(x, p_vec)
-    pval_SKAT <- SKAT::SKAT(geno_mat, null_d, weights = cust_weight, r.corr = rho)$p.value
-    pval_SKATbin <- SKAT::SKATBinary(t(geno_mat), null_d, method = "Burden", weights = cust_weight)$p.value
-    ##ER: Effective resampling for best p-value calculation
-    # pval_SKATbin <- SKATBinary(t(geno_mat), null_d, method.bin = "ER", weights = cust_weight, r.corr = rho)$p.value
-    #pval_SKATO <- SKAT(geno_mat,null_d, method='optimal.adj', weights = cust_weight)$p.value ##r.corr will be ignored
-    pval_SKATO <- SKAT::SKATBinary(geno_mat,null_d, method='SKATO', weights = cust_weight)$p.value
-    pval_SKATera <- SKAT::SKATBinary(geno_mat,null_d, method.bin="ER.A", weights = cust_weight)$p.value
-    skat_pv <- cbind.data.frame("eg_ID" = gene, pval_SKAT, pval_SKATbin, pval_SKATO, pval_SKATera)
-    
-    return(skat_pv)
-  }
+#  }
+  # else if(dim(geno_mat)[2] == 1){
+  #   null_d <- SKAT::SKAT_fun_null(x, p_vec, GRM)
+  #   pval_SKAT <- SKAT::SKAT(geno_mat, null_d, weights = cust_weight, r.corr = rho)$p.value
+  #   pval_SKATbin <- SKAT::SKATBinary(t(geno_mat), null_d, method = "Burden", weights = cust_weight)$p.value
+  #   ##ER: Effective resampling for best p-value calculation
+  #   # pval_SKATbin <- SKATBinary(t(geno_mat), null_d, method.bin = "ER", weights = cust_weight, r.corr = rho)$p.value
+  #   #pval_SKATO <- SKAT(geno_mat,null_d, method='optimal.adj', weights = cust_weight)$p.value ##r.corr will be ignored
+  #   pval_SKATO <- SKAT::SKATBinary(geno_mat,null_d, method='SKATO', weights = cust_weight)$p.value
+  #   pval_SKATera <- SKAT::SKATBinary(geno_mat,null_d, method.bin="ER.A", weights = cust_weight)$p.value
+  #   skat_pv <- cbind.data.frame("eg_ID" = gene, pval_SKAT, pval_SKATbin, pval_SKATO, pval_SKATera)
+  #   
+  #   return(skat_pv)
+  # }
 }
 
 ##Run SKAT on variants collapsed by gene
@@ -248,9 +285,9 @@ para_SKAT <- function(genes){
     #  samp_vec_mat <- samp_vec_mat[as.numeric(as.character(samp_vec_mat$coh_MAF_cont)) <= 0.001,]
     
     if(is.null(dim(samp_vec_mat)) | dim(samp_vec_mat)[1] == 0) {
-      skat_pvals <- NULL
-      skat_pvals_pc12 <- NULL
-      skat_pvals_sex <- NULL
+      #skat_pvals <- NULL
+      #skat_pvals_pc12 <- NULL
+      #skat_pvals_sex <- NULL
       skat_pvals_sex_pc12 <- NULL
       # skat_pvals_age[[i]] <- NULL
       # skat_pvals_age_pc12[[i]] <- NULL
@@ -267,19 +304,20 @@ para_SKAT <- function(genes){
       class(gene_mat) <- "numeric"
       ##for strictly burden test set rho = 1, else set rho = 0
       ##no covariate
-      skat_pvals <- SKAT_run(geno_mat = gene_mat, gene = genes, x=NULL, p_vec, cust_weight = gene_mat_comb, rho = 1)
+     # skat_pvals <- SKAT_run(geno_mat = gene_mat, gene = genes, x=NULL, p_vec, cust_weight = gene_mat_comb, rho = 1, GRM = mat_GRM_rect)
       ##only pc1 + pc2
-      skat_pvals_pc12 <- SKAT_run(geno_mat = gene_mat, gene = genes, x=p_Data_noCH[,c(19:22)], p_vec, cust_weight = gene_mat_comb, rho = 1)
+     # skat_pvals_pc12 <- SKAT_run(geno_mat = gene_mat, gene = genes, x=p_Data_noCH[,c(19:22)], p_vec, cust_weight = gene_mat_comb, rho = 1, GRM = mat_GRM_rect)
       ##gender
-      skat_pvals_sex <- SKAT_run(geno_mat = gene_mat, gene = genes, x=p_Data_noCH$gender, p_vec, cust_weight = gene_mat_comb, rho = 1)
+     # skat_pvals_sex <- SKAT_run(geno_mat = gene_mat, gene = genes, x=p_Data_noCH$gender, p_vec, cust_weight = gene_mat_comb, rho = 1, GRM = mat_GRM_rect)
       ##gender + pc1 + pc2 + total exome count
-      skat_pvals_sex_pc12 <- SKAT_run(geno_mat = gene_mat, gene = genes, x=p_Data_noCH[,c(54:55,19:22)], p_vec, cust_weight = gene_mat_comb, rho = 1)
+      skat_pvals_sex_pc12 <- SKAT_run_new(geno_mat = gene_mat, null_obj =  null_d, gene = genes, p_vec, cust_weight = gene_mat_comb, rho = 1)
       
     }
     
   } ##end of nested else loop
-  DT_skat_snv_str_pc123 <- list(skat_pvals, skat_pvals_pc12, skat_pvals_sex, skat_pvals_sex_pc12)
-  return(DT_skat_snv_str_pc123)
+ # DT_skat_snv_str_pc123 <- list(skat_pvals, skat_pvals_pc12, skat_pvals_sex, skat_pvals_sex_pc12)
+ # return(DT_skat_snv_str_pc123)
+  return(skat_pvals_sex_pc12)
 }##end of gene loop ; i loop   
 
 ##Parallelised SKAT  
@@ -291,11 +329,22 @@ res20 <- list()
 genes <- unique(fil_tab$gene_symbol)
 system.time(res20 <- foreach(i=1:length(genes), .errorhandling = 'remove') %dopar% 
 {para_SKAT(genes[i])})
-res_skat_para <- list()
-for(i in 1:4){
-  res_skat_para[[i]] <- lapply(res20, function(x)do.call("rbind.data.frame", x[i]))
-}
+# res_skat_para <- list()
+# for(i in 1:4){
+#   res_skat_para[[i]] <- lapply(res20, function(x)do.call("rbind.data.frame", x[i]))
+# }
 
 ##SKAT ERA added along with changes to SKATO; now SKATBinary is used for SKATO and SKAT_ERA
 #ERA -> Adaptive resampling for conservative p-values
-saveRDS(res_skat_para, file = "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/SKAT/Exome_skat_para_result_isks_totex_count_PC1234_ver4_clinrect_Aug31_subPC1.rds", compress = T)
+#saveRDS(res20, file = "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/SKAT/Exome_skat_para_result_isks_totex_count_PC1234_ver4_clinrect_Aug31_subPC1_EMMAX.rds", compress = T)
+
+saveRDS(res20, file = "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/SKAT/Exome_skat_para_result_isks_totex_count_noPC1234_ver4_clinrect_Aug31_subPC1_grmEMMAX.rds", compress = T)
+##sanity checks
+# nul_for <- as.formula(paste("p_vec", paste(colnames(p_Data_noCH[,c(54:55,19:22)]), collapse = " + "), sep = " ~ "))
+# 
+# nul_for <- as.formula(paste("p_vec", paste(colnames(p_Data_noCH[,c(54:55,19:22)]), collapse = " + "), sep = " ~ "))
+# 
+# SKAT::SKAT(t(gene_mat), obj_N, method = "Burden", weights = gene_mat_comb)$p.value #works
+# SKAT::SKAT(t(gene_mat), null_d, method = "Burden", weights = gene_mat_comb)$p.value
+# ##SKATBinary doesnot work
+# #SKATBinary(t(gene_mat), obj_N, method = "Burden", weights = gene_mat_comb)$p.value

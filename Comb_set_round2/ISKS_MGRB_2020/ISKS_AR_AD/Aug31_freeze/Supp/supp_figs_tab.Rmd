@@ -6,7 +6,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-.libPaths(c( "/home/shu/R/x86_64-redhat-linux-gnu-library/3.4", .libPaths() ) )
+#.libPaths(c( "/home/shu/R/x86_64-redhat-linux-gnu-library/3.4", .libPaths() ) )
 `%nin%` = Negate(`%in%`)
 knitr::opts_chunk$set(echo = TRUE)
 ```
@@ -82,6 +82,7 @@ train_set <- var_file_sel_C3[var_file_sel_C3$gene_symbol %in% c("TP53", "NF1", "
 #train_set <- var_file_sel_C3[var_file_sel_C3$gene_symbol %in% cgc_genes$Gene.Symbol,]
 #dat_num <- train_set[,c(9,3:5,7)]
 dat_num <- train_set[,c(11,5:7,9)]
+dat_num$CONDEL_Score <- ifelse(is.na(dat_num$CONDEL_Score), 0.1, dat_num$CONDEL_Score)
 dat_num$prod_eig_cond <- dat_num$EigenPhred * dat_num$CONDEL_Score
 dat_num$mean_eig_cadd <- (dat_num$EigenPhred + dat_num$CADD_PHRED)/2
 dat_num$AM <- apply(dat_num[,c(2:4,6)], 1, mean)
@@ -126,11 +127,26 @@ plot_roc <- function(prob, resp_var){
   prf <- performance(pr, measure = "tpr", x.measure = "fpr")
   #plot(prf)
   auc <- performance(pr, measure = "auc")
-  auc <- auc@y.values[[1]]
+  auc_y <- auc@y.values[[1]]
+  idx = which.min(abs(prf@alpha.values[[1]] - 0.5)) ##cutoff of 0.5 for binary response
+  ##note the order of arguments to `perfomance` and of x and y in `perf`
+ # sensitivity <- auc@y.values[[1]]
+  specificity <- prf@x.values[[1]][idx]
   #print("AUC")
   #  return(auc)
-  return(list(auc, prf))
+  return(list(auc_y, prf, specificity))
 }
+##function for logistic error
+calc_class_err = function(actual, predicted) {
+  mean(actual != predicted)
+}
+
+get_logistic_error = function(mod, data, res , pos = 1, neg = 0, cut = 0.5) {
+  probs = predict(mod, newdata = data, type = "response")
+  preds = ifelse(probs > cut, pos, neg)
+  calc_class_err(actual = data[, res], predicted = preds)
+}
+
 ####Function: Univariate model
 anv <- numeric()
 mod_dev <- numeric()
@@ -140,13 +156,35 @@ pse_r_sq <- numeric()  #MacFadden's pseudo R-squared test
 pred <- numeric()
 pred_obj <- list()
 auc_roc <- list()
+mod_err <- list()
 col_var <- colnames(dat_num)
 for(i in 1:dim(dat_num)[2]){
   print(i)
+  
   output <- glm(is_case ~ dat_num[,i], data=dat_num, family=binomial(link="logit"))
   pred <- predict(output,newdata = data.frame(dat_num[,i]), type = "response")
   pred[is.na(pred)] <- 0
   pred_obj[[i]] <- pred
+  
+  log_err = get_logistic_error(output, data = data.frame(dat_num[,c(1,i)]), 
+                   res = "is_case", pos = 1, neg = 0, cut = 0.5)
+  ##confusion matrix 
+  model_glm_pred = ifelse(predict(output, type = "link") > 0, "Yes", "No")
+  actual_dat = ifelse(dat_num$is_case == 1, "Yes", "No")
+  train_tab = table(predicted = model_glm_pred, actual = actual_dat)
+
+  train_con_mat = tryCatch(confusionMatrix(train_tab, positive = "Yes"), error=function(x) NULL)
+  
+  if(is.null(train_con_mat)){
+    mod_err[[i]] = c(log_err, NULL, NULL, NULL)
+  }
+  else {
+  mod_chk_all = c(train_con_mat$overall["Accuracy"], 
+  train_con_mat$byClass["Sensitivity"], 
+  train_con_mat$byClass["Specificity"])
+  mod_err[[i]] = c(log_err, mod_chk_all)
+  }
+  print(c(log_err, mod_chk_all))
   # summary(output)
   a <- anova(output, test = "Chisq")
   anv[i] <- a$`Pr(>Chi)`[2]
@@ -164,6 +202,11 @@ odds_rat <- numeric()
 OR_CI_lower <- numeric()
 OR_CI_upper <- numeric()
 AUC_chk <- numeric()
+#spec_chk <- numeric()
+logmod_err <- numeric()
+logmod_acc <- numeric()
+logmod_sens <- numeric()
+logmod_spec <- numeric()
 for(j in 1:length(univar_op)){
   Est_cor[j] <- univar_op[[j]]$regression.table$coefficients[2,1]
   pval_cov[j] <- univar_op[[j]]$regression.table$coefficients[2,4]
@@ -171,14 +214,24 @@ for(j in 1:length(univar_op)){
   OR_CI_lower[j] <- univar_op[[j]]$OR.ci[1]
   OR_CI_upper[j] <- univar_op[[j]]$OR.ci[2]
   AUC_chk[j] <- auc_roc[[j]][[1]]
+#  spec_chk[j] <- auc_roc[[j]][[3]]
+  logmod_err[j] <- mod_err[[j]][1]
+  logmod_acc[j] <- mod_err[[j]][2]
+  logmod_sens[j] <- mod_err[[j]][3]
+  logmod_spec[j] <- mod_err[[j]][4]
 }
 
 df_univar <- as.matrix(cbind("Estimate" = Est_cor, "P value" = pval_cov, "OR" = odds_rat, "CI_lower" = OR_CI_lower, "CI_upper" = OR_CI_upper, "Chi-sq_sig" = anv,
-                             "Deviance" = mod_dev, "Null_deviance" = null_dev, "Pseudo-R.sq" = pse_r_sq, "AUC" = AUC_chk))
+                             "Deviance" = mod_dev, "Null_deviance" = null_dev, "Pseudo-R.sq" = pse_r_sq, "AUC" = AUC_chk,  "Model_error" = logmod_err,
+                             "Model_acc" = logmod_acc,
+                             "Model_sens" = logmod_sens,
+                             "Model_spec" = logmod_spec))
+#"Specificity" = spec_chk,
 rownames(df_univar) <- colnames(dat_num)
 
 df_univar_unfilt <- df_univar
 df_univar_unfilt <- df_univar_unfilt[-1,]
+View(df_univar_unfilt[,c(1:5,10:11)])
 #df_univar <- df_univar[-c(2,11:13),]
 #rownames(df_univar) <- colnames(dat_num)[-c(2,11:13)]
 
@@ -207,6 +260,7 @@ plot(auc_roc[[6]][[2]], col = colr[5], avg = "vertical", spread.estimate = "stde
 legend("bottomright", legend = names(auc_roc)[c(2,6)], lty = 1, lwd =2, col = colr[c(2,6)], cex = 0.8)
 
 kable(df_univar[2:6,])
+View(df_univar)
 
 ```
 
@@ -235,6 +289,36 @@ plot(dat_num$EigenPhred, col = as.factor(dat_num$is_case), pch=19, ylab = "Eigen
 abline(h = x, lty = 2)
 legend(300, 30, legend=c("ISKS", "MGRB"), pch = 19,
        col=as.factor(as.numeric(dat_num$is_case)), cex=0.7)
+
+##Plot CDF
+ggplot(dat_num, aes(x = EigenPhred)) +
+  stat_ecdf(aes(color = is_case,linetype = is_case), 
+            geom = "step", size = 1.5) +
+  scale_color_manual(values = c("#00AFBB", "#E7B800"))+
+  labs(x = "Score", y = "cdf(Score)") + ggtitle("EigenScore boundary") +
+  geom_vline(xintercept = x, lty = 2)
+
+##Find optimal point based on ratio of cases and controls
+seq_test = seq(1,10, 0.5)
+tab_case_cont <- list()
+for(i in 1:length(seq_test)){
+tab_case_cont[[i]] = table(dat_num[dat_num$EigenPhred < seq_test[i],]$is_case)
+}
+tab_case_contdf = do.call("rbind.data.frame", tab_case_cont)
+colnames(tab_case_contdf) <- c("control", "case")
+tab_case_contdf$cont_perc = tab_case_contdf$control/186
+tab_case_contdf$case_perc = tab_case_contdf$case/149
+tab_case_contdf$index = paste("ind", rownames(tab_case_contdf), sep = "_")
+library(reshape2)
+d <- melt(tab_case_contdf, id.vars="index")
+d <- d[d$variable %in% c("cont_perc", "case_perc"),]
+samp_ord = paste("ind", rownames(tab_case_contdf), sep = "_")
+d$index <- factor(d$index,levels=samp_ord,ordered=TRUE)
+ggplot(d, aes(x = index, y = value, col = variable)) + geom_point() + 
+  stat_smooth() 
+##Analysis to identify optimal score for EigenPhred cutoff; the logistic regression model doesn't account for weights of the variants. We use a weighted SKAT burden test to check the optimal separation point
+
+
 ```
 
 
@@ -840,6 +924,30 @@ epit_pheno_qc0pass <- epit_pheno_7study[epit_pheno_7study$PASS_Q0 %in% "TRUE",] 
 epit_pheno_qc0qc2pass <- epit_pheno_qc0pass[epit_pheno_qc0pass$Sample_Id %in% QC2_epit_pass$new_sampleid,] ##639
 ##remove 7 oeso
 epit_pheno_qc0qc2pass_Oeso <- epit_pheno_qc0qc2pass[epit_pheno_qc0qc2pass$EXCLUDE %in% "no",] ##632
+
+```
+
+
+
+```{r}
+##Scoring scheme
+##down weighting of variants in the last 5% of the protein sequence
+##why splice sites were regarded as C3 and not C4?
+var_file_isks <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/all_isks_combset2020_variants_AR_AD_all_fields_clingene_rnd3.tsv",
+                       sep = "\t", header = T, stringsAsFactors = F)
+var_file_mgrb <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/MGRB/all_mgrb_combset2020_variants_AR_AD_all_fields_clingene_rnd3.tsv",
+                            sep = "\t", header = T, stringsAsFactors = F)
+var_file_mgrb$set <- gsub("ISKS", "MGRB", var_file_mgrb$set)
+var_file <- rbind.data.frame(var_file_isks, var_file_mgrb)
+
+var_file_pos <- var_file[var_file$gene_symbol %in% c("TP53", "NF1", "BRCA2", "ERCC2", "EXT1", "EXT2","SDHA", "SDHB", "SDHD"),]
+write.table(var_file_pos, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/sarc_genes_var_file_pos.tsv", sep = "\t", quote = F, row.names = F)
+var_file_C3 <- var_file_pos[var_file_pos$auto_call %in% "C3" & var_file_pos$gene_symbol %in% c("TP53", "NF1", "BRCA2", "ERCC2", "EXT1", "EXT2","SDHA", "SDHB", "SDHD"),]
+var_file_C45 <- var_file_pos[var_file_pos$auto_call %nin% "C3" & var_file_pos$gene_symbol %in% c("TP53", "NF1", "BRCA2", "ERCC2", "EXT1", "EXT2","SDHA", "SDHB", "SDHD"),]
+
+
+##Splice site
+
 
 ```
 
