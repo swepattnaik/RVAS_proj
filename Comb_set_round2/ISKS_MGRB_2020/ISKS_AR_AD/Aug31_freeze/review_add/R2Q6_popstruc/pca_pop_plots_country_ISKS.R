@@ -110,6 +110,7 @@ p23 <- ggplot(scores, aes(x = PC2, y = PC3, colour = pred.superPop)) + geom_poin
 
 ##factor: MGRB or ISKS
 scores$superPopulation <- ifelse(scores$superPopulation %in% "MGRB", "MGRB", "ISKS")
+scores$superPopulation <- ifelse(scores$superPopulation %in% "MGRB", "controls", "sarcoma")
 # k12 <- ggplot(scores, aes(x = PC1, y = PC2, colour = superPopulation)) + geom_point() + theme_bw() + 
 #   theme(legend.position="bottom", legend.title = element_blank()) + 
 #   geom_vline(xintercept = -0.2, lty = 2) + geom_hline(yintercept = -0.1, lty = 2)

@@ -142,14 +142,19 @@ std_PC1234 = readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_
 std_PC1234_min13 = readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/SKAT/Exome_skat_para_result_isks_totex_count_PC1234_ver4_clinrect_Aug31_subPC1.rds")
 std_PC1234_EMMAX_min13 = readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/SKAT/Exome_skat_para_result_isks_totex_count_PC1234_subPC1_EMMAX.rds")
 std_PCair1234_EMMAX_min13 = readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/SKAT/Exome_skat_para_result_isks_totex_count_pcair1234_subPC1_kinEMMAX.rds")
-std_grm_EMMAX_min13 = readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/SKAT/Exome_skat_para_result_isks_totex_count_noPC1234_ver4_clinrect_Aug31_subPC1_grmEMMAX.rds")
+#std_grm_EMMAX_min13 = readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/SKAT/Exome_skat_para_result_isks_totex_count_noPC1234_ver4_clinrect_Aug31_subPC1_grmEMMAX.rds")
+std_grm_GCTA_min13 = readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/SKAT/Exome_skat_para_result_isks_totex_count_noPC1234_ver4_clinrect_Aug31_subPC1_grmGCTA_cpxgenes.rds")
 
-Shelterin <- c("POT1", "TINF2", "TERF1", "TERF2", "TERF2IP", "SMARCAL1", "STAG3", "TIMELESS")
+#Shelterin <- c("POT1", "TINF2", "TERF1", "TERF2", "TERF2IP", "SMARCAL1", "STAG3", "TIMELESS")
+##for paper : Nov-19-2021
+Shelterin <- c("POT1", "TINF2", "TERF1", "SMARCAL1", "STAG3")
 
 CEP_HAUS_core <- c("CEP63", "CEP72", "HAUS4", "HAUS5", "MZT1", "SSNA1")
 CEP_HAUS_core_mod <- c("CEP63", "CEP72", "HAUS4", "HAUS5", "MZT1")
 
-MPNST_pos <- c("NF1", "LZTR1", "SDHA", "SDHB", "SDHC", "SDHD")
+#MPNST_pos <- c("NF1", "LZTR1", "SDHA", "SDHB", "SDHC", "SDHD")
+##for paper : Nov-19-2021
+MPNST_pos <- c("NF1")
 
 all_genes = unique(c(Shelterin, CEP_HAUS_core, MPNST_pos, "TP53", "BRCA2", "BRCA1", "PALB2"))
 
@@ -174,14 +179,18 @@ std_PC1234_min13_cpx = std_PC1234_min13_cpx[,c(1,3,6)]
 colnames(std_PC1234_min13_cpx)[2] = "pval_SKATburden"
 std_PC1234_EMMAX_min13_cpx = get_gene_pval(std_PC1234_EMMAX_min13)
 std_PCair1234_EMMAX_min13_cpx = get_gene_pval(std_PCair1234_EMMAX_min13)
-std_grm_EMMAX_min13_cpx = get_gene_pval(std_grm_EMMAX_min13)
+#std_grm_EMMAX_min13_cpx = get_gene_pval(std_grm_EMMAX_min13)
+std_grm_GCTA_min13_cpx = get_gene_pval(std_grm_GCTA_min13)
 
-comb_df_pval = rbind.data.frame(std_PC1234_cpx, std_PC1234_min13_cpx, std_PC1234_EMMAX_min13_cpx, std_PCair1234_EMMAX_min13_cpx, std_grm_EMMAX_min13_cpx)
+#comb_df_pval = rbind.data.frame(std_PC1234_cpx, std_PC1234_min13_cpx, std_PC1234_EMMAX_min13_cpx, std_PCair1234_EMMAX_min13_cpx, std_grm_EMMAX_min13_cpx)
+comb_df_pval = rbind.data.frame(std_PC1234_cpx, std_PC1234_min13_cpx, std_PC1234_EMMAX_min13_cpx, std_PCair1234_EMMAX_min13_cpx, std_grm_GCTA_min13_cpx)
+#comb_df_pval = rbind.data.frame(std_PC1234_cpx, std_PC1234_min13_cpx, std_PC1234_EMMAX_min13_cpx, std_grm_GCTA_min13_cpx)
+
 comb_df_pval$log10pval = -log10(comb_df_pval$pval_SKATburden)
 
 library(ggplot2)
 library(cowplot)
-samp_ord = c("TP53", Shelterin, CEP_HAUS_core, MPNST_pos, "BRCA1", "BRCA2", "PALB2")
+samp_ord = c("TP53", MPNST_pos, Shelterin, CEP_HAUS_core,  "BRCA1", "BRCA2", "PALB2")
 comb_df_pval$eg_ID <- factor(comb_df_pval$eg_ID,levels=samp_ord,ordered=TRUE)
 
 # ggplot(comb_df_pval, aes(x = eg_ID, y = log10pval, color = Class)) + 
@@ -197,14 +206,25 @@ comb_df_pval$eg_ID <- factor(comb_df_pval$eg_ID,levels=samp_ord,ordered=TRUE)
 #   theme(legend.position = "bottom")
 # 
 `%nin%` = Negate(`%in%`)
-comb_df_pval = comb_df_pval[comb_df_pval$Class %nin% "std_PCs",]
+#comb_df_pval = comb_df_pval[comb_df_pval$Class %nin% c("std_PCs", "std_PCair1234_EMMAX_min13"),]
+comb_df_pval = comb_df_pval[comb_df_pval$Class %nin% c("std_PCair1234_EMMAX_min13"),]
+#comb_df_pval = comb_df_pval[comb_df_pval$Class %nin% c("std_grm_GCTA_min13", "std_PC1234_EMMAX_min13"),]
+#comb_df_pval = comb_df_pval[comb_df_pval$Class %nin% c("std_PC1234_EMMAX_min13"),]
+comb_df_pval$Class = gsub("std_PCs", "PCs_base",comb_df_pval$Class)
 comb_df_pval$Class = gsub("std_PCs_min13", "PCs_min13",comb_df_pval$Class)
-comb_df_pval$Class = gsub("std_PC1234_EMMAX_min13", "PCs_EMMAX_min13",comb_df_pval$Class)
-comb_df_pval$Class = gsub("std_PCair1234_EMMAX_min13", "kingPCs_EMMAX_min13",comb_df_pval$Class)
-comb_df_pval$Class = gsub("std_grm_EMMAX_min13", "kingGRM_EMMAX_min13",comb_df_pval$Class)
+comb_df_pval$Class = gsub("std_PC1234_EMMAX_min13", "PCs_nullEMMAX_min13",comb_df_pval$Class)
+#comb_df_pval$Class = gsub("std_PCair1234_EMMAX_min13", "PCs_kin_nullEMMAX_min13",comb_df_pval$Class)
+#comb_df_pval$Class = gsub("std_grm_EMMAX_min13", "kingGRM_EMMAX_min13",comb_df_pval$Class)
+comb_df_pval$Class = gsub("std_grm_GCTA_min13", "stdGRM_nullEMMAX_min13",comb_df_pval$Class)
+# comb_df_pval$complex = ifelse(comb_df_pval$eg_ID %in% Shelterin, "Shelterin", 
+#                               ifelse(comb_df_pval$eg_ID %in% CEP_HAUS_core, "Centrosome", 
+#                                      ifelse(comb_df_pval$eg_ID %in% MPNST_pos , "MPNST",
+#                                             ifelse(comb_df_pval$eg_ID %in% c("BRCA1", "BRCA2", "PALB2"), "HBOC", "TP53"))))
+
+##for paper Nov-19-2021
 comb_df_pval$complex = ifelse(comb_df_pval$eg_ID %in% Shelterin, "Shelterin", 
                               ifelse(comb_df_pval$eg_ID %in% CEP_HAUS_core, "Centrosome", 
-                                     ifelse(comb_df_pval$eg_ID %in% MPNST_pos , "MPNST",
+                                     ifelse(comb_df_pval$eg_ID %in% MPNST_pos , "NF1",
                                             ifelse(comb_df_pval$eg_ID %in% c("BRCA1", "BRCA2", "PALB2"), "HBOC", "TP53"))))
 
 ###Final plot
@@ -213,18 +233,20 @@ ggplot(comb_df_pval, aes(x=eg_ID, y=log10pval)) +
   geom_point(position=position_jitterdodge(jitter.width=0, dodge.width = 0.3), 
              aes(color=factor(Class)), show.legend = T) +
   geom_hline(yintercept = 1, lty=2, colour = "black") +
-  theme_cowplot(font_size = 12) +
+  theme_cowplot(font_size = 13) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
   theme(legend.position = "bottom", legend.title = element_blank()) +
   xlab("") + ylab("-log10(P.value)") 
 #theme(axis.text.x = element_text(angle = 45, hjust = 1, colour = a))
-
-ggplot(comb_df_pval, aes(x=eg_ID, y=log10pval)) +  
+#+ guides(fill = guide_legend(reverse = TRUE))
+p1 = ggplot(comb_df_pval, aes(x=eg_ID, y=log10pval)) +  
   geom_boxplot(show.legend = F) +
   geom_point(position=position_jitterdodge(jitter.width=0, dodge.width = 0.3), 
              aes(color=factor(Class)), show.legend = T) +
   geom_hline(yintercept = 1, lty=2, colour = "black") +
   theme_cowplot(font_size = 12) +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1, colour = as.factor(complex))) +
-  theme(legend.position = "bottom", legend.title = element_blank()) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  theme(legend.position = "top", legend.title = element_blank()) +
   xlab("") + ylab("-log10(P.value)") 
+
+#p1 + theme(legend.text.align = 3)

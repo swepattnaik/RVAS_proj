@@ -71,7 +71,8 @@ cpx_OR_fisher_sarc(40, 15, 1644, 3205, "Sarc_genes")
 mgrb_isks_list_ft <- lapply(mgrb_isks_list, function(x)cpx_OR_fisher_sarc(x[1,2], x[2,2], 1644, 3205, "Sarc_genes"))
 mgrb_isks_list_ft_df <- do.call("rbind.data.frame", mgrb_isks_list_ft)
 mgrb_isks_list_ft_df$NFE <- grid_scenario
-
+write.table(mgrb_isks_list_ft_df, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/git_proj_rvas/Comb_set_round2/ISKS_MGRB_2020/ISKS_AR_AD/Aug31_freeze/review_add/R2Q8_NFEcut/NFE_cutoff_table.tsv",
+            sep = "\t", quote = F, row.names = F)
 ##final plot
 library(ggplot2)
 
@@ -82,7 +83,7 @@ scaleFUN <- function(x) sprintf("%.5f", x)
   geom_hline(yintercept=0, lty=2) +  # add a dotted line at x=1 after flip
   coord_flip() +  # flip coordinates (puts labels on y axis)
   scale_x_continuous(trans='log2', labels = scaleFUN) + 
-  xlab("gnomAD_AF_NFE") + ylab("log(OR) Mean (95% CI)") +
+  xlab("Allele Frequency (gnomAD_AF_NFE)") + ylab("log(OR) Mean (95% CI)") +
   theme_bw() + # use a white background
     theme(panel.grid.minor.y = element_blank(),
           panel.grid.major.y = element_blank())
@@ -92,6 +93,6 @@ scaleFUN <- function(x) sprintf("%.5f", x)
   #fp + annotation_logticks()
   multiplot(fp1, fp2, cols = 2)
   
-  
+  fp2 = fp + geom_vline(xintercept = 0.0002, lty = 2, color = "red") 
   #   scale_x_continuous(breaks = log2(c(0, 0.0001, 0.0002, 0.0004, 0.0016, 0.0128),
   #labels = c(1, 0.0001, 0.0002, 0.0004, 0.0016, 0.0128))) + 

@@ -128,20 +128,306 @@ multiplot(plotlist = SKAT_plots_eigen, cols = 2)
 
 ```
 
+##mixed model with 1000G
 ```{r}
-##PC1234, gender, totex, EMMAX
+plot_fun = function(skat_list, pval_col){
+  df = do.call("rbind.data.frame", skat_list)
+  colnames(df)[1] <- "symbol"
+  if(pval_col %in% "pval_SKATburden") {
+plot_ret = gg_qqplot_genes(data = df, ci = 0.95, genes = df[,1], SKAT = "pval_SKATburden")
+return(plot_ret)
+  }
+  else{
+    plot_ret = gg_qqplot_genes(data = df, ci = 0.95, genes = df[,1], SKAT = "pval_SKATbin")
+return(plot_ret)
+  }
+}
 
-#Exome_skat <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/SKAT/Exome_skat_para_result_isks_totex_count_noPC1234_ver4_clinrect_Aug31_subPC1_EMMAX.rds")
+std_1000G_PCair1234_EMMAX_min13 = readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/SKAT/Exome_skat_para_result_isks_totex_count_pcair1234_subPC1_kinEMMAX_1000G.rds")
 
-Exome_skat <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/SKAT/Exome_skat_para_result_isks_totex_count_PC1234_subPC1_EMMAX.rds")
+plot_fun(std_1000G_PCair1234_EMMAX_min13, "pval_SKATburden") + ggtitle("PCs_kin_nullEMMAX_1000G_min13")
 
-Exome_EMMAX_SKAT <- do.call("rbind.data.frame", Exome_skat)
-colnames(Exome_EMMAX_SKAT)[1] <- "symbol" 
-gg_qqplot_genes(data = Exome_EMMAX_SKAT, ci = 0.95, genes = Exome_EMMAX_SKAT[,1], SKAT = "pval_SKATburden")
+std_1000G_GRM_min13 = readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/SKAT/Exome_skat_para_result_isks_totex_count_noPC1234_ver4_clinrect_Aug31_subPC1_1000GgrmGCTA.rds")
+
+plot_fun(std_1000G_GRM_min13, "pval_SKATburden") + ggtitle("PCs_1000G_GRM_min13")
+
+
 
 ```
 
 
+
+##For paper
+```{r}
+##PC1234, gender, totex, EMMAX, sub13
+
+##base model
+
+
+#Exome_skat <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/SKAT/Exome_skat_para_result_isks_totex_count_noPC1234_ver4_clinrect_Aug31_subPC1_EMMAX.rds")
+
+#Exome_skat <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/SKAT/Exome_skat_para_result_isks_totex_count_PC1234_subPC1_EMMAX.rds")
+
+#Exome_skat <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/SKAT/Exome_skat_para_result_isks_totex_count_pcair1234_subPC1_kinEMMAX.rds")
+
+#Exome_skat <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/SKAT/Exome_skat_para_result_isks_totex_count_noPC1234_ver4_clinrect_Aug31_subPC1_grmGCTA.rds")
+#Exome_EMMAX_SKAT <- do.call("rbind.data.frame", Exome_skat)
+#colnames(Exome_EMMAX_SKAT)[1] <- "symbol" 
+
+
+std_PC1234 = readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/Exome_skat_para_result_isks_combset2020_uni_MAF_PC1234_ver4_clinrect_Aug31.rds")
+std_PCs = std_PC1234[[4]]
+std_PC1234_min13 = readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/SKAT/Exome_skat_para_result_isks_totex_count_PC1234_ver4_clinrect_Aug31_subPC1.rds")
+std_PCs_min13 = std_PC1234_min13[[4]]
+std_PC1234_EMMAX_min13 = readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/SKAT/Exome_skat_para_result_isks_totex_count_PC1234_subPC1_EMMAX.rds")
+std_PCair1234_EMMAX_min13 = readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/SKAT/Exome_skat_para_result_isks_totex_count_pcair1234_subPC1_kinEMMAX.rds")
+#std_grm_EMMAX_min13 = readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/SKAT/Exome_skat_para_result_isks_totex_count_noPC1234_ver4_clinrect_Aug31_subPC1_grmEMMAX.rds")
+std_grm_GCTA_min13 = readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/SKAT/Exome_skat_para_result_isks_totex_count_noPC1234_ver4_clinrect_Aug31_subPC1_grmGCTA.rds")
+
+
+plot_fun = function(skat_list, pval_col){
+  df = do.call("rbind.data.frame", skat_list)
+  colnames(df)[1] <- "symbol"
+  if(pval_col %in% "pval_SKATburden") {
+plot_ret = gg_qqplot_genes(data = df, ci = 0.95, genes = df[,1], SKAT = "pval_SKATburden")
+return(plot_ret)
+  }
+  else{
+    plot_ret = gg_qqplot_genes(data = df, ci = 0.95, genes = df[,1], SKAT = "pval_SKATbin")
+return(plot_ret)
+  }
+}
+std_PCs_pp = plot_fun(std_PCs, "pval_SKATbin") + ggtitle("PCs_base")
+std_PCs_min13_pp = plot_fun(std_PCs_min13, "pval_SKATbin") + ggtitle("PCs_base_min13")
+std_PC1234_EMMAX_min13_pp = plot_fun(std_PC1234_EMMAX_min13, "pval_SKATburden") + ggtitle("PCs_nullEMMAX_min13")
+PCs_kin_EMMAX_min13_pp = plot_fun(std_PCair1234_EMMAX_min13, "pval_SKATburden") + ggtitle("PCs_kin_nullEMMAX_min13")
+std_grm_GCTA_min13_pp = plot_fun(std_grm_GCTA_min13, "pval_SKATburden") + ggtitle("stdGRM_nullEMMAX_min13")
+
+jpeg("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/git_proj_rvas/Comb_set_round2/ISKS_MGRB_2020/ISKS_AR_AD/Aug31_freeze/review_add/model_spec_QC.jpg", width = 900, height = 800)
+multiplot(std_PCs_pp, std_PCs_min13_pp, std_PC1234_EMMAX_min13_pp, PCs_kin_EMMAX_min13_pp, std_grm_GCTA_min13_pp, cols = 2)
+dev.off()
+#std_PCs_pp
+
+```
+##for paper
+##Populate data file 3 with p-values from the new models
+
+```{r}
+#data_file3 = read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/isks_cyto_ppifisher_ASRB_comb_genes_top_new_rand_comp_score_Aug31_sep19.tsv", sep = "\t", header = T, stringsAsFactors = F)
+std_PCs_df = do.call("rbind.data.frame", std_PCs)
+std_PCs_min13_df = do.call("rbind.data.frame", std_PCs_min13)
+std_PC1234_EMMAX_min13_pp_df = do.call("rbind.data.frame", std_PC1234_EMMAX_min13)
+std_PCair_EMMAX_min13_pp_df = do.call("rbind.data.frame", std_PCair1234_EMMAX_min13)
+std_grm_GCTA_min13_df = do.call("rbind.data.frame", std_grm_GCTA_min13)
+##Add p-values from different models for genes selected using base models in data file3
+
+
+library(readxl)
+data_file3 = read_excel("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/Data file 3.xlsx", sheet = 1)
+data_file3 = as.data.frame(data_file3)
+
+data_file3$PCs_base_pval_SKATbin = std_PCs_df[match(data_file3$gene, std_PCs_df$eg_ID), 3]
+data_file3$PCs_base_min13_pval_SKATbin = std_PCs_min13_df[match(data_file3$gene, std_PCs_min13_df$eg_ID), 3]
+data_file3$PCs_nullEMMAX_min13_pval_SKATbin = std_PC1234_EMMAX_min13_pp_df[match(data_file3$gene, std_PC1234_EMMAX_min13_pp_df$eg_ID), 2]
+data_file3$PCair_nullEMMAX_min13_pval_SKATbin = std_PCair_EMMAX_min13_pp_df[match(data_file3$gene, std_PCair_EMMAX_min13_pp_df$eg_ID), 2]
+data_file3$stdGRM_nullEMMAX_min13_pval_SKATbin = std_grm_GCTA_min13_df[match(data_file3$gene, std_grm_GCTA_min13_df$eg_ID), 2]
+
+#write.table(data_file3, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/data_file3_rev.tsv", sep = "\t", row.names = F, quote = F)
+
+```
+
+##for paper
+##ontological p-value calculation for all models
+```{r}
+
+Exome_pc123_srt_SKAT_case_enr_nCH <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/Exome_para_pc1234_SKAT_Enriched_ISKS_2020_Aug31.rds")
+Exome_pc123_srt_SKAT_case_enr_nCH_df <- Exome_pc123_srt_SKAT_case_enr_nCH[[4]]
+
+filt_wt_pval = function(skat_out_df, SKAT_pval_type){
+  var_df <- Exome_pc123_srt_SKAT_case_enr_nCH_df[Exome_pc123_srt_SKAT_case_enr_nCH_df$gene %in% as.character(skat_out_df[,1]),]
+print(dim(var_df))
+var_df_srt <- var_df[match(as.character(skat_out_df[,1]),as.character(var_df$gene)),]
+print(dim(var_df_srt))
+var_df_srt_pval <- cbind.data.frame(var_df_srt,skat_out_df)
+  
+      if (SKAT_pval_type %in% "SKATbin"){
+        print("Bin")
+var_df_srt_pval_filt <- var_df_srt_pval[var_df_srt_pval$pval_SKATbin < 0.1 & var_df_srt_pval$wt_diff > 0,]
+var_df_srt_pval_filt = var_df_srt_pval_filt[order(var_df_srt_pval_filt$pval_SKATbin, decreasing = F),]
+                          }
+      else {
+        print("Burden")
+  var_df_srt_pval_filt <- var_df_srt_pval[var_df_srt_pval$pval_SKATburden < 0.1 & var_df_srt_pval$wt_diff > 0,]
+  var_df_srt_pval_filt = var_df_srt_pval_filt[order(var_df_srt_pval_filt$pval_SKATburden, decreasing = F),]
+       }
+return(var_df_srt_pval_filt)
+}
+
+
+std_PCs_df_filt = filt_wt_pval(std_PCs_df, "SKATbin")
+std_PCs_min13_df_filt = filt_wt_pval(std_PCs_min13_df, "SKATbin")
+std_PC1234_EMMAX_min13_pp_df_filt = filt_wt_pval(std_PC1234_EMMAX_min13_pp_df, "SKATburden")
+std_PCair_EMMAX_min13_pp_df_filt = filt_wt_pval(std_PCair_EMMAX_min13_pp_df, "SKATburden")
+std_grm_GCTA_min13_df_filt = filt_wt_pval(std_grm_GCTA_min13_df, "SKATburden")
+
+##PPI scores and P-values
+##get graph degree from the genes in the top 1000 enriched list
+library(igraph)
+library(ggnet)
+library(intergraph)
+library(network)
+library(org.Hs.eg.db)
+can_net <- read.delim("~/VDLab_scripts/BioGrid/biogrid_db_all_subnet.sif", header = T, sep = " ", stringsAsFactor = F)
+strindb_graph_cyto <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/strindb_cyto_graph.rds")
+cyto_net1 <- igraph::as_data_frame(strindb_graph_cyto, what = "edges")
+colnames(cyto_net1) = c("node1", "node2")
+cyto_can_net = rbind.data.frame(can_net, cyto_net1)
+cyto_can_net = unique(cyto_can_net)
+comb_net_graph <- igraph::graph.data.frame(cyto_can_net, directed = F)
+comb_net_graph <- igraph::simplify(comb_net_graph, remove.loops=T, remove.multiple = T)
+comb_net <- igraph::as_data_frame(comb_net_graph, what = "edges")
+
+
+get_topSKAT_degree <- function(enr_df){
+
+skat_genes_top100 <- as.character(enr_df[,3])
+
+#can_net <- read.delim("~/VDLab_scripts/BioGrid/biogrid_db_all_subnet.sif", header = T, sep = " ", stringsAsFactor = F)
+#can_net <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/Biogrid_latest/Biog_net_hs.sif", header = T, sep = "\t", stringsAsFactor = F)
+can_net_graph <- igraph::graph.data.frame(comb_net, directed = F)
+can_net_graph1 <- igraph::simplify(can_net_graph, remove.loops=T, remove.multiple = T)
+can_net1 <- igraph::as_data_frame(can_net_graph1, what = "edges")
+prot_np_all <- unique(can_net1[as.character(can_net1$from) %in% skat_genes_top100 
+                               & as.character(can_net1$to) %in% skat_genes_top100, ])
+uniongraph <- igraph::graph.data.frame(prot_np_all, directed = F)
+
+ret_df <- as.data.frame(igraph::degree(uniongraph))
+ret_df$gene <- rownames(ret_df)
+colnames(ret_df)[1] <- c("degree")
+
+l1 <- lapply(ret_df[,2], function(x)as_ids(adjacent_vertices(uniongraph, v = x)[[1]]))
+l2 <- lapply(l1, function(x)paste(x, sep=",", collapse=","))
+ret_df$interactors <- unlist(l2)
+
+return(ret_df)
+}
+
+##Fisher exact test for enrichment of subgraph related to each protein
+process_df_fisher = function(SKAT_filt_df_inp){
+# gender_PC123_cont_df <- Exome_pc123_srt_SKAT_case_enr_nCH_ranked
+# #remove genes with one hit in ISKS
+# gender_PC123_cont_df <- gender_PC123_cont_df[gender_PC123_cont_df$ISKS > 1,]
+df_inp = SKAT_filt_df_inp
+df_inp$gene <- as.character(df_inp$gene)
+df_degree <- get_topSKAT_degree(df_inp)
+df_inp$degree <- df_degree[match(df_inp$gene, df_degree$gene), 1]
+df_inp$int <- df_degree[match(df_inp$gene, df_degree$gene), 3]
+df_inp$degree <- ifelse(is.na(df_inp$degree), 0, df_inp$degree)
+return(df_inp)
+}
+
+##make skat_degree dataframes for PPI fisher's test
+std_PCs_df_deg = process_df_fisher(std_PCs_df_filt)
+std_PCs_min13_df_deg = process_df_fisher(std_PCs_min13_df_filt)
+std_PC1234_EMMAX_min13_pp_df_deg = process_df_fisher(std_PC1234_EMMAX_min13_pp_df_filt)
+std_PCair_EMMAX_min13_pp_df_deg = process_df_fisher(std_PCair_EMMAX_min13_pp_df_filt)
+std_grm_GCTA_min13_df_deg = process_df_fisher(std_grm_GCTA_min13_df_filt)
+
+###latest fisher test based on degrees in biogrid versus enriched graphs
+
+# can_net <- read.delim("~/VDLab_scripts/BioGrid/biogrid_db_all_subnet.sif", header = T, sep = " ", stringsAsFactor = F)
+##combined graph
+# strindb_graph_cyto <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/strindb_cyto_graph.rds")
+# cyto_net1 <- igraph::as_data_frame(strindb_graph_cyto, what = "edges")
+# colnames(cyto_net1) = c("node1", "node2")
+# cyto_can_net = rbind.data.frame(can_net, cyto_net1)
+# cyto_can_net = unique(cyto_can_net)
+# comb_net_graph <- igraph::graph.data.frame(cyto_can_net, directed = F)
+# comb_net_graph <- igraph::simplify(comb_net_graph, remove.loops=T, remove.multiple = T)
+# comb_net <- igraph::as_data_frame(comb_net_graph, what = "edges")
+
+para_fisher_fun_new <- function(gene_sym, skat_df_degree_genes){
+  top_genes_enr = skat_df_degree_genes
+  print(gene_sym)
+ # can_net_graph <- igraph::graph.data.frame(can_net, directed = F)
+ # can_net_graph1 <- igraph::simplify(can_net_graph, remove.loops=T, remove.multiple = T)
+ # can_net1 <- igraph::as_data_frame(can_net_graph1, what = "edges")
+  prot_np_all <- unique(comb_net[as.character(comb_net$from) %in% top_genes_enr 
+                                 & as.character(comb_net$to) %in% top_genes_enr, ])
+  uniongraph <- igraph::graph.data.frame(prot_np_all, directed = F)
+  
+  ##degree biogrid
+  deg_biog <- igraph::degree(comb_net_graph)[which(names(igraph::degree(comb_net_graph)) %in% gene_sym)]
+  deg_union <- igraph::degree(uniongraph)[which(names(igraph::degree(uniongraph)) %in% gene_sym)]
+  #tot_biog <- igraph::vcount(can_net_graph1) ##should be edge count not vertex count
+  #tot_union <- igraph::vcount(uniongraph)
+  tot_biog <- igraph::ecount(comb_net_graph) 
+  tot_union <- igraph::ecount(uniongraph)
+  
+  ##test
+  #inp <- c(deg_union, deg_biog, tot_union - deg_union, tot_biog - deg_biog)
+  inp <- c(deg_union, deg_biog, tot_union, tot_biog)
+  mgrb_tsg <- matrix(inp ,nrow = 2, ncol = 2)
+  colnames(mgrb_tsg) <- c("deg_enr", "deg_bio")
+  rownames(mgrb_tsg) <- c("Enriched", "Biog")
+  #ft <- fisher.test(mgrb_tsg, alternative = "greater")
+  ft <- fisher.test(mgrb_tsg, conf.int = T, conf.level = 0.95)
+  ft_df <- cbind.data.frame("gene" =  gene_sym, "PPI_p_val" = ft$p.value,
+                            "CI_lower" = ft$conf.int[1],
+                            "CI_upper" = ft$conf.int[2],
+                            "OR" = ft$estimate)
+  
+  return(ft_df)
+}
+
+sub_fisher_para = function(skat_df_degree){
+##Parallelised fisher  
+library(doParallel)
+library(doMC)
+registerDoMC(30)
+
+res20 <- list()
+genes <- unique(as.character(skat_df_degree[,3]))
+system.time(res20 <- foreach(i=1:length(genes), .errorhandling = 'remove') %dopar% 
+{para_fisher_fun_new(genes[i], genes)})
+
+  res_fish_para <- do.call("rbind.data.frame", res20)
+  res_fish_para_comb = cbind.data.frame(skat_df_degree, res_fish_para)
+  return(res_fish_para_comb)
+}
+
+std_PCs_df_deg_fish = sub_fisher_para(std_PCs_df_deg)
+std_PCs_min13_df_deg_fish = sub_fisher_para(std_PCs_min13_df_deg)
+std_PC1234_EMMAX_min13_pp_df_deg_fish = sub_fisher_para(std_PC1234_EMMAX_min13_pp_df_deg)
+std_PCair_EMMAX_min13_pp_df_deg_fish = sub_fisher_para(std_PCair_EMMAX_min13_pp_df_deg)
+std_grm_GCTA_min13_df_deg_fish = sub_fisher_para(std_grm_GCTA_min13_df_deg)
+
+##Add PPI p values to supp data
+data_file3$PCs_base_pval_PPI = std_PCs_df_deg_fish[match(data_file3$gene, std_PCs_df_deg_fish$gene), 20]
+data_file3$PCs_base_min13_pval_PPI = std_PCs_min13_df_deg_fish[match(data_file3$gene, std_PCs_min13_df_deg_fish$gene), 20]
+data_file3$PCs_nullEMMAX_min13_pval_PPI = std_PC1234_EMMAX_min13_pp_df_deg_fish[match(data_file3$gene, std_PC1234_EMMAX_min13_pp_df_deg_fish$gene), 17]
+data_file3$PCair_nullEMMAX_min13_pval_PPI = std_PCair_EMMAX_min13_pp_df_deg_fish[match(data_file3$gene, std_PCair_EMMAX_min13_pp_df_deg_fish$gene), 17]
+data_file3$stdGRM_nullEMMAX_min13_pval_PPI = std_grm_GCTA_min13_df_deg_fish[match(data_file3$gene, std_grm_GCTA_min13_df_deg_fish$gene), 17]
+
+write.table(data_file3, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/data_file3_rev.tsv", sep = "\t", row.names = F, quote = F)
+
+#View(data_file3[data_file3$gene %in%  Shelterin,c(3,35:39)])
+#View(data_file3[data_file3$gene %in%  CEP_HAUS_core,c(3,35:39)])
+# std_PCs_df_deg_fish[std_PCs_df_deg_fish$gene %in% CEP_HAUS_core, c(3,14,17,20)]
+# std_PCs_df_deg_fish[std_PCs_df_deg_fish$gene %in% Shelterin, c(3,14,17,20)]
+# std_PCs_min13_df_deg_fish[std_PCs_min13_df_deg_fish$gene %in% CEP_HAUS_core, c(3,14,17,20)]
+# std_PCs_min13_df_deg_fish[std_PCs_min13_df_deg_fish$gene %in% Shelterin, c(3,14,17,20)]
+# std_PC1234_EMMAX_min13_pp_df_deg_fish[std_PC1234_EMMAX_min13_pp_df_deg_fish$gene %in% CEP_HAUS_core, c(3,13:14,17)]
+# std_PC1234_EMMAX_min13_pp_df_deg_fish[std_PC1234_EMMAX_min13_pp_df_deg_fish$gene %in% Shelterin, c(3,13:14,17)]
+# std_grm_GCTA_min13_df_deg_fish[std_grm_GCTA_min13_df_deg_fish$gene %in% CEP_HAUS_core, c(3,13:14,17)]
+# std_grm_GCTA_min13_df_deg_fish[std_grm_GCTA_min13_df_deg_fish$gene %in% Shelterin, c(3,13:14,17)]
+
+
+```
+
+
+
+##filtering
 ```{r, out.width='\\textwidth', fig.height = 7, fig.align='center', echo=FALSE}
 ##Add filtering option to final set by limiting the gene set to using a total variant cutoff of greater than
 ## or equal to 3
@@ -152,8 +438,8 @@ df_skat <- lapply(Exome_skat, function(x)do.call("rbind.data.frame", x))
 Exome_pc123_srt_SKAT <- lapply(df_skat, function(x) x[order(x$pval_SKATbin, decreasing = F),])
 Exome_pc123_srt_SKAT <- lapply(Exome_pc123_srt_SKAT, function(x){colnames(x)[1] <- c("symbol"); return(x)})
 ###
-#Exome_pc123_srt_SKAT_df <- Exome_pc123_srt_SKAT[[4]]
-Exome_pc123_srt_SKAT_df <- Exome_EMMAX_SKAT
+Exome_pc123_srt_SKAT_df <- Exome_pc123_srt_SKAT[[4]]
+#Exome_pc123_srt_SKAT_df <- Exome_EMMAX_SKAT
 Exome_pc123_srt_SKAT_case_enr_nCH <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/Exome_para_pc1234_SKAT_Enriched_ISKS_2020_Aug31.rds")
 Exome_pc123_srt_SKAT_case_enr_nCH_df <- Exome_pc123_srt_SKAT_case_enr_nCH[[4]]
 Exome_pc123_srt_SKAT_case_enr_nCH_df <- Exome_pc123_srt_SKAT_case_enr_nCH_df[Exome_pc123_srt_SKAT_case_enr_nCH_df$gene %in% Exome_pc123_srt_SKAT_df$symbol,]
@@ -164,6 +450,7 @@ Exome_pc123_srt_SKAT_case_enr_nCH_df_srt <- Exome_pc123_srt_SKAT_case_enr_nCH_df
 Exome_pc123_srt_SKAT_case_enr_nCH_pval <- cbind.data.frame(Exome_pc123_srt_SKAT_case_enr_nCH_df_srt,
                                                            Exome_pc123_srt_SKAT_df)
 
+#saveRDS(Exome_pc123_srt_SKAT_case_enr_nCH_pval, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/isks_totex_count_PC1234_ver4_clinrect_Aug31_subPC1.rds", compress = T)
 ##save for volcano_plot
 #write.table(Exome_pc123_srt_SKAT_case_enr_nCH_pval[[4]], "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/Sep05_rect_ASP_graph_final_cmaf_new_score_volcano.tsv", sep = "\t", row.names = F, quote = F)
 

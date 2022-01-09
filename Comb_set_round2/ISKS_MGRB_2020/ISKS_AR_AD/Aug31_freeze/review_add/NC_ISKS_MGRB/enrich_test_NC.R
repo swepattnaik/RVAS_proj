@@ -17,24 +17,24 @@ mgrb_nc_var_filt6 = mgrb_nc_var_filt5[!grepl(paste(toMatch, collapse = "|"),
                                              mgrb_nc_var_filt5$Consequence),]
 ##Gene check
 ##SKAT input
-fil_tab <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/all_isksmgrb_skatinp_combset2020_clin_C3C4C5_NFE0002_AD_rm_dup_freeze.tsv",
-                      sep = "\t", stringsAsFactors = F, header = T)
-fil_tab <- fil_tab[!is.na(fil_tab$SAMPLE),]
-dim(fil_tab)
-
-Shelterin <- c("POT1", "TINF2", "TERF1", "TERF2", "TERF2IP", "SMARCAL1", "STAG3", "TIMELESS")
-
-CEP_HAUS_core <- c("CEP63", "CEP72", "HAUS4", "HAUS5", "MZT1", "SSNA1")
-CEP_HAUS_core_mod <- c("CEP63", "CEP72", "HAUS4", "HAUS5", "MZT1")
-
-MPNST_pos <- c("NF1", "LZTR1", "SDHA", "SDHB", "SDHC", "SDHD")
-
-
-c1 = fil_tab[fil_tab$gene_symbol %in% "TP53",]$VARIANT
-var_all1 = unlist(lapply(strsplit(c1, split=":"),function(x)paste(x[1],x[2],sep=":")))
-s1 = fil_tab[fil_tab$gene_symbol %in% "TP53",]$SAMPLE
-isks_nc_var_filt4[isks_nc_var_filt4$QC_id %in% c1,]$sid
-mgrb_nc_var_filt4[mgrb_nc_var_filt4$QC_id %in% c1,]$sid
+# fil_tab <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/all_isksmgrb_skatinp_combset2020_clin_C3C4C5_NFE0002_AD_rm_dup_freeze.tsv",
+#                       sep = "\t", stringsAsFactors = F, header = T)
+# fil_tab <- fil_tab[!is.na(fil_tab$SAMPLE),]
+# dim(fil_tab)
+# 
+# Shelterin <- c("POT1", "TINF2", "TERF1", "TERF2", "TERF2IP", "SMARCAL1", "STAG3", "TIMELESS")
+# 
+# CEP_HAUS_core <- c("CEP63", "CEP72", "HAUS4", "HAUS5", "MZT1", "SSNA1")
+# CEP_HAUS_core_mod <- c("CEP63", "CEP72", "HAUS4", "HAUS5", "MZT1")
+# 
+# MPNST_pos <- c("NF1", "LZTR1", "SDHA", "SDHB", "SDHC", "SDHD")
+# 
+# 
+# c1 = fil_tab[fil_tab$gene_symbol %in% "TP53",]$VARIANT
+# var_all1 = unlist(lapply(strsplit(c1, split=":"),function(x)paste(x[1],x[2],sep=":")))
+# s1 = fil_tab[fil_tab$gene_symbol %in% "TP53",]$SAMPLE
+# isks_nc_var_filt4[isks_nc_var_filt4$QC_id %in% c1,]$sid
+# mgrb_nc_var_filt4[mgrb_nc_var_filt4$QC_id %in% c1,]$sid
 
 #########
 inp = c(length(unique(isks_nc_var_filt6$sid)), 
@@ -185,3 +185,103 @@ isks_nc_var[isks_nc_var$QC_id %in% c1,]$QC_id
 mgrb_nc_var_filt4[mgrb_nc_var_filt4$QC_id %in% c1,]$sid
 
 dim(isks_nc_var[isks_nc_var$Location %in% c2,])
+
+
+##get telomere length and C4/5 genes in samples enriched for shelterin and centrosome complex genes
+
+isks_df_sub_shel = isks_nc_var_filt6[isks_nc_var_filt6$SYMBOL %in% Shelterin, ]
+mgrb_df_sub_shel = mgrb_nc_var_filt6[mgrb_nc_var_filt6$SYMBOL %in% Shelterin, ]
+isks_df_sub_cent = isks_nc_var_filt6[isks_nc_var_filt6$SYMBOL %in% CEP_HAUS_core, ]
+mgrb_df_sub_cent = mgrb_nc_var_filt6[mgrb_nc_var_filt6$SYMBOL %in% CEP_HAUS_core, ]
+
+#Telomere analysis
+`%nin%` = Negate(`%in%`)
+
+telo_all_coh = read.delim("~/RVAS/Telo/telseq_all_plusMGRB_PID_QC2pass.tsv", sep = "\t", header = T,
+                          stringsAsFactors = F)
+isks_df_sub_shel$telo_len = telo_all_coh[match(isks_df_sub_shel$rect_sam, telo_all_coh$Sample), 3]
+
+isks_df_sub_cent$telo_len = telo_all_coh[match(isks_df_sub_cent$rect_sam, telo_all_coh$Sample), 3]
+
+##6 samples have no telomere length reported
+#unique(isks_df_sub_shel[is.na(isks_df_sub_shel$telo_len),]$sid)
+hist(isks_df_sub_shel[!is.na(isks_df_sub_shel$telo_len),]$telo_len)
+hist(isks_df_sub_cent[!is.na(isks_df_sub_cent$telo_len),]$telo_len)
+
+##samples with telomere length above 4
+isks_df_sub_shel = isks_df_sub_shel[!is.na(isks_df_sub_shel$telo_len),]
+isks_df_sub_cent = isks_df_sub_cent[!is.na(isks_df_sub_cent$telo_len),]
+
+#isks_df_sub_shel_ids = unique(isks_df_sub_shel[isks_df_sub_shel$telo_len > 4,]$rect_sam)
+
+####Sarcoma type and C4/5 genes
+library(readxl)
+# comb_pheno <- read_excel("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set/var_indep/PID_Master_file_290420.xlsx", sheet = 1, col_types = c("list"))
+# comb_pheno <- as.data.frame(comb_pheno)
+# comb_pheno1 <- sapply(comb_pheno, unlist)
+# colnames(comb_pheno1) <- colnames(comb_pheno)
+# comb_pheno <- comb_pheno1
+# comb_pheno <- as.data.frame(comb_pheno, stringsAsFactors = F)
+# comb_pheno <- unique(comb_pheno)
+# comb_pheno <- comb_pheno[!is.na(comb_pheno$pid),]
+# comb_pheno$`age at dateExtracted` <- as.numeric(comb_pheno$`age at dateExtracted`)
+# comb_pheno$AgeatSarcoma <- as.numeric(comb_pheno$AgeatSarcoma)
+# comb_pheno$SubjectAgeCancer <- as.numeric(comb_pheno$SubjectAgeCancer)
+# 
+# ##Apr29-2020
+# 
+# ##Add QC2 fail check
+# QC2_dat <- read.table("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set/var_indep/joint_calls_2019jan_2019nov.final_qc_output.tsv", header = T, sep = "\t", stringsAsFactors = F)
+# 
+# QC2_dat_fail <- QC2_dat[QC2_dat$passes_qc2 %in% "FALSE",]$new_sampleid
+# 
+# `%nin%` = Negate(`%in%`)
+# comb_pheno$QC2 <- ifelse(as.character(comb_pheno$pmn) %in% QC2_dat_fail, "Fail", 
+#                          ifelse(as.character(comb_pheno$pmn) %nin% QC2_dat$new_sampleid, "Unknown", "Pass"))
+# 
+# comb_ALL_phen <- comb_pheno
+# comb_ALL_phen <- comb_ALL_phen[comb_ALL_phen$QC2 %nin% "Fail", ]
+
+##get PID file
+PID_file = read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/PID/PID_combset2020_CGC_skatBin_repstress_potint_mito_chkpt_centrosome_predNFE_clueGO_Sep192020_AD_addC4C5.tsv", 
+                      sep = "\t", header = T, stringsAsFactors = F)
+
+#telomere length greater than 4
+
+isks_df_sub_shel_4 = isks_df_sub_shel[isks_df_sub_shel$telo_len > 4,]
+isks_df_sub_cent_4 = isks_df_sub_cent[isks_df_sub_cent$telo_len > 4,]
+
+#isks_df_sub_shel_4$sarc_type = comb_ALL_phen[match(isks_df_sub_shel_4$rect_sam,
+#                                                          comb_ALL_phen$pmn), 22]
+#isks_df_sub_shel_4$PID = comb_ALL_phen[match(isks_df_sub_shel_4$rect_sam,
+#                                                    comb_ALL_phen$pmn), 1]
+
+isks_df_sub_shel_4$sarc_type = PID_file[match(isks_df_sub_shel_4$rect_sam,
+                                                   PID_file$pmn), 22]
+isks_df_sub_shel_4$PID = PID_file[match(isks_df_sub_shel_4$rect_sam,
+                                             PID_file$pmn), 1]
+isks_df_sub_shel_4$C5_genes = PID_file[match(isks_df_sub_shel_4$rect_sam,
+                                        PID_file$pmn), 70]
+isks_df_sub_shel_4$C4_genes = PID_file[match(isks_df_sub_shel_4$rect_sam,
+                                             PID_file$pmn), 72]
+
+isks_df_sub_shel_4fin = unique(isks_df_sub_shel_4[,c(83, 79,84:85, 81:82)])
+
+write.table(isks_df_sub_shel_4fin, "~/RVAS/ISKS_MGRB_NC/isks_df_sub_shel_39telo_C45.tsv", sep = "\t",
+            quote = F, row.names = F)
+
+isks_df_sub_cent_4$sarc_type = PID_file[match(isks_df_sub_cent_4$rect_sam,
+                                              PID_file$pmn), 22]
+isks_df_sub_cent_4$PID = PID_file[match(isks_df_sub_cent_4$rect_sam,
+                                        PID_file$pmn), 1]
+isks_df_sub_cent_4$C5_genes = PID_file[match(isks_df_sub_cent_4$rect_sam,
+                                             PID_file$pmn), 70]
+isks_df_sub_cent_4$C4_genes = PID_file[match(isks_df_sub_cent_4$rect_sam,
+                                             PID_file$pmn), 72]
+
+isks_df_sub_cent_4fin = unique(isks_df_sub_cent_4[,c(83, 79,84:85, 81:82)])
+
+write.table(isks_df_sub_cent_4fin, "~/RVAS/ISKS_MGRB_NC/isks_df_sub_cent_9telo_C45.tsv", sep = "\t",
+            quote = F, row.names = F)
+
+

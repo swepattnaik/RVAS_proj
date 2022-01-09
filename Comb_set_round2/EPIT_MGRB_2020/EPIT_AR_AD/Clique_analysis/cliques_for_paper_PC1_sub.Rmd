@@ -34,11 +34,11 @@ library(topGO)
 ##refer script (cliq_OR_SKAT.R)
 
 #cpx_list <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Aug31/Cliques/Cliques_max101.rds")
-cpx_list <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Aug31/Cliques/Cliques_max64.rds")
+cpx_list <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/Cliques/Cliques_max64_PC1_sub.rds")
 
 cpx_genes <- unique(unlist(lapply(cpx_list, function(x)names(x))))
 ##filter list based on burden test (adjusted Pval < 0.01)
-comb_burd_SKAT <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Aug31/Cliques/Clique_OR_SKAT_968.tsv", sep = "\t", header = T, stringsAsFactors = F)
+comb_burd_SKAT <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/Cliques/Clique_OR_SKAT_PC1_sub.tsv", sep = "\t", header = T, stringsAsFactors = F)
 sig_cliq <- comb_burd_SKAT[comb_burd_SKAT$adj_pval < 0.01,]$clique
 sig_cliq_df <- comb_burd_SKAT[comb_burd_SKAT$adj_pval < 0.01,]
 sig_cliq_df$size <- unlist(lapply(strsplit(sig_cliq_df$genes, ","), function(x)length(x)))
@@ -208,7 +208,7 @@ ggplot() +
 dend <- raw_mat %>% dist %>% hclust %>% as.dendrogram
 dend %>% plot
 lab_ord <- labels(dend)
-cust_col_df <- cbind.data.frame("code" = paste("Clust", 1:6, sep = "_"), "col_cust" = c("#008fd5","#de6b35", "#7a9406", "#fc0373","#8f5467", "#6c0ee8"))
+cust_col_df <- cbind.data.frame("code" = paste("Clust", 1:8, sep = "_"), "col_cust" = c("#008fd5","#de6b35", "#7a9406", "#fc0373","#8f5467", "#6c0ee8", "#FF3333", "#AFFF33"))
 text.df$col_cust <- as.character(cust_col_df[match(as.character(text.df$clust), cust_col_df$code), 2])
 text.df <- text.df[match(lab_ord, as.character(text.df$label)),]
 #write.table(text.df, "~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Aug31/Cliques/node_cluster_color_map.tsv", sep = "\t", row.names = F, quote = F)
@@ -233,7 +233,7 @@ ggplot(ggd1, labels = FALSE) +
 
 strindb_biog_graph1 <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/strindb_biog_graph_cyto.rds")
 collapsed_cliques <- lapply(gg1, function(x)unique(unlist(lapply(cpx_list_filt[names(x)], function(y)names(y)))))
-names(collapsed_cliques) <- paste("Clust", 1:6, sep = "_")
+names(collapsed_cliques) <- paste("Clust", 1:8, sep = "_")
 #text.df
 plot_col_cliq <- function(col_cliq_df, clust_id){
  # cpx_genes <- names(cliq_list)
@@ -256,7 +256,7 @@ return(cpx_plt)
 }
 
 cliq_col_list <- list()
-for(k in 1:6){
+for(k in 1:8){
   cliq_col_list[[k]] <- plot_col_cliq(text.df, paste("Clust", k, sep = "_"))
 }
 
@@ -268,6 +268,8 @@ multiplot(cliq_col_list[[6]],
           cliq_col_list[[3]],
           cliq_col_list[[1]],
           cliq_col_list[[2]],
+          cliq_col_list[[7]],
+          cliq_col_list[[8]],
           cols = 2)
 ```
 
@@ -422,22 +424,28 @@ multiplot(plotlist = cliq_plots, cols = 2)
 
 ```{r}
 `%nin%` = Negate(`%in%`)
-Exome_skat <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/Exome_skat_para_result_isks_combset2020_uni_MAF_PC1234_ver4_clinrect_Aug31.rds")
+Exome_skat <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/SKAT/Exome_skat_para_result_isks_totex_count_PC1234_ver4_clinrect_Aug31_subPC1.rds")
 df_skat <- lapply(Exome_skat, function(x)do.call("rbind.data.frame", x))
 Exome_pc123_srt_SKAT <- lapply(df_skat, function(x) x[order(x$pval_SKATbin, decreasing = F),])
 Exome_pc123_srt_SKAT <- lapply(Exome_pc123_srt_SKAT, function(x){colnames(x)[1] <- c("symbol"); return(x)})
-Exome_pc123_srt_SKAT_case_enr_nCH <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/Exome_para_pc1234_SKAT_Enriched_ISKS_2020_Aug31.rds")
+Exome_pc123_srt_SKAT_case_enr_nCH_df <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Exome_para_tab_ISKS_MGRB_C345_Aug31_sub_PC1.rds")
+Exome_pc123_srt_SKAT_df <- Exome_pc123_srt_SKAT[[4]]
+
+Exome_pc123_srt_SKAT_df =  Exome_pc123_srt_SKAT_df[Exome_pc123_srt_SKAT_df$symbol %in% Exome_pc123_srt_SKAT_case_enr_nCH_df$gene,]
+
+Exome_pc123_srt_SKAT_case_enr_nCH_df <- Exome_pc123_srt_SKAT_case_enr_nCH_df[Exome_pc123_srt_SKAT_case_enr_nCH_df$gene %in% Exome_pc123_srt_SKAT_df$symbol,]
+
 ##Add p-value
-Exome_pc123_srt_SKAT_case_enr_nCH_pval <- Map(cbind.data.frame, Exome_pc123_srt_SKAT_case_enr_nCH, Exome_pc123_srt_SKAT)
+#Exome_pc123_srt_SKAT_case_enr_nCH_pval <- Map(cbind.data.frame, Exome_pc123_srt_SKAT_case_enr_nCH, Exome_pc123_srt_SKAT)
+Exome_pc123_srt_SKAT_case_enr_nCH_df_srt <- Exome_pc123_srt_SKAT_case_enr_nCH_df[match(as.character(Exome_pc123_srt_SKAT_df$symbol),as.character(Exome_pc123_srt_SKAT_case_enr_nCH_df$gene)),]
+
+Exome_pc123_srt_SKAT_case_enr_nCH_pval <- cbind.data.frame(Exome_pc123_srt_SKAT_case_enr_nCH_df_srt,Exome_pc123_srt_SKAT_df)
 
 
-Exome_pc123_srt_SKAT_case_enr_nCH_ranked <- lapply(Exome_pc123_srt_SKAT_case_enr_nCH_pval,
-                                                   function(x) cbind.data.frame(x, "rank_score" = -log10(x[,14])* x[,6]))
-Exome_pc123_srt_SKAT_case_enr_nCH_ranked <- lapply(Exome_pc123_srt_SKAT_case_enr_nCH_ranked, function(x)
-  x[order(x[,17], decreasing = F),])
-
-Exome_pc123_srt_SKAT_case_enr_nCH_ranked_all = Exome_pc123_srt_SKAT_case_enr_nCH_ranked[[4]] 
-
+##compute rank score
+Exome_pc123_srt_SKAT_case_enr_nCH_pval$rank_score <- -log10(Exome_pc123_srt_SKAT_case_enr_nCH_pval$pval_SKATbin) * Exome_pc123_srt_SKAT_case_enr_nCH_pval$wt_diff
+##sort to generate ranked list                                                    
+Exome_pc123_srt_SKAT_case_enr_nCH_ranked_all <- Exome_pc123_srt_SKAT_case_enr_nCH_pval[order(Exome_pc123_srt_SKAT_case_enr_nCH_pval$rank_score, decreasing = T),]
 ranked_list = Exome_pc123_srt_SKAT_case_enr_nCH_ranked_all$rank_score
 names(ranked_list) = Exome_pc123_srt_SKAT_case_enr_nCH_ranked_all$gene
 
@@ -446,9 +454,10 @@ library(igraph)
 library(fgsea)
 #data(examplePathways)
 #data(exampleRanks)
-cpx_list <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Aug31/Cliques/Cliques_max64.rds")
-comb_burd_SKAT <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/Aug31/Cliques/Clique_OR_SKAT_968.tsv",
-                             sep = "\t", header = T, stringsAsFactors = F)
+cpx_list <- readRDS("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/Cliques/Cliques_max64_PC1_sub.rds")
+
+comb_burd_SKAT <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/review_doc/Cliques/Clique_OR_SKAT_PC1_sub.tsv", sep = "\t", header = T, stringsAsFactors = F)
+
 sig_cliq <- comb_burd_SKAT[comb_burd_SKAT$adj_pval < 0.01,]$clique
 
 cpx_list <- cpx_list[sig_cliq]
@@ -514,8 +523,8 @@ cluster_mem <- function(mat_inp){
 gg1 <- cluster_mem(raw_mat)
 
 collapsed_cliques <- lapply(gg1, function(x)unique(unlist(lapply(cpx_list[x], function(y)y))))
-collapsed_cliques[[7]] = c("BRCA1", "BRCA2", "PALB2", "ATM", "CHEK2", "CDH1") #negative control
-names(collapsed_cliques) <- paste("Clust", 1:7, sep = "_")
+collapsed_cliques[[9]] = c("BRCA1", "BRCA2", "PALB2", "ATM", "CHEK2", "CDH1") #negative control
+names(collapsed_cliques) <- paste("Clust", 1:9, sep = "_")
 
 ##run fgsea
 set.seed(4532)
@@ -525,7 +534,7 @@ fgseaRes_col <- fgsea(pathways = collapsed_cliques,
                   maxSize  = 500, nperm = 10000, nproc = 8)
 View(fgseaRes_col)
 fgseaRes_col$leadingEdge_all = unlist(lapply(fgseaRes_col$leadingEdge, function(x) paste(x, collapse = ",")))
-View(fgseaRes_col[,-8])
+#View(fgseaRes_col[,-8])
 
 ```
 
@@ -535,16 +544,23 @@ View(fgseaRes_col[,-8])
 
 ```{r}
 library(enrichR)
+dbs <- c("GO_Molecular_Function_2018", "GO_Cellular_Component_2018", "GO_Biological_Process_2018")
+clust_GO = lapply(collapsed_cliques, function(x)enrichr(x, dbs))
+source("~/APCluster_graphs/case_TCGA_new_PRAD_3431/multi_plot.R")
+clust_GO_plots = lapply(clust_GO, function(x)list(plotEnrich(x$GO_Biological_Process_2018), 
+                    plotEnrich(x$GO_Molecular_Function_2018), 
+                    plotEnrich(x$GO_Cellular_Component_2018)))
+
+multiplot(plotlist = clust_GO_plots[[1]], cols = 3) ##Shelterin
+multiplot(plotlist = clust_GO_plots[[4]], cols = 3) ##Centrosome
+multiplot(plotlist = clust_GO_plots[[2]], cols = 3)
+
+# pp = plotEnrich(clust_GO[[1]]$GO_Biological_Process_2018)
+# plotEnrich(clust_GO[[1]]$GO_Molecular_Function_2018)
+# plotEnrich(clust_GO[[1]]$GO_Cellular_Component_2018)
+# plotEnrich(clust_GO[[4]]$GO_Biological_Process_2018)
+# plotEnrich(clust_GO[[4]]$GO_Molecular_Function_2018)
+# plotEnrich(clust_GO[[4]]$GO_Cellular_Component_2018)
 
 ```
 
-
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
