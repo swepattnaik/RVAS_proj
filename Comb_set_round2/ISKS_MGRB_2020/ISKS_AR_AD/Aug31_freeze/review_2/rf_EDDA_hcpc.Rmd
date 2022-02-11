@@ -1,0 +1,1359 @@
+---
+title: "rf_edda_kernel"
+author: "Swetansu Pattnaik"
+date: "25/01/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+##libraries
+```{r echo=FALSE, message=FALSE}
+library(ggplot2)
+library(readxl)
+library(mclust)
+library(gg3D)
+library(dplyr)
+library(kableExtra)
+library(FactoMineR)
+library(hexbin)
+`%nin%` = Negate(`%in%`)
+
+source("~/APCluster_graphs/case_TCGA_new_PRAD_3431/multi_plot.R")
+
+```
+
+##Functions
+#3D plots
+```{r echo=FALSE, message=FALSE}
+
+#color palettes
+#library(scales)
+#show_col(hue_pal()(4))
+
+library("gg3D")
+
+make_3Dplot_clust <- function(df_inp, theta=0, phi=0){
+  ggplot(df_inp, aes(x=PC1, y=PC2, z=PC3, colour=clust_code)) +
+    axes_3D(theta=theta, phi=phi) +
+    stat_3D(theta=theta, phi=phi, geom="point") +
+    labs_3D(theta=theta, phi=phi, 
+            labs=c("PC1", "PC2", "PC3"), 
+            angle=c(0,0,0),
+            hjust=c(-0.5,0.5,1), 
+            vjust=c(-2,-2,-1)) +
+    theme_void() 
+}
+
+#clust3D_12 = make_3Dplot_clust(scores_sub_PC1_mem, theta=-90, phi=60)
+
+make_3Dplot_coh <- function(df_inp, theta=0, phi=0){
+  ggplot(df_inp, aes(x=PC1, y=PC2, z=PC3, colour=superPopulation)) +
+    axes_3D(theta=theta, phi=phi) +
+    stat_3D(theta=theta, phi=phi, geom="point") +
+    labs_3D(theta=theta, phi=phi, 
+            labs=c("PC1", "PC2", "PC3"), 
+            angle=c(0,0,0),
+            hjust=c(-0.5,0.5,1), 
+            vjust=c(-2,-2,-1)) +
+    theme_void() 
+}
+
+#coh3D_12 = make_3Dplot_coh(scores_sub_PC1_mem, theta=-90, phi=60)
+
+##For All populations
+make_3Dplot_pop <- function(df_inp, theta=0, phi=0){
+  ggplot(df_inp, aes(x=PC1, y=PC2, z=PC3, colour=pred.superPop)) +
+    axes_3D(theta=theta, phi=phi) +
+    stat_3D(theta=theta, phi=phi, geom="point") +
+    labs_3D(theta=theta, phi=phi, 
+            labs=c("PC1", "PC2", "PC3"), 
+            angle=c(0,0,0),
+            hjust=c(-0.5,0.5,1), 
+            vjust=c(-2,-2,-1)) +
+    theme_void() 
+}
+
+
+##For European population
+
+
+make_3Dplot_coh_Eur = function(df_inp, theta=0, phi=0){
+  ggplot(df_inp, aes(x=PC1, y=PC2, z=PC3, colour=superPopulation)) +
+    axes_3D(theta=theta, phi=phi) +
+    stat_3D(theta=theta, phi=phi, geom="point") +
+    labs_3D(theta=theta, phi=phi, 
+            labs=c("PC1", "PC2", "PC3"), 
+            angle=c(0,0,0),
+            hjust=c(-0.5,0.5,1.5), 
+            vjust=c(-1,-2, 1)) +
+    theme_void() 
+  }
+
+make_3Dplot_clust_eur = function(df_inp, theta=0, phi=0){
+  ggplot(df_inp, aes(x=PC1, y=PC2, z=PC3, colour=clust_code)) +
+    axes_3D(theta=theta, phi=phi) +
+    stat_3D(theta=theta, phi=phi, geom="point") +
+    labs_3D(theta=theta, phi=phi, 
+            labs=c("PC1", "PC2", "PC3"), 
+            angle=c(0,0,0),
+            hjust=c(-0.5,0.5,-0.05), 
+            vjust=c(-1,-2, 1)) +
+    theme_void() 
+  }
+
+make_3Dplot_eurpop <- function(df_inp, theta=0, phi=0){
+  ggplot(df_inp, aes(x=PC1, y=PC2, z=PC3, colour=pred.eurPop)) +
+    axes_3D(theta=theta, phi=phi) +
+    stat_3D(theta=theta, phi=phi, geom="point") +
+    labs_3D(theta=theta, phi=phi, 
+            labs=c("PC1", "PC2", "PC3"), 
+            angle=c(0,0,0),
+            hjust=c(1,1,1), 
+            vjust=c(2,2,-1)) +
+    theme_void() 
+}
+
+#eurpop3D_12 = make_3Dplot_eurpop(scores_EUR, theta=180, phi=0)
+## QC plot
+vis_ret_qc_3Dplot = function(df_inp) {
+  ggplot(df_inp, aes(x=PC1, y=PC2, z=PC3, colour=vis_ret)) +
+    axes_3D(theta = -120, phi = 0) +
+    stat_3D(theta = -120, phi = 0, geom="point") +
+    labs_3D(theta = -120, phi = 0, 
+            labs=c("PC1", "PC2", "PC3"), 
+            angle=c(0,0,0),
+            hjust=c(-0.5,-0.25,1), 
+            vjust=c(-1,-2,-1)) +
+    theme_void() 
+}
+
+
+```
+
+
+##2D plots
+
+```{r echo=FALSE, message=FALSE}
+
+#for case control
+plot_case_cont_2D = function(df_inp){
+plot12_rect_cc <- ggplot(df_inp, aes(x = PC1, y = PC2, colour = superPopulation)) + geom_point(alpha = 0.35) + theme_bw() + theme(legend.position="bottom", legend.title = element_blank()) 
+plot12_rect_pop <- ggplot(df_inp, aes(x = PC1, y = PC2, colour = pred.superPop)) + geom_point() + theme_bw() + theme(legend.position="bottom", legend.title = element_blank()) 
+plot12_rect_country <- ggplot(df_inp[df_inp$Country %nin% "Unknown",], aes(x = PC1, y = PC2, colour = Country)) + geom_point() + theme_bw() + theme(legend.position="bottom", legend.title = element_blank()) 
+
+multiplot(plot12_rect_cc, plot12_rect_pop, plot12_rect_country, cols = 3)
+
+}
+
+#for case control
+plot_case_cont_2D_PC123 = function(df_inp, alpha = NULL){
+plot12_rect_cc12 <- ggplot(df_inp, aes(x = PC1, y = PC2, colour = superPopulation)) + geom_point(alpha = alpha) +
+  xlim(-0.6, 0.15) + theme_bw() + theme(legend.position="bottom", legend.title = element_blank()) 
+plot12_rect_cc13 <- ggplot(df_inp, aes(x = PC1, y = PC3, colour = superPopulation)) + geom_point(alpha = alpha) + xlim(-0.6, 0.15) + theme_bw() + theme(legend.position="bottom", legend.title = element_blank()) 
+plot12_rect_cc23 <- ggplot(df_inp, aes(x = PC2, y = PC3, colour = superPopulation)) + geom_point(alpha = alpha) + xlim(-0.225, 0.52) + theme_bw() + theme(legend.position="bottom", legend.title = element_blank()) 
+
+multiplot(plot12_rect_cc12, plot12_rect_cc13, plot12_rect_cc23, cols = 3)
+
+}
+
+#for case control QC
+plot_case_cont_2D_PC123_QC = function(df_inp, alpha = NULL){
+plot12_rect_cc12 <- ggplot(df_inp, aes(x = PC1, y = PC2, colour = vis_ret)) + geom_point(alpha = alpha) +
+  xlim(-0.6, 0.15) + theme_bw() + theme(legend.position="bottom", legend.title = element_blank()) 
+plot12_rect_cc13 <- ggplot(df_inp, aes(x = PC1, y = PC3, colour = vis_ret)) + geom_point(alpha = alpha) + xlim(-0.6, 0.15) + theme_bw() + theme(legend.position="bottom", legend.title = element_blank()) 
+plot12_rect_cc23 <- ggplot(df_inp, aes(x = PC2, y = PC3, colour = vis_ret)) + geom_point(alpha = alpha) + xlim(-0.225, 0.52) + theme_bw() + theme(legend.position="bottom", legend.title = element_blank()) 
+
+multiplot(plot12_rect_cc12, plot12_rect_cc13, plot12_rect_cc23, cols = 3)
+
+}
+
+#for case control (Eur population)
+plot_eur_case_cont_2D = function(df_inp,alpha = NULL){
+plot12_rect_cc <- ggplot(df_inp, aes(x = PC1, y = PC2, colour = superPopulation)) + geom_point(alpha = alpha) + theme_bw() + theme(legend.position="bottom", legend.title = element_blank()) 
+plot12_rect_eurpop <- ggplot(df_inp, aes(x = PC1, y = PC2, colour = pred.eurPop)) + geom_point(alpha = alpha) + theme_bw() + theme(legend.position="bottom", legend.title = element_blank()) 
+plot12_rect_country <- ggplot(df_inp[df_inp$Country %nin% "Unknown",], aes(x = PC1, y = PC2, colour = Country)) + geom_point() + theme_bw() + theme(legend.position="bottom", legend.title = element_blank()) 
+
+multiplot(plot12_rect_cc, plot12_rect_eurpop, plot12_rect_country, cols = 3)
+
+}
+
+#for clustered output
+plot_clust_2D = function(df_inp){
+clust_plot12 <- ggplot(df_inp, aes(x = PC1, y = PC2, colour = clust_code)) + geom_point() +
+  xlim(-0.6, 0.15) + theme_bw() + 
+  theme(legend.position="bottom", legend.title = element_blank()) 
+#+ geom_vline(xintercept = -0.2, lty = 2)
+clust_plot13 <- ggplot(df_inp, aes(x = PC1, y = PC3, colour = clust_code)) + geom_point() +
+  xlim(-0.6, 0.15) + theme_bw() + 
+  theme(legend.position="bottom", legend.title = element_blank()) 
+#+ geom_vline(xintercept = -0.2, lty = 2)
+clust_plot23 <- ggplot(df_inp, aes(x = PC2, y = PC3, colour = clust_code)) + geom_point() +
+  xlim(-0.225, 0.52) + theme_bw() + 
+  theme(legend.position="bottom", legend.title = element_blank()) 
+#+  geom_vline(xintercept = -0.2, lty = 2)
+
+multiplot(clust_plot12, clust_plot13, clust_plot23, cols = 3)
+
+}
+
+```
+
+##Case control proportion
+
+```{r echo=FALSE, message=FALSE}
+
+##agglomorative clustered data
+case_cont_ratio_clust = function(df_inp, pop){
+  clusters = unique(df_inp$cluster)
+case_cont_df = list()
+for(i in 1:length(clusters)){
+  #print(i)
+ 
+  clust_coh_prop = as.data.frame(table(df_inp[df_inp$cluster == clusters[i],]$superPopulation))
+  cont = sum(clust_coh_prop[clust_coh_prop$Var1 %in% "controls", ]$Freq)
+  case = sum(clust_coh_prop[clust_coh_prop$Var1 %in% "sarcoma", ]$Freq)
+  
+  #print(case)
+  #print(cont)
+  if( pop %in% "All"){
+    clust_prop = as.data.frame(table(df_inp[df_inp$cluster == clusters[i],]$pred.superPop))
+ pop_split = paste(paste(clust_prop$Var1, clust_prop$Freq, sep = ":"), collapse = ",")
+ # ratio = (case/1631)/(cont/3205)
+  ratio = (case)/(cont + case)
+  clust_code = paste("P", clusters[i], sep = "")
+  }
+  else {
+    clust_prop = as.data.frame(table(df_inp[df_inp$cluster == clusters[i],]$pred.eurPop))
+ pop_split = paste(paste(clust_prop$Var1, clust_prop$Freq, sep = ":"), collapse = ",")
+ # ratio = (case/1514)/(cont/3116)
+  ratio = (case)/(cont + case)
+  clust_code = paste("EC", clusters[i], sep = "")
+  }
+  
+  case_cont_df[[i]] = cbind.data.frame("case" = case, "control" =  cont, "ratio" = ratio, 
+                                      "split" = pop_split,  "cluster" = clust_code)
+}
+
+case_cont_df_fin = do.call("rbind.data.frame", case_cont_df)
+return(case_cont_df_fin)
+}
+
+##All 1000 genome superpopulations
+case_cont_ratio_pop = function(df_inp){
+allpop = unique(df_inp$pred.superPop) ##based on 4 PCs
+case_cont_df = list()
+for(i in 1:length(unique(allpop))){
+  #print(i)
+  #clust_prop = as.data.frame(table(scores_EUR[scores_EUR$pred.eurPop %in% eurpop[i],]$pred.superPop))
+  clust_coh_prop = as.data.frame(table(df_inp[df_inp$pred.superPop %in% allpop[i],]$superPopulation))
+  cont = sum(clust_coh_prop[clust_coh_prop$Var1 %in% "controls", ]$Freq)
+  case = sum(clust_coh_prop[clust_coh_prop$Var1 %in% "sarcoma", ]$Freq)
+  
+  #print(case)
+  #print(cont)
+ # ratio = (case/1631)/(cont/3205)
+  ratio = (case)/(cont + case)
+  #print(ratio)
+  
+  case_cont_df[[i]] = cbind.data.frame("case" = case, "control" =  cont, "ratio" = ratio, "pop" = allpop[i])
+}
+case_cont_df_fin = do.call("rbind.data.frame", case_cont_df)
+return(case_cont_df_fin)
+}
+
+
+##European population
+case_cont_ratio_eur = function(df_inp){
+eurpop = unique(df_inp$pred.eurPop) ##based on 4 PCs
+case_cont_eur_df = list()
+for(i in 1:length(unique(eurpop))){
+  #print(i)
+  #clust_prop = as.data.frame(table(scores_EUR[scores_EUR$pred.eurPop %in% eurpop[i],]$pred.superPop))
+  clust_coh_prop = as.data.frame(table(df_inp[df_inp$pred.eurPop %in% eurpop[i],]$superPopulation))
+  cont = sum(clust_coh_prop[clust_coh_prop$Var1 %in% "controls", ]$Freq)
+  case = sum(clust_coh_prop[clust_coh_prop$Var1 %in% "sarcoma", ]$Freq)
+  
+  #print(case)
+  #print(cont)
+ # ratio = (case/1514)/(cont/3116)
+  ratio = (case)/(cont + case)
+  #print(ratio)
+  
+  case_cont_eur_df[[i]] = cbind.data.frame("case" = case, "control" =  cont, "ratio" = ratio, "eurpop" = eurpop[i])
+}
+case_cont_eur_df_fin = do.call("rbind.data.frame", case_cont_eur_df)
+return(case_cont_eur_df_fin)
+}
+
+case_cont_ratio_pcs = function(df_inp){
+  clust_coh_prop = as.data.frame(table(df_inp$superPopulation))
+  cont = sum(clust_coh_prop[clust_coh_prop$Var1 %in% "controls", ]$Freq)
+  case = sum(clust_coh_prop[clust_coh_prop$Var1 %in% "sarcoma", ]$Freq)
+  
+  ratio = (case)/(cont + case)
+  #print(ratio)
+  
+  case_cont_df = cbind.data.frame("case" = case, "control" =  cont, "ratio" = ratio)
+#}
+#case_cont_eur_df_fin = do.call("rbind.data.frame", case_cont_eur_df)
+return(case_cont_df)
+}
+
+
+```
+
+
+##Agglomerative clustering (method = centroid): with 4 PCs
+##Agglomerative clustering (method = centroid): with 3 PCs (better), less sparse compared to 4D but sparser than 2D. The mean distance between any two points increases with increase in dimensionality.
+```{r echo=FALSE, message=FALSE}
+
+# set.seed(231735)
+#   hcpc_out = HCPC(df_inp, 5, consol = T)
+  
+perf_hcpc = function(df_inp, nclust){
+
+  set.seed(231735)
+  hcpc_out1 = HCPC(df_inp[,19:21], 5, consol = F, metric = "euclidean", method = "complete")
+  memb = hcpc_out1$data.clust$clust
+df_inp_mem = df_inp %>%
+  mutate(cluster = memb)
+return(df_inp_mem)
+
+}
+```
+
+##RF or EDDA predicted probabilistic filter
+
+```{r echo=FALSE, message=FALSE, eval=FALSE}
+pop_filt = function(df_inp, cutoff){
+  allpop = unique(df_inp$pred.superPop) ##based on 4 PCs
+case_cont_df_low = list()
+for(i in 1:length(unique(allpop))){
+  #print(i)
+  #clust_prop = as.data.frame(table(scores_EUR[scores_EUR$pred.eurPop %in% eurpop[i],]$pred.superPop))
+  coh_pop = df_inp[df_inp$pred.superPop %in% allpop[i],]
+  coh_pop_col =  coh_pop[,grepl(allpop[i], colnames(coh_pop))]
+  case_cont_df_low[[i]] = coh_pop[coh_pop_col < cutoff, ]
+  
+}
+case_cont_df_low_prob_fin = do.call("rbind.data.frame", case_cont_df_low)
+return(case_cont_df_low_prob_fin)
+}
+
+eurpop_filt = function(df_inp, cutoff){
+  eurpop = unique(df_inp$pred.eurPop) ##based on 4 PCs
+case_cont_df_low = list()
+for(i in 1:length(unique(allpop))){
+  #print(i)
+  #clust_prop = as.data.frame(table(scores_EUR[scores_EUR$pred.eurPop %in% eurpop[i],]$pred.superPop))
+  coh_pop = df_inp[df_inp$pred.eurPop %in% eurpop[i],]
+  coh_pop_col =  coh_pop[,grepl(allpop[i], colnames(coh_pop))]
+  case_cont_df_low[[i]] = coh_pop[coh_pop_col < cutoff, ]
+  
+}
+case_cont_df_low_prob_fin = do.call("rbind.data.frame", case_cont_df_low)
+return(case_cont_df_low_prob_fin)
+}
+  
+```
+
+##Distance from geometric centroid in 3D & 2D
+```{r echo=FALSE, message=FALSE}
+##3D centroid function
+
+centroid_dist = function(df_inp, clust_code) {
+coord_3d = df_inp[df_inp$clust_code %in% clust_code, c(39, 19:21)]
+coord_3d_mat = as.matrix(coord_3d[,-1])
+rownames(coord_3d_mat) = coord_3d$rect_sam
+
+centroid_coord = apply(coord_3d_mat, 2, mean)
+##3D distance from centroid
+
+dist_calc = function(cent, samp)
+{
+  euc_dist = sqrt((cent[1] - samp[1])^2 + (cent[2] - samp[2])^2 + (cent[3] - samp[3])^2)
+  return(euc_dist)
+  }
+
+dist_cent = apply(coord_3d_mat, 1, function(x)dist_calc(centroid_coord, x))
+dist_cent_ord = dist_cent[order(dist_cent, decreasing = F)]
+
+return(dist_cent_ord)
+
+}
+
+##3D centroid function for control samples
+
+clust_control_centroid =  function(df_inp, cluster, popclass) {
+  if(popclass %in% "All"){
+coord_3d = df_inp[df_inp$clust_code %in% cluster, c(39,19:21)]
+coord_3d_cent = coord_3d[grepl("^[ABZ]", coord_3d$rect_sam),]
+coord_3d_cent_mat = as.matrix(coord_3d_cent[,-1])
+coord_3d_mat = as.matrix(coord_3d[,-1])
+rownames(coord_3d_mat) = coord_3d$rect_sam
+  }
+  else{
+    coord_3d = df_inp[df_inp$clust_code %in% cluster, c(39,19:21)]
+    coord_3d_cent = coord_3d[grepl("^[ABZ]", coord_3d$rect_sam),]
+    coord_3d_cent_mat = as.matrix(coord_3d_cent[,-1])
+coord_3d_mat = as.matrix(coord_3d[,-1])
+rownames(coord_3d_mat) = coord_3d$rect_sam
+ 
+  }
+
+#centroid_coord = apply(coord_3d_mat, 2, mean)
+centroid_coord = apply(coord_3d_cent_mat, 2, mean) ##centroid based on controls
+##3D distance from centroid
+
+dist_calc = function(cent, samp)
+{
+  euc_dist = sqrt((cent[1] - samp[1])^2 + (cent[2] - samp[2])^2 + (cent[3] - samp[3])^2)
+  return(euc_dist)
+  }
+
+dist_cent = apply(coord_3d_mat, 1, function(x)dist_calc(centroid_coord, x))
+dist_cent_ord = dist_cent[order(dist_cent, decreasing = F)]
+
+return(dist_cent_ord)
+
+}
+
+
+#centroid_dist in 2D
+centroid_2D_dist = function(df_inp) {
+coord_2d = df_inp[,c(39, 19:20)]
+coord_2d_mat = as.matrix(coord_2d[,-1])
+rownames(coord_2d_mat) = coord_2d$rect_sam
+
+centroid_coord = apply(coord_2d_mat, 2, mean)
+
+##2D distance from centroid
+
+dist_calc = function(cent, samp)
+{
+  euc_dist = sqrt((cent[1] - samp[1])^2 + (cent[2] - samp[2])^2)
+  return(euc_dist)
+  }
+
+dist_cent = apply(coord_2d_mat, 1, function(x)dist_calc(centroid_coord, x))
+dist_cent_ord = dist_cent[order(dist_cent, decreasing = F)]
+
+return(dist_cent_ord)
+
+}
+
+```
+
+
+##data preprocessing: Adding factor for visualisation
+
+```{r echo=FALSE, message=FALSE}
+comb_pheno <- read_excel("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/git_proj_rvas/Comb_set_round2/ISKS_MGRB_2020/ISKS_AR_AD/Aug31_freeze/review_add/R2Q6_popstruc/Ethnicity.xlsx",
+                         sheet = 1, col_types = c("list"))
+comb_pheno <- as.data.frame(comb_pheno)
+comb_pheno1 <- sapply(comb_pheno, unlist)
+colnames(comb_pheno1) <- colnames(comb_pheno)
+comb_pheno <- comb_pheno1
+comb_pheno <- as.data.frame(comb_pheno, stringsAsFactors = F)
+comb_pheno <- unique(comb_pheno)
+comb_pheno <- comb_pheno[!is.na(comb_pheno$pid),]
+comb_pheno$`age at dateExtracted` <- as.numeric(comb_pheno$`age at dateExtracted`)
+comb_pheno$AgeatSarcoma <- as.numeric(comb_pheno$AgeatSarcoma)
+comb_pheno$SubjectAgeCancer <- as.numeric(comb_pheno$SubjectAgeCancer)
+
+#scores <- p_Data_noCH
+scores = read.table("~/RVAS/comb_set_2020/pop_PCA/MGRB_ISKS_1000G_combset_pca.scores_clustered_rect_sam.tsv", header = T, sep = "\t", stringsAsFactors = F)
+
+scores = scores[scores$superPopulation %in% c("ISKS", "RISC", "LIONS", "MGRB"),]
+scores$Country <- comb_pheno[match(scores$sample, comb_pheno$pmn),64]
+scores$Country <- ifelse(is.na(scores$Country), "Aus_MGRB", scores$Country)
+scores$Country <- ifelse((!grepl("^[ABZ]",scores$sample) & (scores$Country %in% "Aus_MGRB")), "Unknown", scores$Country)
+
+#scores = scores[scores$Country %nin% "Unknown",]
+
+scores$superPopulation <- ifelse(scores$superPopulation %in% "MGRB", "MGRB", "ISKS")
+scores$superPopulation <- ifelse(scores$superPopulation %in% "MGRB", "controls", "sarcoma")
+
+#ggplot(scores, aes(x = PC1, y = PC2, colour = pred.superPop)) + geom_point(alpha = 1) +
+#  xlim(-0.6, 0.15) + theme_bw() + theme(legend.position="bottom", legend.title = element_blank())
+#make_3Dplot_pop(scores, -120, 0)
+
+scores_subPC1 = scores[scores$PC1 >= -0.2,]
+
+# set.seed(231735)
+#   hcpc_out = HCPC(scores_subPC1[,19:21], 5, consol = F, metric = "euclidean", method = "complete")
+#   scores_subPC1$cluster = hcpc_out$data.clust$clust
+# 
+#   case_cont_ratio_clust(scores_subPC1, "All")
+ 
+##European data
+scores_subPC1_Eur = scores_subPC1[scores_subPC1$pred.superPop %in% "EUR",]
+
+##updated PCs
+##PCs computed after removal of 61 samples (all_excl_samp)
+
+scores_PCnew = read.delim("~/RVAS/comb_set_2020/pop_PCA/review_2/MGRB_ISKS_1000G_rect_rev2_combset_pca.scores_clustered.tsv", header = T, stringsAsFactors = F)
+scores_PCnew = scores_PCnew[scores_PCnew$superPopulation %in% c("ISKS", "RISC", "LIONS", "MGRB"),]
+scores_PCnew$Country <- comb_pheno[match(scores_PCnew$sample, comb_pheno$pmn),64]
+scores_PCnew$Country <- ifelse(is.na(scores_PCnew$Country), "Aus_MGRB", scores_PCnew$Country)
+scores_PCnew$Country <- ifelse((!grepl("^[ABZ]",scores_PCnew$sample) & (scores_PCnew$Country %in% "Aus_MGRB")), "Unknown", scores_PCnew$Country)
+
+#scores_PCnew = scores_PCnew[scores_PCnew$Country %nin% "Unknown",]
+
+scores_PCnew$superPopulation <- ifelse(scores_PCnew$superPopulation %in% "MGRB", "MGRB", "ISKS")
+scores_PCnew$superPopulation <- ifelse(scores_PCnew$superPopulation %in% "MGRB", "controls", "sarcoma")
+scores_PCnew = scores_PCnew[match(scores$rect_sam, scores_PCnew$sample),]
+scores_PCnew = scores_PCnew[!is.na(scores_PCnew$sample),]
+
+#saveRDS(scores_PCnew, "~/RVAS/comb_set_2020/pop_PCA/review_2/MGRB_ISKS_1000G_rect_PCnew.rds", compress = T)
+
+```
+
+##check if the samples have hits in discovered complexes
+```{r}
+##Variant file used for SKAT
+scores = read.table("~/RVAS/comb_set_2020/pop_PCA/MGRB_ISKS_1000G_combset_pca.scores_clustered_rect_sam.tsv", header = T, sep = "\t", stringsAsFactors = F)
+
+fil_tab <- read.delim("~/RVAS/shard_sub_tier3/DT_sheet/EXOME_isks_risc/test/comb_set_2020/ISKS_AR_AD/SKAT/all_isksmgrb_skatinp_combset2020_clin_C3C4C5_NFE0002_AD_rm_dup_freeze.tsv", 
+                      sep = "\t", header = T, stringsAsFactors = F)
+
+fil_tab <- fil_tab[fil_tab$SAMPLE %in% scores$rect_sam,]
+#fil_tab <- fil_tab[fil_tab$SAMPLE %in% scores_PCnew$sample,]
+
+
+##chk_gene function
+
+chk_gene = function(samp_inp){
+  genes_outlier <- unique(fil_tab[fil_tab$SAMPLE %in% samp_inp,]$gene_symbol)
+  Shelterin <- c("POT1", "TINF2", "TERF1", "TERF2", "TERF2IP", "SMARCAL1", "STAG3", "TIMELESS")
+#  Shelterin <- c("POT1", "TINF2", "TERF1", "SMARCAL1", "STAG3")
+CEP_HAUS_core <- c("CEP63", "CEP72", "HAUS4", "HAUS5", "MZT1", "SSNA1")
+MPNST_pos <- c("NF1", "LZTR1", "SDHA", "SDHB", "SDHD")
+sarcoma_genes <- c("TP53", "SDHA", "SDHB", "SDHD")
+
+genes_outlier_df <- unique(fil_tab[fil_tab$SAMPLE %in% samp_inp & 
+                                     fil_tab$gene_symbol %in% c(Shelterin, CEP_HAUS_core, MPNST_pos, "TP53"),c(1,9,127)])
+
+return(genes_outlier_df)
+}
+
+```
+
+
+##Confidence ellipses and Countour plots
+
+```{r}
+library(MASS)
+# dens_score = kde2d(scores$PC1, scores$PC2)
+# df_dens = data.frame( "PC1" = scores$PC1, "PC2" = scores$PC2)
+# df_dens$dens = fields::interp.surface(dens_score, df_dens)
+# library(KernSmooth)
+# df_dens=df_dens[ order(df_dens[,1],df_dens[,2]), ]   #just order lng as you do 
+# df_dens$dens <- sort(df_dens$dens)  
+# 
+# #contour(x = df_dens$PC1, y = df_dens$PC2, z = df_dens$dens)
+# v <- ggplot(df_dens, aes(PC1, PC2, z = dens))
+# v + geom_contour()
+
+#ggplot(scores, aes(PC1, PC2)) + geom_point() + geom_density_2d()
+  
+conf_ellip = function(df_score, var)  {
+  df_score[,var] = as.factor(df_score[,var])
+  ggplot(df_score, aes_string(x="PC1", y="PC2", colour= var)) +
+  geom_point() +
+  stat_ellipse(type = "norm", linetype = 2) +
+  stat_ellipse(type = "t")
+}
+  
+
+#conf_ellip(scores, "pred.superPop")
+
+```
+
+
+##With RF classifier output
+
+```{r}
+
+##RF classifier with 6 PCs
+##Random Forest classification (multiclass)
+#setwd("~/RVAS/comb_set_2020/pop_PCA/review_2/") ##copied code from ~/RVAS/comb_set_2020/pop_PCA/review_2/pca_pop_cluster.R
+
+library(randomForest)
+library(caret)
+library(e1071)
+
+scores = read.table("~/RVAS/comb_set_2020/pop_PCA/MGRB_ISKS_1000G_combset_pca.scores_clustered_rect_sam.tsv", header = TRUE, stringsAsFactors = FALSE, sep = "\t")
+scores$population <- ifelse(is.na(scores$population), "ISKSMGRB", scores$population)
+scores$superPopulation <- ifelse(is.na(scores$superPopulation), "ISKSMGRB", scores$superPopulation)
+
+scores$superPopulation <- ifelse(!is.na(as.numeric(scores$sample)), "ISKS",
+                                 ifelse(grepl("^CR", scores$sample), "RISC",
+                                        ifelse(grepl("^LK", scores$sample), "LIONS", scores$superPopulation)))
+scores$superPopulation <- gsub("ISKSMGRB", "MGRB", scores$superPopulation)
+
+
+#scores_subPC1 = scores[scores$PC1 >= -0.2,]
+#scores_ISKS_MGRB = scores_subPC1[scores_subPC1$superPopulation %in% c("ISKS","MGRB", "RISC", "LIONS"),]
+
+##global population: Use first 4 PCs
+train_pop <- scores[scores$superPopulation %nin% c("ISKS","MGRB", "RISC", "LIONS"),c(17,19:24)]
+train_pop$superPopulation = as.factor(train_pop$superPopulation)
+
+test_pop <- scores[scores$superPopulation %in% c("ISKS","MGRB", "RISC", "LIONS"),c(17,19:24)]
+test_pop$superPopulation = as.factor(test_pop$superPopulation)
+set.seed(94162240)
+rf <- randomForest(superPopulation~., data=train_pop, importance = TRUE, proximity = TRUE, ntree = 10000) 
+print(rf)
+varImp(rf)
+##prediction
+##evaluate model
+
+##superPopulation
+prediction <-predict(rf, test_pop[,-1])
+prob_pop = predict(rf, test_pop[,2:7], type="prob")
+colnames(prob_pop) = paste("pred.superPop.", colnames(prob_pop), sep = "")
+test_pop$pred.superPop = prediction
+scores_ISKS_MGRB = scores[scores$superPopulation %in% c("ISKS","MGRB", "RISC", "LIONS"), 1:39]
+scores_ISKS_MGRB_pop = cbind.data.frame(scores_ISKS_MGRB, "pred.superPop" = prediction, prob_pop)
+
+##EUR population
+##European population
+
+train_pop_eur <- scores[scores$superPopulation %in% "EUR",c(16,19:24)]
+train_pop_eur$population = as.factor(train_pop_eur$population)
+
+test_pop_eur <- scores[scores$superPopulation %in% c("ISKS","MGRB", "RISC", "LIONS"),c(16,19:24)]
+test_pop_eur$population = as.factor(test_pop_eur$population)
+
+set.seed(94162240)
+rf_eur <- randomForest(population~., data=train_pop_eur, importance = TRUE, proximity = TRUE, ntree = 10000) 
+print(rf_eur)
+varImp(rf_eur)
+
+##prediction
+##evaluate model
+
+prediction_eur <- predict(rf_eur, test_pop_eur[,-1])
+prob_pop_eur = predict(rf_eur, test_pop_eur[,2:7], type="prob")
+colnames(prob_pop_eur) = paste("pred.eurPop.", colnames(prob_pop_eur), sep = "")
+test_pop_eur$pred.eurPop = prediction_eur
+scores_ISKS_MGRB_pop_eur = cbind.data.frame(scores_ISKS_MGRB_pop, "pred.eurPop" = prediction_eur, prob_pop_eur)
+
+scores_ISKS_MGRB_pop_eur$pred.NFE = FALSE
+scores_ISKS_MGRB_pop_eur$pred.NFE[scores_ISKS_MGRB_pop_eur$pred.superPop == "EUR" & scores_ISKS_MGRB_pop_eur$pred.eurPop != "FIN"] = TRUE
+scores_ISKS_MGRB_pop_eur$prob.NFE = 1 - scores_ISKS_MGRB_pop_eur$pred.eurPop.FIN
+
+
+#ggplot(scores_ISKS_MGRB_pop, aes(x = PC1, y = PC2, colour = pred.superPop)) + geom_point() + theme_bw() + theme(legend.position="bottom", legend.title = element_blank())
+#make_3Dplot_pop(scores_ISKS_MGRB_pop, -120, 0)
+
+scores_ISKS_MGRB_pop_eur$superPopulation = ifelse(scores_ISKS_MGRB_pop_eur$superPopulation %in% "MGRB", "controls", "sarcoma")
+##Add country
+scores_ISKS_MGRB_pop_eur$Country <- comb_pheno[match(scores_ISKS_MGRB_pop_eur$rect_sam, comb_pheno$pmn),64]
+scores_ISKS_MGRB_pop_eur$Country[is.na(scores_ISKS_MGRB_pop_eur$Country)] = "Aus_MGRB"
+
+plot_case_cont_2D(scores_ISKS_MGRB_pop_eur)
+case_cont_ratio_pop(scores_ISKS_MGRB_pop_eur)
+#make_3Dplot_pop(scores_ISKS_MGRB_pop_eur, -120, 0)
+#make_3Dplot_eurpop(scores_ISKS_MGRB_pop_eur, -120, 0)
+
+write.table(scores_ISKS_MGRB_pop_eur, "~/RVAS/comb_set_2020/pop_PCA/review_2/MGRB_ISKS_combset_pca.scores_RF_clustered.tsv", col.names = TRUE, row.names = FALSE, quote = F, sep = "\t")
+
+##read file
+#scores_ISKS_MGRB_pop_eur = read.delim("~/RVAS/comb_set_2020/pop_PCA/review_2/MGRB_ISKS_combset_pca.scores_RF_clustered.tsv", header = T,  = F, sep = "\t")
+
+##EUR only based on Epi study
+scores_ISKS_MGRB_Eur = scores_ISKS_MGRB_pop_eur[scores_ISKS_MGRB_pop_eur$pred.superPop %in% "EUR",]
+plot_eur_case_cont_2D(scores_ISKS_MGRB_Eur,alpha = 1)
+
+```
+
+
+##1. Strategies to remove low quality samples in European individuals
+##density plots for case control ratios : systematic approach to remove case control imbalances
+##grid search using PC1 and PC2 axes
+
+```{r}
+
+#case_cont_ratio_eur(scores_ISKS_MGRB_Eur)
+scores_ISKS_MGRB_pop_eur = read.delim("~/RVAS/comb_set_2020/pop_PCA/review_2/MGRB_ISKS_combset_pca.scores_RF_clustered.tsv", header = T, sep = "\t", stringsAsFactors = F)
+scores_ISKS_MGRB_Eur = scores_ISKS_MGRB_pop_eur[scores_ISKS_MGRB_pop_eur$pred.superPop %in% "EUR",]
+
+
+pc1pc2_grid = function(df_inp){
+#library(reshape2)
+scenario = expand.grid(PC2 = seq(-0.15,0.07, by = 0.025), PC1 = seq(-0.15, 0.125, by = 0.025))
+#tt = melt(scenario)
+#tt1 = reshape(tt, idvar = "variable", timevar = "value", direction = "wide")
+pc1_un = unique(scenario$PC1)
+pc2_un = unique(scenario$PC2)
+iter1 = length(pc1_un) -1
+
+ratio_df_list1 = list()
+ratio_df_list2 = list()
+for(i in 1:iter1){
+ # if(i < length(pc1_un)){
+  
+    scenario_sub = scenario[scenario$PC1 >= pc1_un[i] & scenario$PC1 <= pc1_un[i + 1],]
+    pc1_un_sub = unique(scenario_sub$PC1)
+    pc1_un_sub = pc1_un_sub[order(pc1_un_sub, decreasing = F)]
+    pc2_un_sub = unique(scenario_sub$PC2)
+    pc2_un_sub = pc2_un_sub[order(pc2_un_sub, decreasing = F)]
+    iter2 = length(pc2_un_sub) - 1
+    print(iter2)
+    for(j in 1:iter2){
+    df_inp_PC2 = df_inp[df_inp$PC2 > pc2_un_sub[j] & df_inp$PC2 <= pc2_un_sub[j + 1],]
+    df_inp_PC2_PC1 = df_inp_PC2[df_inp_PC2$PC1 > pc1_un_sub[1] & df_inp_PC2$PC1 <= pc1_un_sub[2],]
+     #print(pc1_un_sub[2])
+     #print(table(scores_ISKS_MGRB_pop_eur_PC2_PC1$superPopulation))
+    if(dim(df_inp_PC2_PC1)[1] != 0){
+    ratio_df = case_cont_ratio_pcs(df_inp_PC2_PC1)
+    }
+    else{
+      ratio_df = cbind.data.frame("case" = 0, "control"= 0, "ratio" = 0)
+    }
+    ratio_df$PC1_lim_upp = pc1_un_sub[2]
+    ratio_df$PC1_lim_low = pc1_un_sub[1]
+    ratio_df$PC2_lim_upp = pc2_un_sub[j + 1]
+    ratio_df$PC2_lim_low = pc2_un_sub[j]
+    ratio_df_list1[[j]] = ratio_df
+    }
+    ratio_df_list2[[i]] = do.call("rbind.data.frame", ratio_df_list1)
+}
+ratio_df_list2_df = do.call("rbind.data.frame", ratio_df_list2)
+return(ratio_df_list2_df)
+}
+
+#ggplot(scores_ISKS_MGRB_Eur, aes(x = PC1, y = PC2, colour = superPopulation)) + geom_point(alpha = 0.35) + theme_bw() + theme(legend.position="bottom", legend.title = element_blank()) 
+#ggplot(scores_ISKS_MGRB_pop_eur, aes(x = PC1, y = PC2, colour = superPopulation)) + geom_point(alpha = 0.35) + theme_bw() + theme(legend.position="bottom", legend.title = element_blank()) 
+
+cc_grid_EUR = pc1pc2_grid(scores_ISKS_MGRB_Eur)
+#cc_grid_pop_eur = pc1pc2_grid(scores_ISKS_MGRB_pop_eur)
+
+
+ratio_plot = ggplot(cc_grid_EUR, aes(PC1_lim_low, PC2_lim_upp)) +
+ geom_raster(aes(fill = ratio)) + scale_fill_gradient(low = "yellow", high = "red") + 
+  theme(legend.position = "bottom") + xlab("PC1") + ylab("PC2")
+
+
+
+##Hexagon grids
+
+#  function to make a data.frame for geom_hex that can be used with stat_identity
+#https://stackoverflow.com/questions/39296198/operation-between-stat-summary-hex-plots-made-in-ggplot2/39300644
+get_hex_ratio = function(df_case, df_cont, nbins){
+nbins = nbins
+xbnds <- range(c(df_case$PC1,df_cont$PC1))
+ybnds <- range(c(df_case$PC2,df_cont$PC2))
+
+makeHexData <- function(df) {
+ h <- hexbin(df$PC1, df$PC2, nbins, xbnds = xbnds, ybnds = ybnds, IDs = TRUE)
+ df$z = ifelse(is.na(df$superPopulation), 0, 1) 
+ data.frame(hcell2xy(h),
+            z = tapply(df$z, h@cID, FUN = function(z) sum(z)/length(z)),
+            cid = h@cell)
+}
+Ahex <- makeHexData(df_case)
+Bhex <- makeHexData(df_cont)
+##  not all cells are present in each binning, we need to merge by cellID
+byCell <- merge(Ahex, Bhex, by = "cid", all = T)
+
+##  when calculating the difference empty cells should count as 0
+byCell$z.x[is.na(byCell$z.x)] <- 0
+byCell$z.y[is.na(byCell$z.y)] <- 0
+
+##  make a "difference" data.frame
+Diff <- data.frame(x = ifelse(is.na(byCell$x.x), byCell$x.y, byCell$x.x),
+                   y = ifelse(is.na(byCell$y.x), byCell$y.y, byCell$y.x),
+                   z = (byCell$z.x)/(byCell$z.x + byCell$z.y))
+##  plot the results
+
+# ggplot(Ahex) +
+#     geom_hex(aes(x = x, y = y, fill = z),
+#              stat = "identity", alpha = 0.8) +
+#     scale_fill_gradientn(colours = c("blue","red")) +
+#     guides(alpha = FALSE, size = FALSE)
+# 
+# ggplot(Bhex) +
+#     geom_hex(aes(x = x, y = y, fill = z),
+#              stat = "identity", alpha = 0.8) +
+#     scale_fill_gradientn (colours = c("blue","red")) +
+#     guides(alpha = FALSE, size = FALSE)
+
+diff_gg = ggplot(Diff) +
+    geom_hex(aes(x = x, y = y, fill = z),
+             stat = "identity", alpha = 0.8, color = "gray") +
+  xlab("PC1") + ylab("PC2") + 
+  scale_fill_gradientn(colours = c("blue","red")) +
+    guides(alpha = "none", size = "none") + theme_bw()
+diff_gg =  diff_gg + guides(fill=guide_legend(title="case:control")) + theme(legend.position = "bottom")
+return(diff_gg)
+}
+
+df_case_pop = scores_ISKS_MGRB_pop_eur[scores_ISKS_MGRB_pop_eur$superPopulation %in% "sarcoma",]
+df_cont_pop = scores_ISKS_MGRB_pop_eur[scores_ISKS_MGRB_pop_eur$superPopulation %in% "controls",]
+
+df_case_Eur = scores_ISKS_MGRB_Eur[scores_ISKS_MGRB_Eur$superPopulation %in% "sarcoma",]
+df_cont_Eur = scores_ISKS_MGRB_Eur[scores_ISKS_MGRB_Eur$superPopulation %in% "controls",]
+
+
+ratio_hex_plot_pop = get_hex_ratio(df_case = df_case_pop, df_cont = df_cont_pop, nbins = 20)
+ratio_hex_plot_Eur = get_hex_ratio(df_case = df_case_Eur, df_cont = df_cont_Eur, nbins = 20)
+
+##sanity check
+#Eur_plot_cent = ggplot(scores_ISKS_MGRB_Eur, aes(x = PC1, y = PC2, colour = superPopulation)) + geom_point(alpha = 1) + theme_bw() + theme(legend.position="bottom", legend.title = element_blank()) + geom_hline(yintercept = mean(scores_ISKS_MGRB_Eur$PC2) ,linetype="dashed") + geom_vline(xintercept = mean(scores_ISKS_MGRB_Eur$PC1), linetype="dashed")
+
+Eur_plot_threshold = ggplot(scores_ISKS_MGRB_Eur, aes(x = PC1, y = PC2, colour = superPopulation)) + geom_point(alpha = 1) + theme_bw() + theme(legend.position="bottom", legend.title = element_blank()) + geom_hline(yintercept = 0 ,linetype="dashed") + geom_vline(xintercept = 0.05, linetype="dashed")
+
+##figure 1 for choice of PC cutoffs
+multiplot(ratio_hex_plot_pop, ratio_hex_plot_Eur , Eur_plot_threshold,cols = 1)
+
+####sanity check
+chk_threshold = scores_ISKS_MGRB_Eur[scores_ISKS_MGRB_Eur$PC1 < 0.05,]$rect_sam
+dim(scores_ISKS_MGRB_Eur[scores_ISKS_MGRB_Eur$PC1 >= 0.05 & scores_ISKS_MGRB_Eur$PC2 <= 0,])
+dim(scores_ISKS_MGRB_Eur_sub)
+tt_05 = chk_gene(chk_threshold)
+
+tt = chk_gene(scores_ISKS_MGRB_Eur$rect_sam)
+
+
+tt_C4C5 = tt[tt$auto_call %in% c("C4", "C5"),]
+
+##visualise only C4C5 variants in the complex
+scores_cpx_C45 = scores_ISKS_MGRB_Eur[scores_ISKS_MGRB_Eur$rect_sam %in% tt_C4C5$SAMPLE,]
+plot_case_cont_2D(scores_cpx_C45) ##good for sanity check; shows all the C45 variant containing cases
+scores_ISKS_MGRB_Eur$vis_ret = ifelse(scores_ISKS_MGRB_Eur$rect_sam %in% tt_C4C5$SAMPLE, "Y", "N")
+plot_case_cont_2D_PC123_QC(scores_ISKS_MGRB_Eur,alpha = 1)
+
+ggplot(scores_ISKS_MGRB_Eur, aes(x = PC1, y = PC2, colour = vis_ret)) + geom_point(alpha = alpha) +
+  xlim(-0.6, 0.15) + theme_bw() + theme(legend.position="bottom", legend.title = element_blank()) 
+
+```
+
+
+##2.Strategies to remove low quality samples..contd.
+##low class probability 
+```{r}
+#######
+#conf_ellip(scores_ISKS_MGRB_pop_eur, "pred.superPop")
+#conf_ellip(scores_ISKS_MGRB_Eur, "pred.eurPop")
+plot_case_cont_2D(scores_ISKS_MGRB_Eur)
+##case control imbalance: visual inspection (from previous chunk)
+rem_PC1_05 = scores_ISKS_MGRB_Eur[scores_ISKS_MGRB_Eur$PC1 < 0.05,]$rect_sam
+tt_PC1 = chk_gene(rem_PC1_05)
+rem_PC2_0 = scores_ISKS_MGRB_Eur[scores_ISKS_MGRB_Eur$PC2 > 0,]$rect_sam
+tt_PC2 = chk_gene(rem_PC2_0)
+
+###select only high quality samples based on class probability 
+##separate GBR and CEU (north European population); don't filter them
+scores_ISKS_MGRB_pop_eur_sel = scores_ISKS_MGRB_pop_eur[scores_ISKS_MGRB_pop_eur$pred.eurPop %nin% c("CEU", "GBR"),]
+scores_ISKS_MGRB_pop_eur_sel = scores_ISKS_MGRB_pop_eur_sel[,c(39,41:45,47:51)] 
+
+rownames(scores_ISKS_MGRB_pop_eur_sel) = scores_ISKS_MGRB_pop_eur_sel[,1]
+df = scores_ISKS_MGRB_pop_eur_sel[,-1]
+df_ind = apply(df, 1, function(x)ifelse(max(x) >= 0.9, 1, 0)) ##index samples that have high class probability
+rm_samp_09 = names(df_ind[df_ind == 0]) ##includes samples from superpopulation as scores_ISKS_MGRB_pop_eur_sel is used
+rm_samp_09 = rm_samp_09[which(rm_samp_09 %in% scores_ISKS_MGRB_Eur$rect_sam)]
+tt_09 = chk_gene(rm_samp_09)
+
+##remove non European, admixed pop (already removed)
+#rem_pop = scores_ISKS_MGRB_pop_eur[scores_ISKS_MGRB_pop_eur$pred.superPop %nin% "EUR",]$rect_sam
+#tt_pop = chk_gene(rem_pop)
+##remove finnish
+rem_fin = scores_ISKS_MGRB_Eur[scores_ISKS_MGRB_Eur$pred.eurPop %in% "FIN",]$rect_sam
+tt_fin = chk_gene(rem_fin)
+tt_rem_all = unique(c(rem_PC1_05, rem_PC2_0,rem_fin, rm_samp_09)) ##250 samples removed
+
+
+
+##rem_pop is already removed
+##scores_ISKS_MGRB_Eur_sub final file after trimming
+scores_ISKS_MGRB_Eur_sub = scores_ISKS_MGRB_Eur[scores_ISKS_MGRB_Eur$rect_sam %nin% tt_rem_all,]
+write.table(scores_ISKS_MGRB_Eur_sub, "~/RVAS/comb_set_2020/pop_PCA/review_2/MGRB_ISKS_rfEUR_sub_pc12_filt.scores_RF_clustered.tsv", sep = "\t",
+            quote = F, row.names = F)
+
+
+case_cont_ratio_eur(scores_ISKS_MGRB_Eur_sub)
+plot_eur_case_cont_2D(scores_ISKS_MGRB_Eur_sub,alpha = 1)
+
+##compare to total removed
+gr_pop = scores_ISKS_MGRB_pop_eur$rect_sam[scores_ISKS_MGRB_pop_eur$rect_sam %nin% scores_ISKS_MGRB_Eur$rect_sam]
+gr_tot = scores_ISKS_MGRB_pop_eur$rect_sam[scores_ISKS_MGRB_pop_eur$rect_sam %nin% scores_ISKS_MGRB_Eur_sub$rect_sam]
+gr_tot_sub = scores_ISKS_MGRB_Eur$rect_sam[scores_ISKS_MGRB_Eur$rect_sam %nin% scores_ISKS_MGRB_Eur_sub$rect_sam]
+
+##plot before after removal
+pp_all = ggplot(scores_ISKS_MGRB_pop_eur, aes(x = PC1, y = PC2, colour = superPopulation)) + geom_point(alpha = 1) + theme_bw() + xlim(-0.6, 0.15) + theme(legend.position="bottom", legend.title = element_blank()) 
+scores_ISKS_MGRB_pop_eur$vis_ret = ifelse(scores_ISKS_MGRB_pop_eur$pred.superPop %nin% "EUR", "rem", scores_ISKS_MGRB_pop_eur$superPopulation)
+scores_ISKS_MGRB_pop_eur$vis_ret = factor(scores_ISKS_MGRB_pop_eur$vis_ret, levels=c("controls", "sarcoma", "filt1"))
+pp_all_1 = ggplot(scores_ISKS_MGRB_pop_eur, aes(x = PC1, y = PC2, colour = vis_ret)) + geom_point(alpha = 1) + theme_bw()+ scale_color_manual(values=c("#F8766D", "#00BFC4", "#999999")) +
+  theme(legend.position="none", legend.title = element_blank()) 
+
+
+pp_before = ggplot(scores_ISKS_MGRB_Eur, aes(x = PC1, y = PC2, colour = superPopulation)) + geom_point(alpha = 1) + theme_bw() + xlim(-0.2, 0.15) + theme(legend.position="bottom", legend.title = element_blank()) 
+scores_ISKS_MGRB_Eur$vis_ret = ifelse(scores_ISKS_MGRB_Eur$rect_sam %in% tt_rem_all, "rem", scores_ISKS_MGRB_Eur$superPopulation)
+
+#ggplot(scores_ISKS_MGRB_Eur, aes(x = PC1, y = PC2, colour = pred.eurPop)) + geom_point(alpha = 1) + theme_bw() + xlim(-0.2, 0.4) + theme(legend.position="bottom", legend.title = element_blank()) 
+
+scores_ISKS_MGRB_Eur$vis_ret = factor(scores_ISKS_MGRB_Eur$vis_ret, levels=c("controls", "sarcoma", "filt2"))
+pp_after_2 = ggplot(scores_ISKS_MGRB_Eur, aes(x = PC1, y = PC2, colour = vis_ret)) + geom_point(alpha = 1) + theme_bw()+ scale_color_manual(values=c("#F8766D", "#00BFC4", "#999999")) +
+  theme(legend.position="none", legend.title = element_blank()) 
+
+pp_Eur_sub = ggplot(scores_ISKS_MGRB_Eur_sub, aes(x = PC1, y = PC2, colour = superPopulation)) + geom_point(alpha = 1) + theme_bw() + theme(legend.position="none", legend.title = element_blank()) 
+
+
+multiplot(pp_all_1, pp_after_2, pp_Eur_sub, cols = 3)
+
+# Shelterin <- c("POT1", "TINF2", "TERF1", "TERF2", "TERF2IP", "SMARCAL1", "STAG3", "TIMELESS")
+# CEP_HAUS_core <- c("CEP63", "CEP72", "HAUS4", "HAUS5", "MZT1", "SSNA1")
+# MPNST_pos <- c("NF1", "LZTR1", "SDHA", "SDHB", "SDHD")
+# sarcoma_genes <- c("TP53")
+
+# tt_all = chk_gene(scores_ISKS_MGRB_Eur_sub$rect_sam)
+# tt_all_C45 = tt_all[tt_all$auto_call %in% c("C4", "C5"),]
+# tt_all_C45$is_case = ifelse(grepl("^[ABZ]", tt_all_C45$SAMPLE), 0, 1)
+# table(tt_all_C45[tt_all_C45$gene_symbol %in% Shelterin,]$is_case)
+# table(tt_all_C45[tt_all_C45$gene_symbol %in% CEP_HAUS_core,]$is_case)
+# table(tt_all_C45[tt_all_C45$gene_symbol %in% MPNST_pos,]$is_case)
+# table(tt_all_C45[tt_all_C45$gene_symbol %in% sarcoma_genes,]$is_case)
+
+```
+
+###Relative enrichment test of discovered complexes 
+
+```{r}
+
+#Shelterin <- c("POT1", "TINF2", "TERF1", "TERF2", "TERF2IP", "SMARCAL1", "STAG3", "TIMELESS")
+Shelterin <- c("POT1", "TINF2", "TERF1", "SMARCAL1", "STAG3")
+CEP_HAUS_core <- c("CEP63", "CEP72", "HAUS4", "HAUS5", "MZT1", "SSNA1")
+MPNST_pos <- c("NF1", "LZTR1", "SDHA", "SDHB", "SDHD")
+#TP53 <- c("TP53")
+sarcoma_genes <- c("TP53", "SDHA", "SDHB", "SDHD")
+##plot centroid and contours
+
+
+#ggplot(scores_ISKS_MGRB_Eur_sub, aes(x = PC1, y = PC2, colour = superPopulation)) + geom_point(alpha = 1) + theme_bw() + theme(legend.position="bottom", legend.title = element_blank()) + geom_hline(yintercept = mean(scores_ISKS_MGRB_Eur$PC2) ,linetype="dashed") + geom_vline(xintercept = mean(scores_ISKS_MGRB_Eur$PC1), linetype="dashed")
+
+#rmax_EUR = sqrt(min(scores_ISKS_MGRB_Eur$PC1)^2+min(scores_ISKS_MGRB_Eur$PC2)^2)
+rmax_EUR = sqrt((mean(scores_ISKS_MGRB_Eur$PC1) - min(scores_ISKS_MGRB_Eur$PC1))^2 + (mean(scores_ISKS_MGRB_Eur$PC2) - min(scores_ISKS_MGRB_Eur$PC2))^2)
+##or use rmin_EUR from the outermost point on scores_ISKS_MGRB_Eur_sub
+#cent_2D_dist = centroid_2D_dist(scores_ISKS_MGRB_Eur_sub)
+#rmin_EUR = cent_2D_dist[length(cent_2D_dist)]
+
+plot_conc_circ = function(rad_max, ncirc, df_inp){
+theta=seq(from=0,by=.01,to=2*pi)
+#ncirc=5
+##distance between origin and centroid
+#dist_cent = sqrt((mean(scores_ISKS_MGRB_Eur$PC1) - 0)^2 + (mean(scores_ISKS_MGRB_Eur$PC2) - 0)^2)
+
+dat.circ_EUR = do.call(rbind,
+  lapply(seq_len(ncirc),function(n){
+  r <- n*rmax_EUR/ncirc
+  data.frame(PC1=r*sin(theta) + mean(df_inp$PC1),PC2=r*cos(theta) + mean(df_inp$PC2),r=round(r,2)) ##polar coordinates
+}))
+
+rr <- unique(dat.circ_EUR$r)
+
+dat.text=data.frame(PC1=rr*cos(270) + mean(df_inp$PC1),
+                    PC2=rr*sin(270) + mean(df_inp$PC2),label=rr)
+
+gr_rad_obj = list()
+
+pp1 = ggplot(df_inp, aes(x = PC1, y = PC2))+
+   geom_point() +
+   geom_path(data=dat.circ_EUR,alpha=.2,aes(group=factor(r))) +
+   geom_text(data=dat.text,aes(label=rr),vjust=-1, size = 3)
+gr_rad_obj = list(rr, pp1)
+return(gr_rad_obj)
+}
+
+conc_cir_obj = plot_conc_circ(rmax_EUR, 8 , scores_ISKS_MGRB_Eur)
+rad_vec_Eur = conc_cir_obj[[1]]
+
+##
+conc_OR = function(df_inp, rad_vec, cpx){
+  cent_2D_dist = centroid_2D_dist(df_inp) ##compute 2D distances from centroid
+fish_test_out = list()
+for(i in 1:length(rad_vec)){
+  all_samp = names(cent_2D_dist[cent_2D_dist <= rad_vec[i]])
+  print(rad_vec[i])
+  tot_samp = length(all_samp)
+  tot_case = sum(ifelse(grepl("^[ABZ]",all_samp), 0, 1))
+  tot_cont = tot_samp - tot_case
+ # print(tot_samp)
+ # print(tot_cont)
+  cpx_all = chk_gene(all_samp)
+  #df_cpx_all$is_case = ifelse(grepl("^[ABZ]",df_cpx_all$SAMPLE), 0, 1)
+  df_cpx_all = cpx_all[cpx_all$gene_symbol %in% cpx,]
+  df_cpx_C45 = df_cpx_all[df_cpx_all$auto_call %in% c("C4", "C5"),]
+  df_cpx_C45_case = sum(ifelse(grepl("^[ABZ]",df_cpx_C45$SAMPLE), 0, 1))
+  df_cpx_C45_cont = sum(ifelse(grepl("^[ABZ]",df_cpx_C45$SAMPLE), 1, 0))
+  ##fisher's test
+  inp <- c(df_cpx_C45_case, tot_case - df_cpx_C45_case, df_cpx_C45_cont, tot_cont - df_cpx_C45_cont)
+  cpx_mat <- matrix(inp ,nrow = 2, ncol = 2)
+  colnames(cpx_mat) <- c("case", "cont")
+  rownames(cpx_mat) <- c("hits", "miss")
+  cpx_name = deparse(substitute(cpx))
+  #ft <- fisher.test(mgrb_tsg, alternative = "greater")
+  ft <- fisher.test(cpx_mat, conf.int = T, conf.level = 0.95)
+  ft_df <- cbind.data.frame("Complex" =  cpx_name, "Fish.p_val" = ft$p.value,
+                            "cases" = df_cpx_C45_case,
+                            "controls" = df_cpx_C45_cont,
+                            "case_total" = tot_case,
+                            "control_total" = tot_cont,
+                            "CI_lower" = ft$conf.int[1],
+                            "CI_upper" = ft$conf.int[2],
+                            "OR" = ft$estimate,
+                            "rad" = rad_vec[i])
+ # print(ft_df)
+  fish_test_out[[i]] = ft_df
+  
+}
+fish_test_out_df = do.call("rbind.data.frame", fish_test_out)
+return(fish_test_out_df)
+}
+
+Shelt_OR = conc_OR(scores_ISKS_MGRB_Eur, rad_vec_Eur, Shelterin)
+Centro_OR = conc_OR(scores_ISKS_MGRB_Eur, rad_vec_Eur, CEP_HAUS_core)
+sarc_OR = conc_OR(scores_ISKS_MGRB_Eur, rad_vec_Eur, sarcoma_genes)
+MPNST_OR = conc_OR(scores_ISKS_MGRB_Eur, rad_vec_Eur, MPNST_pos)
+
+##Appendix table
+cpx_tab = rbind.data.frame(Shelt_OR, Centro_OR, sarc_OR)
+
+##forest plots for OR
+forest_simple = function(df_inp){
+  #df <- data.frame(label, mean, lower, upper)
+# reverses the factor level ordering for labels after coord_flip()
+df_inp$rad <- factor(df_inp$rad, levels=rev(df_inp$rad))
+xlog <- apply(df_inp[,7:9], 2, log2)
+ # x[,4] <- formatC(x[,4], format = "e", digits = 2)
+df_inp[,7:9] <- xlog
+
+fp <- ggplot(data=df_inp, aes(x=rad, y=OR, ymin=CI_lower, ymax=CI_upper)) +
+        geom_pointrange() + 
+        geom_hline(yintercept=0, lty=2) +  # add a dotted line at x=1 after flip
+    #    coord_flip() +  # flip coordinates (puts labels on y axis)
+        xlab("Radius") + ylab("log2 Odds Ratio (95% CI)") +
+        theme_bw()  # use a white background
+print(fp)
+}
+
+Eur_polar_map = conc_cir_obj[[2]] + ggtitle("European_RF")
+fp_shelt = forest_simple(Shelt_OR) + ggtitle("Shelterin")
+fp_centro = forest_simple(Centro_OR) + ggtitle("Centrosome")
+fp_sarc = forest_simple(sarc_OR) + ggtitle("sarcoma")
+
+multiplot(Eur_polar_map, fp_shelt, fp_centro, fp_sarc)
+
+
+##reference for circular plots
+#https://stackoverflow.com/questions/50310911/not-centred-concentric-circles-plot
+
+#https://stackoverflow.com/questions/20736330/concentric-circles-like-a-grid-centered-at-origin
+
+```
+
+
+```{r}
+##KDE and contour generation
+
+##simpler approach
+#https://stackoverflow.com/questions/52392300/how-to-select-data-from-a-range-within-a-density-in-r
+
+scores_ISKS_MGRB_Eur_sub = read.delim("~/RVAS/comb_set_2020/pop_PCA/review_2/MGRB_ISKS_rfEUR_sub_pc12_filt.scores_RF_clustered.tsv", header = T, sep = "\t", stringsAsFactors = F)
+
+# Copied from http://slowkow.com/notes/ggplot2-color-by-density/
+get_density <- function(x, y, n = 100) {
+  dens <- MASS::kde2d(x = x, y = y, n = n)
+  ix <- findInterval(x, dens$x)
+  iy <- findInterval(y, dens$y)
+  ii <- cbind(ix, iy)
+  return(dens$z[ii])
+}
+#scores_ISKS_MGRB_Eur_sub$density <- get_density(scores_ISKS_MGRB_Eur_sub$PC1, scores_ISKS_MGRB_Eur_sub$PC2)
+
+make_ggdensity_quant <- function(df_inp){
+df_inp$density <- get_density(df_inp$PC1, df_inp$PC2)  
+df_test = df_inp[,c(19:20,39,55)]
+df_test = df_test[order(df_test$density, decreasing = F),]
+
+quart_val = unname(quantile(df_test$density))
+quart_val = quart_val[2:4]
+df_test$dens_level = ifelse(df_test$density < quart_val[1], "0.25", 
+                            ifelse(df_test$density >= quart_val[1] & 
+                                     df_test$density < quart_val[2], "0.5",
+                            ifelse(df_test$density >= quart_val[2] & 
+                                     df_test$density < quart_val[3], "0.75", "1")))
+df_test$dens_col = ifelse(df_test$density < quart_val[1], "red", 
+                            ifelse(df_test$density >= quart_val[1] & 
+                                     df_test$density < quart_val[2], "blue",
+                            ifelse(df_test$density >= quart_val[2] & 
+                                     df_test$density < quart_val[3], "yellow", "green")))
+return(df_test)
+}
+
+All_dens_df = make_ggdensity_quant(scores_ISKS_MGRB_pop_eur)
+Eur_dens_df = make_ggdensity_quant(scores_ISKS_MGRB_Eur)
+Eur_sub_dens_df = make_ggdensity_quant(scores_ISKS_MGRB_Eur_sub)
+
+gg_quant_all = ggplot(All_dens_df, aes(PC1, PC2)) + geom_point(aes(colour = factor(dens_level)), size = 1) + theme_bw() + theme(legend.position = "bottom", legend.title = element_blank()) 
+
+gg_quant_Eur = ggplot(Eur_dens_df, aes(PC1, PC2)) + geom_point(aes(colour = factor(dens_level)), size = 1) + theme_bw() + theme(legend.position = "bottom", legend.title = element_blank()) 
+
+gg_quant_Eur_sub = ggplot(Eur_sub_dens_df, aes(PC1, PC2)) + geom_point(aes(colour = factor(dens_level)), size = 1) + theme_bw() + theme(legend.position = "bottom", legend.title = element_blank()) 
+
+
+gg_QC_All = ggplot(scores_ISKS_MGRB_pop_eur, aes(x = PC1, y = PC2, colour = superPopulation)) + geom_point(alpha = 0.9) + theme_bw() + theme(legend.position="bottom", legend.title = element_blank()) 
+
+
+gg_QC_Eur = ggplot(scores_ISKS_MGRB_Eur, aes(x = PC1, y = PC2, colour = superPopulation)) + geom_point(alpha = 0.9) + theme_bw() + theme(legend.position="bottom", legend.title = element_blank()) 
+
+
+gg_QC_Eur_sub = ggplot(scores_ISKS_MGRB_Eur_sub, aes(x = PC1, y = PC2, colour = superPopulation)) + geom_point(alpha = 0.9) + theme_bw() + theme(legend.position="bottom", legend.title = element_blank()) 
+
+multiplot(gg_quant_all, gg_quant_Eur, gg_quant_Eur_sub, cols = 3)
+
+multiplot(gg_QC_All, gg_QC_Eur, gg_QC_Eur_sub, cols = 3)
+
+```
+
+##Odds ratios within each density quantile
+```{r}
+Shelterin <- c("POT1", "TINF2", "TERF1", "SMARCAL1", "STAG3")
+CEP_HAUS_core <- c("CEP63", "CEP72", "HAUS4", "HAUS5", "MZT1", "SSNA1")
+MPNST_pos <- c("NF1", "LZTR1", "SDHA", "SDHB", "SDHD")
+#TP53 <- c("TP53")
+sarcoma_genes <- c("TP53", "SDHA", "SDHB", "SDHD")
+
+
+#quart_val_new = rev(quart_val[2:5])
+
+dens_conc_OR = function(df_inp, cpx){
+ # cent_2D_dist = centroid_2D_dist(df_inp) ##compute 2D distances from centroid
+quant_vec = unname(quantile(df_inp$density))
+quant_vec = quant_vec[1:4]
+  fish_test_out = list()
+for(i in 1:(length(quant_vec))){
+  all_samp = df_inp[df_inp$density >= quant_vec[i],]$rect_sam
+ 
+  lev_den =  i 
+  print(quant_vec[i])
+  tot_samp = length(all_samp)
+  tot_case = sum(ifelse(grepl("^[ABZ]",all_samp), 0, 1))
+  tot_cont = tot_samp - tot_case
+ # print(tot_samp)
+ # print(tot_cont)
+  cpx_all = chk_gene(all_samp)
+  #df_cpx_all$is_case = ifelse(grepl("^[ABZ]",df_cpx_all$SAMPLE), 0, 1)
+  df_cpx_all = cpx_all[cpx_all$gene_symbol %in% cpx,]
+  df_cpx_C45 = df_cpx_all[df_cpx_all$auto_call %in% c("C4", "C5"),]
+  df_cpx_C45_case = sum(ifelse(grepl("^[ABZ]",df_cpx_C45$SAMPLE), 0, 1))
+  df_cpx_C45_cont = sum(ifelse(grepl("^[ABZ]",df_cpx_C45$SAMPLE), 1, 0))
+  ##fisher's test
+  inp <- c(df_cpx_C45_case, tot_case - df_cpx_C45_case, df_cpx_C45_cont, tot_cont - df_cpx_C45_cont)
+  cpx_mat <- matrix(inp ,nrow = 2, ncol = 2)
+  colnames(cpx_mat) <- c("case", "cont")
+  rownames(cpx_mat) <- c("hits", "miss")
+  cpx_name = deparse(substitute(cpx))
+  #ft <- fisher.test(mgrb_tsg, alternative = "greater")
+  ft <- fisher.test(cpx_mat, conf.int = T, conf.level = 0.95)
+  ft_df <- cbind.data.frame("Complex" =  cpx_name, "Fish.p_val" = ft$p.value,
+                            "cases" = df_cpx_C45_case,
+                            "controls" = df_cpx_C45_cont,
+                            "case_total" = tot_case,
+                            "control_total" = tot_cont,
+                            "CI_lower" = ft$conf.int[1],
+                            "CI_upper" = ft$conf.int[2],
+                            "OR" = ft$estimate,
+                            "rad" = lev_den)
+ # print(ft_df)
+  fish_test_out[[i]] = ft_df
+  
+}
+fish_test_out_df = do.call("rbind.data.frame", fish_test_out)
+fish_test_out_df = fish_test_out_df[order(fish_test_out_df$rad, decreasing = T),]
+return(fish_test_out_df)
+}
+
+##All
+All_Shelt_OR_dens = dens_conc_OR(All_dens_df, Shelterin)
+All_Centro_OR_dens = dens_conc_OR(All_dens_df, CEP_HAUS_core)
+All_Sarc_OR_dens = dens_conc_OR(All_dens_df, sarcoma_genes)
+
+df_OR_All_dens = rbind.data.frame(All_Shelt_OR_dens, All_Centro_OR_dens, All_Sarc_OR_dens)
+
+df_OR_All_dens$stage = "All"
+
+##Eur
+Eur_Shelt_OR_dens = dens_conc_OR(Eur_dens_df, Shelterin)
+Eur_Centro_OR_dens = dens_conc_OR(Eur_dens_df, CEP_HAUS_core)
+Eur_Sarc_OR_dens = dens_conc_OR(Eur_dens_df, sarcoma_genes)
+
+df_OR_Eur_dens = rbind.data.frame(Eur_Shelt_OR_dens, Eur_Centro_OR_dens, Eur_Sarc_OR_dens)
+
+df_OR_Eur_dens$stage = "Eur.RF"
+
+##Eur_sub
+Shelt_OR_dens = dens_conc_OR(Eur_sub_dens_df, Shelterin)
+Centro_OR_dens = dens_conc_OR(Eur_sub_dens_df, CEP_HAUS_core)
+Sarc_OR_dens = dens_conc_OR(Eur_sub_dens_df, sarcoma_genes)
+
+df_OR_Eur_sub_dens = rbind.data.frame(Shelt_OR_dens, Centro_OR_dens, Sarc_OR_dens)
+
+df_OR_Eur_sub_dens$stage = "Eur.filt"
+
+df_comb_fp = rbind.data.frame(df_OR_All_dens, df_OR_Eur_dens, df_OR_Eur_sub_dens)
+
+df_comb_fp_sub = df_comb_fp
+df_comb_fp_sub$sel_col = paste(df_comb_fp_sub$stage, df_comb_fp_sub$rad, sep = "_")
+df_comb_fp_sub = df_comb_fp_sub[df_comb_fp_sub$sel_col %in% c("All_1", "Eur.RF_1", "Eur.filt_1",
+                                                              "Eur.filt_2", "Eur.filt_3"),]
+
+##forest plots for OR
+forest_simple = function(df_inp){
+  #df <- data.frame(label, mean, lower, upper)
+# reverses the factor level ordering for labels after coord_flip()
+df_inp$rad <- factor(df_inp$rad, levels=rev(df_inp$rad))
+xlog <- apply(df_inp[,7:9], 2, log2)
+ # x[,4] <- formatC(x[,4], format = "e", digits = 2)
+df_inp[,7:9] <- xlog
+
+fp <- ggplot(data=df_inp, aes(x=rad, y=OR, ymin=CI_lower, ymax=CI_upper)) +
+        geom_pointrange() + ylim(-5, 11) +
+        geom_hline(yintercept=0, lty=2) +  # add a dotted line at x=1 after flip
+    #    coord_flip() +  # flip coordinates (puts labels on y axis)
+        xlab("Quantile") + ylab("log2 Odds Ratio (95% CI)") +
+        theme_bw()  # use a white background
+#print(fp)
+}
+
+##Eur_sub
+fp_shelt_dens = forest_simple(Shelt_OR_dens) + ggtitle("Shelterin")
+fp_centro_dens = forest_simple(Centro_OR_dens) + ggtitle("Centrosome")
+fp_sarc_dens = forest_simple(Sarc_OR_dens) + ggtitle("sarcoma")
+
+multiplot(fp_shelt_dens, fp_centro_dens, fp_sarc_dens, cols = 1)
+
+
+
+##Eur
+fp_shelt_dens_Eur = forest_simple(Eur_Shelt_OR_dens) + ggtitle("Shelterin")
+fp_centro_den_Eur = forest_simple(Eur_Centro_OR_dens) + ggtitle("Centrosome")
+fp_sarc_dens_Eur = forest_simple(Eur_Sarc_OR_dens) + ggtitle("sarcoma")
+
+multiplot(fp_shelt_dens_Eur, fp_centro_den_Eur, fp_sarc_dens_Eur, cols = 1)
+
+##All
+fp_shelt_dens_All = forest_simple(All_Shelt_OR_dens) + ggtitle("Shelterin")
+fp_centro_den_All = forest_simple(All_Centro_OR_dens) + ggtitle("Centrosome")
+fp_sarc_dens_All = forest_simple(All_Sarc_OR_dens) + ggtitle("sarcoma")
+
+multiplot(fp_shelt_dens_All, fp_centro_den_All, fp_sarc_dens_All, cols = 1)
+
+
+
+```
+
+##custom forestplot
+##final
+```{r}
+
+##use object df_comb_fp_sub
+
+
+forest_custplot_rep <- function(df){
+  g1 = ggplot(df, aes(x = sel_col, y = log2(OR), group = Complex) ) +
+  #  geom_point(position = position_dodge(width = .75) ) +
+    geom_point(size=4, aes(shape = Complex), position=position_dodge(width = 0.6)) + 
+    geom_errorbar( aes(ymin = log2(CI_lower), ymax = log2(CI_upper),
+                       linetype = Complex,
+                       width = c(.1, .1, .1, .1, .1, 0.1, .1, .1, .1, .1, .1, 0.1, .1, .1, 0.1) ),
+                   position = position_dodge(width = .6) ) +
+      theme_bw() + 
+      labs(y = "Log2 Odds ratio (95% CI)",
+           x = "") +
+     # geom_rect(xmin = -Inf, xmax = Inf, ymin = -.25, ymax = .25, 
+      #      fill = "grey54", alpha = .05) +
+      scale_y_continuous(breaks = seq(0, 11, by = 2) ) + 
+      scale_linetype_manual(values = c("solid", "solid", "solid"),
+                            name = element_blank(),
+                            labels = c("Shelterin", "CEP_HAUS_core", "sarcoma_genes") ) + 
+     scale_shape_manual(values = c(15,19,17),
+                            name = element_blank(),
+                            labels = c("Shelterin", "CEP_HAUS_core", "sarcoma_genes") ) 
+return(g1)
+}
+
+df_comb_fp_sub$Complex = factor(df_comb_fp_sub$Complex, levels = c("Shelterin", "CEP_HAUS_core", "sarcoma_genes") )
+df_comb_fp_sub$sel_col = factor(df_comb_fp_sub$sel_col, levels = c("All_1", "Eur.RF_1", "Eur.filt_1", "Eur.filt_2", "Eur.filt_3") )
+
+gg_dens_all <- forest_custplot_rep(df_comb_fp_sub)
+
+gg_dens_all = gg_dens_all + geom_hline(yintercept = 0, lty="dashed") + 
+  theme(legend.position = "bottom")
+
+
+```
+
+##Figure version 2
+##PCA plots
+```{r}
+
+##color blind accessible colors
+
+library(wesanderson)
+
+
+gg_QC_All = ggplot(scores_ISKS_MGRB_pop_eur, aes(x = PC1, y = PC2, colour = superPopulation)) + geom_point(size = 0.5) + xlim(-0.6, 0.125) + ylim(-0.21, 0.51)
+
+gg_QC_All = gg_QC_All + scale_color_manual(values=wes_palette(n=2, name="Royal1", type = "discrete")) + theme_bw() + theme(legend.position="bottom", legend.title = element_blank()) 
+
+gg_QC_Eur = ggplot(scores_ISKS_MGRB_Eur, aes(x = PC1, y = PC2, colour = superPopulation)) + geom_point(size = 0.5) + xlim(-0.6, 0.125) + ylim(-0.21, 0.51)
+
+gg_QC_Eur = gg_QC_Eur + scale_color_manual(values=wes_palette(n=2, name="Royal1", type = "discrete")) + theme_bw() + theme(legend.position="bottom", legend.title = element_blank()) 
+
+gg_QC_Eur_sub = ggplot(scores_ISKS_MGRB_Eur_sub, aes(x = PC1, y = PC2, colour = superPopulation)) + geom_point(size = 0.5) + xlim(-0.6, 0.125) + ylim(-0.21, 0.51)
+
+gg_QC_Eur_sub = gg_QC_Eur_sub + scale_color_manual(values=wes_palette(n=2, name="Royal1", type = "discrete")) + theme_bw() + theme(legend.position="bottom", legend.title = element_blank()) 
+
+multiplot(gg_QC_All, gg_QC_Eur, gg_QC_Eur_sub, cols = 3)
+
+##panel 2
+gg_QC_Eur_sub2 = ggplot(scores_ISKS_MGRB_Eur_sub, aes(x = PC1, y = PC2, colour = superPopulation)) + geom_point(size = 0.5) 
+
+gg_QC_Eur_sub2 = gg_QC_Eur_sub2 + scale_color_manual(values=wes_palette(n=2, name="Royal1", type = "discrete")) + theme_bw() + theme(legend.position="bottom", legend.title = element_blank()) 
+
+
+##use Eur_sub_dens_df object from line 1102
+
+
+Eur_sub_dens_df$superPopulation = scores_ISKS_MGRB_Eur_sub[match(Eur_sub_dens_df$rect_sam, 
+                                                            scores_ISKS_MGRB_Eur_sub$rect_sam), 17]
+Eur_sub_dens_df$col_75 = ifelse(Eur_sub_dens_df$density >= 2138.75, Eur_sub_dens_df$superPopulation, "t_rem")
+Eur_sub_dens_df$col_5 = ifelse(Eur_sub_dens_df$density >= 5254.85, Eur_sub_dens_df$superPopulation, "t_rem")
+gg_quant_Eur_sub75 = ggplot(Eur_sub_dens_df, aes(x = PC1, y = PC2, colour = col_75)) + geom_point(size = 0.5) 
+
+gg_quant_Eur_sub75 = gg_quant_Eur_sub75 + scale_color_manual(values=wes_palette(n=3, name="Royal1", type = "discrete")) + theme_bw() + theme(legend.position="bottom", legend.title = element_blank()) 
+
+gg_quant_Eur_sub5 = ggplot(Eur_sub_dens_df, aes(x = PC1, y = PC2, colour = col_5)) + geom_point(size = 0.5) 
+
+gg_quant_Eur_sub5 = gg_quant_Eur_sub5 + scale_color_manual(values=wes_palette(n=3, name="Royal1", type = "discrete")) + theme_bw() + theme(legend.position="bottom", legend.title = element_blank()) 
+
+multiplot(gg_QC_Eur_sub2, gg_quant_Eur_sub75, gg_quant_Eur_sub5, cols = 3)
+
+```
+
+
+
+##samples removed
+```{r}
+samp_rm_Euro_filt = scores_ISKS_MGRB_pop_eur[scores_ISKS_MGRB_pop_eur$rect_sam %nin% scores_ISKS_MGRB_Eur_sub$rect_sam,]
+write.table(samp_rm_Euro_filt, "~/RVAS/comb_set_2020/pop_PCA/review_2/MGRB_ISKS_330_removed_Euro_filt.tsv", col.names = TRUE, row.names = FALSE, quote = F, sep = "\t")
+
+```
+
