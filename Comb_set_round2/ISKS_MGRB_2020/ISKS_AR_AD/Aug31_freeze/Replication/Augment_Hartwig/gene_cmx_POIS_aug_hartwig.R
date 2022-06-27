@@ -57,6 +57,9 @@ hart_var <- as.data.frame(hart_var)
 
 hart_var <- hart_var[hart_var$`count(*)` < 4,]
 
+hart_var$sel = paste(hart_var$chromosome, hart_var$position, hart_var$ref, hart_var$alt, sep = "_")
+hart_var[hart_var$gene %in% c(sarcoma_genes, CEP_HAUS_core, Shelterin),c(5,16)] ##Send to Peter for sample names
+View(hart_var[hart_var$gene %in% c(sarcoma_genes, CEP_HAUS_core, Shelterin),c(5,16)])
 hart_var_cases <- hart_var[,c(5,11)]
 colnames(hart_var_cases)[2] <- "count"
 
@@ -145,7 +148,7 @@ cpx_OR_fisher <- function(ppi_res,case_coh_size, cont_coh_size, coh){
     rownames(sim_mat) <- c("hits", "no_hits")
     #ft <- fisher.test(sim_mat, alternative = "greater")
     ft <- fisher.test(sim_mat)
-    ft <- fisher.test(sim_mat, conf.int = T, conf.level = 0.99)
+    ft <- fisher.test(sim_mat, conf.int = T, conf.level = 0.95) #changed from 0.99 to 0.95
     ft_df[[i]] <- cbind.data.frame("gene" = names(cpx_list)[i] ,"Cases" = sum(ppi_res_tab[,1]),
                                    "Controls" = sum(ppi_res_tab[,2]),
                                    "Fish_pval" = ft$p.value,"CI_lower" = ft$conf.int[1],

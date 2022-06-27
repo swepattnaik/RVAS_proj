@@ -20,6 +20,7 @@ library(dplyr)
 library(kableExtra)
 library(FactoMineR)
 library(hexbin)
+library(ggrepel)
 `%nin%` = Negate(`%in%`)
 
 source("~/APCluster_graphs/case_TCGA_new_PRAD_3431/multi_plot.R")
@@ -1466,8 +1467,8 @@ multiplot(shelt, centro, sarc_cont, cols = 3)
 ##OR Aus
 ```{r}
 
-
-Shelterin <- c("POT1", "TINF2", "TERF1", "SMARCAL1", "STAG3")
+Shelterin <- c("POT1", "TINF2", "TERF1", "TERF2", "TERF2IP", "SMARCAL1", "STAG3", "TIMELESS")
+#Shelterin <- c("POT1", "TINF2", "TERF1", "SMARCAL1", "STAG3")
 CEP_HAUS_core <- c("CEP63", "CEP72", "HAUS4", "HAUS5", "MZT1", "SSNA1")
 MPNST_pos <- c("NF1", "LZTR1", "SDHA", "SDHB", "SDHD")
 #TP53 <- c("TP53")
@@ -1529,6 +1530,99 @@ Eur_dens_df_Aus = make_ggdensity_quant(scores_ISKS_MGRB_Eur_sub_Aus)
 Aus_Shelt_OR_dens = dens_conc_OR(Eur_dens_df_Aus, Shelterin)
 Aus_Centro_OR_dens = dens_conc_OR(Eur_dens_df_Aus, CEP_HAUS_core)
 Aus_Sarc_OR_dens = dens_conc_OR(Eur_dens_df_Aus, sarcoma_genes)
+
+```
+
+##rare variant distribution in Euro.filtered ISKS population
+
+```{r}
+scores_isks_pca_var = read.delim("~/RVAS/comb_set_2020/pop_PCA/review_3/ISKS_1000g_rev2_330_rectID_pca.scores.tsv", sep = "\t", header = T, stringsAsFactors = F)
+scores_isks_pca_var$superPopulation = ifelse(is.na(scores_isks_pca_var$superPopulation), "ISKS", scores_isks_pca_var$superPopulation)
+scores_isks_pca_var = scores_isks_pca_var[scores_isks_pca_var$superPopulation %in% "ISKS",]
+scores_isks_pca_var$Country = scores_ISKS_MGRB_Eur_sub[match(scores_isks_pca_var$sample, scores_ISKS_MGRB_Eur_sub$rect_sam), 54]
+##genes data frame
+cpx_genes_db = chk_gene(scores_isks_pca_var$sample)
+#cpx_genes_db = cpx_genes_db[cpx_genes_db$auto_call %nin% "C3",] ##for pathogenic variants
+##sarcoma genes
+cpx_genes_db_sarc = cpx_genes_db[cpx_genes_db$gene_symbol %in% sarcoma_genes, ]
+cpx_genes_db_shelt = cpx_genes_db[cpx_genes_db$gene_symbol %in% Shelterin, ]
+cpx_genes_db_centro = cpx_genes_db[cpx_genes_db$gene_symbol %in% CEP_HAUS_core, ]
+
+##country affiliation
+sarc_country = scores_ISKS_MGRB_Eur_sub[scores_ISKS_MGRB_Eur_sub$rect_sam %in% cpx_genes_db_sarc$SAMPLE,c(17,54)]
+df_sarc = table(sarc_country)
+shelt_country = scores_ISKS_MGRB_Eur_sub[scores_ISKS_MGRB_Eur_sub$rect_sam %in% cpx_genes_db_shelt$SAMPLE,c(17,54)]
+df_shelt = table(shelt_country)
+centro_country = scores_ISKS_MGRB_Eur_sub[scores_ISKS_MGRB_Eur_sub$rect_sam %in% cpx_genes_db_centro$SAMPLE,c(17,54)]
+df_centro = table(centro_country)
+
+df_All = table(scores_ISKS_MGRB_Eur_sub[,c(17,54)])
+
+df_country_cpx = rbind(df_sarc, df_shelt, df_centro)
+
+ggplot(scores_isks_pca_var, aes(x=PC1,y=PC2, colour = Country)) + 
+  geom_point(alpha=1) + theme_bw() + 
+   theme(legend.position="bottom", legend.title = element_blank())
+
+
+highlight_fun = function(df_inp, samp_inp_df, pop = NULL) {
+  samp_inp_df =  samp_inp_df[samp_inp_df$auto_call %nin% "C3",] #for pathogenic variants (Added on 5th April 2022)
+  highlight_df <- df_inp[df_inp$sample %in% samp_inp_df$SAMPLE,]
+  if(pop == 1){
+ gg_out =  ggplot(df_inp, aes(x=PC1,y=PC2, colour = Country)) + 
+  geom_point(alpha=0.04) +
+  geom_point(data=highlight_df, 
+             aes(x=PC1,y=PC2), 
+             size=1.5) + theme_bw() + 
+   theme(legend.position="bottom", legend.title = element_blank()) 
+ return(gg_out)
+  }
+  else if(pop == 2) {
+    gg_out =  ggplot(df_inp, aes(x=PC1,y=PC2, colour = sarcomatype)) + 
+  geom_point(alpha=0.04) +
+  geom_point(data=highlight_df, 
+             aes(x=PC1,y=PC2), 
+             size=1.5) + 
+      geom_text_repel(data=highlight_df,
+            aes(x=PC1,y=PC2, label=sarcomatype), size = 3)+ theme_bw() + 
+   theme(legend.position="none", legend.title = element_blank()) 
+ return(gg_out)
+  }
+  else if(is.null){
+    gg_out =  ggplot(df_inp, aes(x=PC1,y=PC2, colour = superPopulation)) + 
+  geom_point(alpha=0.04) +
+  geom_point(data=highlight_df, 
+             aes(x=PC1,y=PC2), 
+             size=1.5) + theme_bw() + 
+   theme(legend.position="bottom", legend.title = element_blank()) 
+ return(gg_out)
+  }
+}
+
+##country
+shelt = highlight_fun(scores_isks_pca_var, cpx_genes_db_shelt, pop = 1) + ggtitle("Shelterin")
+centro =highlight_fun(scores_isks_pca_var, cpx_genes_db_centro, pop = 1) + ggtitle("Centrosome")
+sarc_cont =highlight_fun(scores_isks_pca_var, cpx_genes_db_sarc, pop = 1) + ggtitle("Sarcoma genes")
+
+multiplot(shelt, centro, sarc_cont, cols = 3)
+
+##Add sarcoma type to Centrosome complex
+scores_isks_pca_var$sarcomatype = comb_pheno[match(scores_isks_pca_var$sample, comb_pheno$pmn), 23]
+
+##sarcoma typw
+shelt = highlight_fun(scores_isks_pca_var, cpx_genes_db_shelt, pop = 2) + ggtitle("Shelterin")
+centro =highlight_fun(scores_isks_pca_var, cpx_genes_db_centro, pop = 2) + ggtitle("Centrosome")
+sarc_cont =highlight_fun(scores_isks_pca_var, cpx_genes_db_sarc, pop = 2) + ggtitle("Sarcoma genes")
+
+multiplot(shelt, centro, sarc_cont, cols = 3)
+
+##superPopulation
+shelt = highlight_fun(scores_isks_pca_var, cpx_genes_db_shelt) + ggtitle("Shelterin")
+centro =highlight_fun(scores_isks_pca_var, cpx_genes_db_centro) + ggtitle("Centrosome")
+sarc_cont =highlight_fun(scores_isks_pca_var, cpx_genes_db_sarc) + ggtitle("Sarcoma genes")
+
+multiplot(shelt, centro, sarc_cont, cols = 3)
+
 
 ```
 
